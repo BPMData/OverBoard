@@ -6,7 +6,7 @@ import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
 import * as store from './store.js';
-import { isHtml, boardName, addOverlay, layoutWarnings, saveBoardCopy } from './html.js';
+import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
@@ -208,8 +208,10 @@ async function makeBoardCopy(file, handlePromise) {
     const where = await saveBoardCopy(html, name, handle && handle.kind === 'file' ? handle : undefined);
     if (!where) return;
     const warns = layoutWarnings(html);
-    showMsg(file.name + ': ' + message + '; ' + where + '. Double-click it to open it in Chrome and write on it. ' +
-      'Keep it in the same folder as the original so its pictures load.' +
+    const files = localFiles(html);
+    showMsg(file.name + ': ' + message + '; ' + where + '. Double-click it to open it in Chrome and write on it.' +
+      (files.length ? ' This worksheet uses files stored separately (like ' + files.slice(0, 2).join(', ') + '). Put ' + name +
+        ' in the same folder as ' + file.name + ', or ' + (files.length > 1 ? 'they' : 'it') + ' won\'t show.' : '') +
       (warns.length ? ' Heads-up: ' + warns.join('; ') + ', so ink may not stay on the page.' : ''));
     if (doc) setStatus(name + ' saved');
   } catch (e) {
