@@ -18,10 +18,10 @@
 `app/index.html` opens a PDF in the browser (no server, no build step; plain ES modules). Status of the original v2 plan:
 
 1. ✅ **App shell** at `app/` (linked from the demo page): drop zone, file picker, drop anywhere, "Open again" list.
-2. ✅ **Render with PDF.js** `4.10.38` from jsDelivr (pinned in `app/libs.js`). Each page is a `.pg` element sized to the page.
+2. ✅ **Render with PDF.js** `4.10.38` (pinned in `app/libs.js`, served from `app/vendor/`; refresh with `tools/vendor_libs.py`). Each page is a `.pg` element sized to the page.
 3. ✅ **One ink canvas per page** (plus a highlighter canvas under it, only when the page has highlights). Kept the side space: each page has a 36 pt writable gutter left and right; it doesn't export.
 4. ✅ **Lazy rendering.** Page images render within 1 screen of the viewport and are freed 2 screens away; ink canvases exist only for nearby pages that have ink. Page sizes start at page 1's size and are corrected in the background.
-5. ✅ **Shared code.** `shared/ink-core.js` (curve drawing, live drawing, smoothing, pen/palm/finger classification, hold-to-repeat, confirm tap) and `shared/toolbar.css` are imported by the app and inlined into the overlay by `tools/build_overlay.py` (overlay v15). The overlay is still one self-contained paste-in block.
+5. ✅ **Shared code.** `shared/ink-core.js` (curve drawing, live drawing, smoothing, pen/palm/finger classification, hold-to-repeat, confirm tap) and `shared/toolbar.css` are imported by the app and inlined into the overlay by `tools/build.py` (overlay v15). The overlay is still one self-contained paste-in block.
 6. ✅ **Persistence** in IndexedDB (`overboard` database: `ink` and `files` stores) keyed by the SHA-256 of the PDF bytes. **Save ink / Load ink** uses an `.overboard.json` sidecar.
 7. ✅ **Export PDF** with pdf-lib `1.17.1`: strokes become vector Bézier paths in the original PDF; highlights use the Multiply blend mode under the pen ink.
 8. ✅ **Page navigation:** page number box, ▲/▼ Page, and the PDF outline as a Chapters panel (current chapter marked).
@@ -41,12 +41,17 @@ Added after v2:
 - **HTML in the app.** Dropping an `.html` worksheet makes a `Name_board.html` copy with the overlay, the same as the installer (`app/html.js` mirrors `ink_overlay_installer.py`; output is byte-identical).
 - **Save ink into PDF** (opt-in, `app/embed.js`). The ink (sidecar format) is stored as the attachment `overboard-ink.json`, written as one standard incremental update after the original bytes: new embedded-file, filespec, name-tree and Names objects, a new version of the catalog, and an xref section of the same kind as the original's (table or stream) with `/Prev`. The trailer carries `/OverBoardBase <original length>`, so each save writes *original + a fresh update* (the file doesn't grow) and OverBoard hashes only the original bytes (same ink key as the plain PDF). If another app saves after us, the whole file counts as the original. Encrypted PDFs are refused. Export PDF uses the original bytes, so exports don't carry the stored ink. The chosen file handle is remembered in IndexedDB (`links` store); after a browser restart the button asks for permission again.
 
+- **Self-hosted libraries.** PDF.js and pdf-lib are served from `app/vendor/` (copied by `tools/vendor_libs.py`), so the app never contacts another site.
+- **Version stamp.** `app/index.html` loads its modules through a small loader that reads `app/version.json` fresh and maps every module to `?v=<hash>` with an import map (the hash covers `app/` and `shared/`; `tools/build.py` writes it). An older cached copy of the page reloads itself once. This avoids mixing files during GitHub Pages' 10-minute browser cache.
+- **Toolbar fits 1080p.** Page ▲ / number / ▼ share one row, and Export PDF, ink files, Save ink into PDF, Open another PDF and Move toolbar are in a File ▸ menu beside the toolbar.
+- **Tests.** Playwright suite in `tests/` (28 tests) plus both `--check`s, run on every pull request.
+
 Left for later from v2:
 
 - Export all periods at once (one PDF per period, or layers).
 - Pinch-zoom on touch screens (trackpad pinch and the toolbar buttons work).
 - Text selection / links inside the PDF (no text layer yet).
-- Offline use without the CDN (vendor the two libraries or add a service worker).
+- Offline use (the libraries are now served from the site; a service worker would let the app open with no connection at all).
 
 ## Later
 

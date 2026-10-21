@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
+<meta name="ob-version" content="18d7241287b6">
 <link rel="stylesheet" href="../shared/toolbar.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -42,13 +43,10 @@
 <div id="ink-bar" role="toolbar" aria-label="Writing tools" hidden>
   <button data-act="write" class="on">Write</button>
   <button data-act="scroll">Scroll</button>
-  <button data-act="prev">&#9650; Page</button>
-  <button data-act="next">&#9660; Page</button>
-  <div id="ob-pagebox" class="wide"><input id="ob-page" type="text" inputmode="numeric" aria-label="Page number" value="1"><span id="ob-pages-total">/ 1</span></div>
+  <div id="ob-pagebox" class="wide"><button data-act="prev" aria-label="Previous page" title="Previous page">&#9650;</button><label><input id="ob-page" type="text" inputmode="numeric" aria-label="Page number" value="1"><span id="ob-pages-total">of 1</span></label><button data-act="next" aria-label="Next page" title="Next page">&#9660;</button></div>
   <button data-act="finger" class="sm wide">Finger: scrolls</button>
   <div class="lbl">Class period</div>
   <div id="ink-periods"></div>
-  <div class="lbl">Pen</div>
   <button data-act="hilite" class="wide">Highlighter</button>
   <div id="ink-colors">
     <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
@@ -67,18 +65,19 @@
   <button data-act="undo">Undo</button>
   <button data-act="clear" title="Clears the ink on the page you are looking at">Clear page</button>
   <button data-act="toc" title="Chapters of this PDF">Chapters</button>
-  <div class="lbl">Zoom</div>
   <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">Fit</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>
-  <div class="lbl">File</div>
+  <button data-act="file" aria-haspopup="true" aria-expanded="false" title="Export PDF, ink files, open another PDF">File &#9656;</button>
+  <button data-act="hide">Hide</button>
+  <div id="ink-status">Ready</div>
+  <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
+</div>
+<div id="ob-filemenu" role="menu" aria-label="File" hidden>
   <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
   <button data-act="ink-save" title="Download the ink (all periods) as a small .overboard.json file">Save ink</button>
   <button data-act="ink-load" title="Load ink from an .overboard.json file">Load ink</button>
   <button data-act="pdf-link" class="sm wide" title="Keep the ink inside a PDF file (you choose the file)">Save ink into PDF…</button>
   <button data-act="close" class="sm wide" title="Close this PDF and pick another (ink is saved)">Open another PDF</button>
-  <button data-act="side">&#9664; Move &#9654;</button>
-  <button data-act="hide">Hide</button>
-  <div id="ink-status">Ready</div>
-  <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
+  <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
 <dialog id="ob-embed" aria-labelledby="ob-embed-h">
@@ -96,6 +95,37 @@
 </dialog>
 <div id="ob-dropcover" hidden><div>Drop to open</div></div>
 
-<script type="module" src="main.js"></script>
+<script>
+/* Load the app's files as one matching set, even in the minutes right after an update
+   (GitHub Pages lets browsers reuse files for up to 10 minutes). version.json and the
+   ob-version tag above are written by tools/build.py. */
+(function () {
+  var mine = document.querySelector('meta[name="ob-version"]').content;
+  function start(info) {
+    var q = info ? '?v=' + info.v : '';
+    if (info) {
+      var map = { imports: {} };
+      info.js.forEach(function (f) { map.imports[new URL(f, location.href).href] = new URL(f + q, location.href).href; });
+      var im = document.createElement('script');
+      im.type = 'importmap'; im.textContent = JSON.stringify(map);
+      document.head.appendChild(im);
+      [].forEach.call(document.querySelectorAll('link[rel="stylesheet"]'), function (l) {
+        var f = l.getAttribute('href');
+        if (info.css.indexOf(f) !== -1) l.href = f + q;
+      });
+    }
+    var s = document.createElement('script');
+    s.type = 'module'; s.src = 'main.js' + q;
+    document.body.appendChild(s);
+  }
+  fetch('version.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (info) {
+    if (info.v !== mine) {   // this page is an older copy than the files: reload it once to get the new one
+      var key = 'ob-reloaded-for';
+      try { if (sessionStorage.getItem(key) !== info.v) { sessionStorage.setItem(key, info.v); location.reload(); return; } } catch (e) {}
+    }
+    start(info);
+  }).catch(function () { start(null); });
+})();
+</script>
 </body>
 </html>

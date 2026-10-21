@@ -43,7 +43,7 @@ Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app
 
 Word files: in Word, choose File → Save as PDF, then open the PDF.
 
-The app needs an internet connection the first time it loads, to fetch the PDF reader ([PDF.js](https://mozilla.github.io/pdf.js/)) and, for Export PDF, [pdf-lib](https://pdf-lib.js.org/), both from jsDelivr.
+Everything the app needs, including the PDF reader ([PDF.js](https://mozilla.github.io/pdf.js/)) and [pdf-lib](https://pdf-lib.js.org/) for Export PDF, comes from this site (bpmdata.github.io), so it works behind school web filters that block other sites.
 
 ## Use it on your own worksheets (HTML)
 
@@ -68,13 +68,19 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 
 ## For contributors
 
-- `app/` is the PDF app: plain ES modules, no build step. Library versions are pinned in `app/libs.js`.
-- `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay. The overlay must stay one paste-in file, so after editing them run:
+- `app/` is the PDF app: plain ES modules, served as-is (open `http://localhost:8000/app/` after `python3 -m http.server`).
+- `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay.
+- **After editing anything in `app/` or `shared/`, run `python3 tools/build.py`.** It copies the shared code into the paste-in overlay (which must stay one self-contained file) and the demo page, and updates the app's version stamp (`app/version.json`), so browsers never mix old and new files after an update. `--check` fails if you forgot.
+- **Libraries** (PDF.js, pdf-lib) live in `app/vendor/`, so the app works behind school web filters that block CDNs. Versions are pinned in `app/libs.js`; after changing one, run `python3 tools/vendor_libs.py` (downloads from npm and verifies checksums).
+- **Tests** run in a real browser (Playwright): pen, palm, finger, highlighter, zoom alignment, saving, ink files, Export PDF, Save ink into PDF, HTML board copies and the overlay.
 
   ```bash
-  python3 tools/build_overlay.py          # copies them into overlay/ink_overlay.html and the demo page
-  python3 tools/build_overlay.py --check  # fails if something is out of date
+  npm install
+  npx playwright install chromium
+  npm test
   ```
+
+  They run on every pull request (`.github/workflows/test.yml`), along with both `--check`s. Test PDFs are in `tests/fixtures/`.
 
 ## Smartboard tips
 
@@ -93,7 +99,7 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 No accounts, no uploads; your ink stays on your machine.
 
 - OverBoard has no server. Ink, and PDFs you open in the app, are stored in your browser, and inside your own file if you choose.
-- What does get downloaded: the web pages themselves (from GitHub Pages) and, when the PDF app loads, two open-source libraries ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)) from the jsDelivr CDN. Your PDFs, worksheets and ink are never sent to either.
+- What does get downloaded: the web pages and the two open-source libraries the PDF app uses ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)), all from GitHub Pages (bpmdata.github.io). Your PDFs, worksheets and ink are never sent anywhere. (The board-probe diagnostic page also loads one script from cdnjs.)
 - The optional desktop installer is a Python script that runs on your computer and only edits the files you pick.
 
 ## Contributing
