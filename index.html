@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OverBoard Demo</title>
+<meta name="description" content="OverBoard: smartboard ink that sticks to the page. Try writing on this worksheet.">
+<style>
+  :root { --ink: #111; --mute: #555; --line: #c9c9c9; --paper: #fff; --desk: #e9e7e2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--desk); color: var(--ink); font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .page { width: 816px; height: 1056px; margin: 24px auto; background: var(--paper); box-shadow: 0 2px 14px rgba(0,0,0,.18); padding: 64px 72px; position: relative; overflow: hidden; }
+  .banner { background: #111; color: #fff; border-radius: 10px; padding: 18px 22px; }
+  .banner small { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #ffd400; font-weight: 700; }
+  .banner h1 { margin: 2px 0 0; font-size: 34px; line-height: 1.1; }
+  h2 { font-size: 20px; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 3px solid #111; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .try { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+  .box { border: 2px dashed var(--line); border-radius: 10px; height: 150px; padding: 10px 12px; color: var(--mute); font-size: 14px; }
+  .lines { margin-top: 10px; }
+  .lines div { height: 44px; border-bottom: 1.5px solid var(--line); }
+  .grid { margin-top: 10px; height: 420px; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 28px 28px; border: 1.5px solid var(--line); }
+  .foot { position: absolute; bottom: 28px; left: 0; right: 0; text-align: center; font-size: 12px; letter-spacing: .08em; color: var(--mute); text-transform: uppercase; }
+  a { color: #1565c0; }
+  @media print { body { background: #fff; } .page { margin: 0; box-shadow: none; break-after: page; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner"><small>OverBoard demo · nothing to install</small><h1>Write on this worksheet.</h1></div>
+  <h2>Try this</h2>
+  <ul>
+    <li><b>Write</b> with a pen, mouse or finger. Then <b>scroll</b>: the ink stays on the page.</li>
+    <li>Turn on the <b>Highlighter</b> and swipe across this sentence. The words stay readable.</li>
+    <li>Switch to <b>P2</b>. Each class period gets its own ink on the same sheet.</li>
+    <li>Tap <b>Save PDF</b> to print the page with your ink on it.</li>
+    <li>On a SMART Board: wipe with your <b>palm</b> to erase, and use a <b>finger</b> to scroll.</li>
+  </ul>
+  <h2>Warm-up</h2>
+  <div class="try">
+    <div class="box">Draw a diagram here.</div>
+    <div class="box">Solve: 3x + 7 = 22</div>
+  </div>
+  <h2>Notes</h2>
+  <div class="lines"><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  <div class="foot">OverBoard · page 1 / 2 · <a href="https://github.com/BPMData/OverBoard">github.com/BPMData/OverBoard</a></div>
+</div>
+<div class="page">
+  <h2 style="margin-top:0">Graph paper</h2>
+  <div class="grid"></div>
+  <h2>Exit ticket</h2>
+  <div class="lines"><div></div><div></div><div></div><div></div></div>
+  <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
+</div>
+<!-- ===== INK OVERLAY START (v13) =====
+  Smartboard writing layer. Paste this whole block just before </body> in any .html file.
+  SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
+  Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
+  HIGHLIGHTER: toggle it on, then any color highlights. Highlights sit under the pen ink and never hide the printed text.
+  Works best with fixed-size .page elements (any paper size): Page jump and Save PDF then work per page.
+  Without .page elements it still scrolls and prints the whole body as one sheet.
+  PERIODS: each class period (P1-P4) keeps its own ink on the same worksheet. Tap a period button to switch.
+  SAVING: ink always auto-saves in this browser. "Save ink into file" (Chrome or Edge) also writes the ink INTO this .html file,
+  so use a board copy of the sheet, not the copy you hand out.
+  Settings are the variables at the top of the script. ===== -->
+<script type="application/json" id="ink-data">{}</script>
+<style id="ink-style">
+#ink-canvas,#ink-hl{position:absolute;top:0;left:50%;transform:translateX(-50%);display:block}
+#ink-canvas{z-index:50;touch-action:none;cursor:crosshair}
+#ink-hl{z-index:49;pointer-events:none;mix-blend-mode:multiply}
+#ink-canvas.scroll-mode{pointer-events:none}
+#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
+#ink-bar.right{left:auto;right:10px}
+#ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
+#ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
+#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
+#ink-bar button[data-act="hilite"].on{background:#fff176;color:#000}
+#ink-bar button.warn{background:#c62828}
+#ink-bar button.good{background:#2e7d32;color:#fff}
+#ink-bar button.sm{min-height:44px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ink-bar .wide{grid-column:1 / 3}
+#ink-colors{grid-column:1 / 3;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#ink-bar #ink-colors button{min-height:46px;height:46px;padding:0;border:3px solid transparent}
+#ink-bar #ink-colors button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
+#ink-colors .cwrap{position:relative;display:grid}
+#ink-bar #ink-colors button[data-act="custom"]{background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336);display:flex;align-items:center;justify-content:center}
+#ink-colors .fill{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:transparent}
+#ink-picker{position:absolute;left:0;bottom:0;width:100%;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+#ink-size,#ink-smooth{grid-column:1 / 3;display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center}
+#ink-bar #ink-size button,#ink-bar #ink-smooth button{font-size:28px;line-height:1;padding:0}
+#ink-size .val,#ink-smooth .val{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;font:700 16px Inter,system-ui,sans-serif;min-width:0}
+#ink-size .dot{display:block;border-radius:50%;box-shadow:0 0 0 2px #fff}
+#ink-smooth .val{gap:0}
+#ink-smooth .cap{display:block}
+#ink-bar .lbl{grid-column:1 / 3;color:#bbb;font:700 11px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+#ink-periods{grid-column:1 / 3;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#ink-bar #ink-periods button{padding:0}
+#ink-status{grid-column:1 / 3;color:#bbb;font:600 11px Inter,system-ui,sans-serif;text-align:center;line-height:1.3}
+#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;border-radius:50%;border:0;background:#1f1f1f;color:#ffd400;font:700 26px Inter,system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85}
+#ink-show.right{left:auto;right:16px}
+#ink-show.show{display:block}
+@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show{display:none!important}}
+</style>
+<canvas id="ink-hl"></canvas>
+<canvas id="ink-canvas"></canvas>
+<div id="ink-bar" role="toolbar" aria-label="Writing tools">
+  <button data-act="write" class="on">Write</button>
+  <button data-act="scroll">Scroll</button>
+  <button data-act="prev">&#9650; Page</button>
+  <button data-act="next">&#9660; Page</button>
+  <button data-act="finger" class="sm wide">Finger: scrolls</button>
+  <div class="lbl">Class period</div>
+  <div id="ink-periods"></div>
+  <div class="lbl">Pen</div>
+  <button data-act="hilite" class="wide">Highlighter</button>
+  <div id="ink-colors">
+    <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
+    <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue"></button>
+    <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red"></button>
+    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green"></button>
+    <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink"></button>
+    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange"></button>
+    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow"></button>
+    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple"></button>
+    <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
+  </div>
+  <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner">&minus;</button><div class="val"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker">+</button></div>
+  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
+  <button data-act="erase">Eraser</button>
+  <button data-act="undo">Undo</button>
+  <button data-act="clear">Clear</button>
+  <button data-act="print">Save PDF</button>
+  <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
+  <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
+  <button data-act="side">&#9664; Move &#9654;</button>
+  <button data-act="hide">Hide</button>
+  <div id="ink-status">Ink saves automatically</div>
+</div>
+<button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
+<script id="ink-script">
+(function(){
+  if (window.__inkLoaded) return; window.__inkLoaded = true;
+
+  /* ===== SETTINGS ===== */
+  var PERIODS = ['P1', 'P2', 'P3', 'P4'];  // the period tabs; used only until ink has been saved once ("Period 1" etc. from older versions become "P1")
+  var PRINT_INK_BLACK = false;    // false = Save PDF keeps pen colors (smartboard use). true = all ink prints black and highlights are left out (low-toner copier).
+  var SAVE_DELAY_MS = 5000;       // after you stop writing, wait this long, then save (browser + linked file). Also saves if you close the tab.
+  var FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. false = finger draws too. The toolbar button flips this (remembered per browser).
+  var PALM_ERASER_W = 92;         // eraser size (px) when you wipe with your palm, fist or side of hand
+  var SMOOTHING = 3;              // starting level 0-8 (toolbar buttons change it, remembered per browser). 0 = off. 3-6 = steadier, rounder lines. 7-8 lag behind the pen.
+  var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
+  var HIGHLIGHT_TINT = 0.5;       // how much white is mixed into the color for highlighting (0 = full color, 0.8 = very pale)
+  var PRINT_SCALE = 3;            // Save PDF redraws the ink at this sharpness (3 = crisp print)
+  /* ==================== */
+
+  var MARGIN = 96;                // 0.5in of writable margin each side of the widest page
+  var CW = 912;                   // page-column width in CSS px; recalculated from the widest .page
+  var body = document.body;
+  body.style.position = 'relative';
+  var canvas = document.getElementById('ink-canvas'), ctx = canvas.getContext('2d');
+  var hcan = document.getElementById('ink-hl'), hctx = hcan.getContext('2d');   // highlighter layer, under the pen ink
+  var bar = document.getElementById('ink-bar');
+  var statusEl = document.getElementById('ink-status');
+  var periodsEl = document.getElementById('ink-periods');
+  var dataEl = document.getElementById('ink-data');
+  var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
+  var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
+  var D, strokes, lastCleared = null, cur = null, active = null;
+  var color = '#111111', width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
+  function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function setLS(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  var sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) width = sw;
+  var hw = parseFloat(getLS('ink-hl-width')); if (hw >= 8 && hw <= 40) hlWidth = hw;
+  var cc = getLS('ink-custom'); if (/^#[0-9a-f]{6}$/i.test(cc || '')) customColor = cc;
+  var showBtn = document.getElementById('ink-show');   // little round button left behind when the toolbar is hidden
+  showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); });
+  var sizeNum = document.querySelector('#ink-size .num'), sizeDot = document.querySelector('#ink-size .dot');
+  var smooth = SMOOTHING, smoothNum = document.querySelector('#ink-smooth .num');
+  var sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) smooth = +sl;
+  var FSA = typeof window.showOpenFilePicker === 'function';
+  var fileHandle = null, fileBusy = false, saveTimer = null, dirty = false;
+  var fingerScrolls = FINGER_SCROLLS, drag = null, downAt = 0;
+  var fm = getLS('ink-finger'); if (fm) fingerScrolls = fm === 'scroll';
+
+  function setStatus(t){ statusEl.textContent = t; }
+  function clock(){ return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function tint(hex, amt){   // mix a #rrggbb color toward white
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    function m(c){ return Math.round(c + (255 - c) * amt); }
+    return '#' + ((1 << 24) | (m(r) << 16) | (m(g) << 8) | m(b)).toString(16).slice(1);
+  }
+
+  /* ---------- data: { v, t, active, periods: { name: [strokes] } }   stroke: { c, w, e: eraser, h: highlight, p: [x,y,...] } ---------- */
+  function parse(s){ try { var o = JSON.parse(s); if (o && o.periods && typeof o.periods === 'object') return o; } catch(e){} return null; }
+  function fresh(){ var p = {}; PERIODS.forEach(function(n){ p[n] = []; }); return { v: 2, t: 0, active: PERIODS[0], periods: p }; }
+  function setStrokes(a){ strokes = D.periods[D.active] = a; }
+  function shortNames(){   // "Period 1" -> "P1"
+    var np = {}, changed = false;
+    Object.keys(D.periods).forEach(function(k){
+      var m = /^Period\s*(\d+)$/i.exec(k), n = m ? 'P' + m[1] : k;
+      if (n !== k && !D.periods[n]) { changed = true; if (D.active === k) D.active = n; } else n = k;
+      np[n] = D.periods[k];
+    });
+    D.periods = np;
+    return changed;
+  }
+  function load(){
+    var emb = dataEl ? parse(dataEl.textContent) : null, loc = parse(getLS(KEY)), src = '';
+    if (loc && (!emb || (loc.t || 0) > (emb.t || 0))) { D = loc; src = 'browser'; }   // newest copy wins; a tie goes to the file
+    else if (emb) { D = emb; src = 'file'; }
+    else {
+      D = fresh();
+      try {   // carry over ink from the v1 snippet
+        var old = JSON.parse(getLS('ink-v1:' + location.pathname + ':' + document.title));
+        if (old && old.length) { D.periods[D.active] = old; src = 'old'; }
+      } catch(e){}
+    }
+    if (!Object.keys(D.periods).length) D = fresh();
+    shortNames();
+    if (!D.periods[D.active]) D.active = Object.keys(D.periods)[0];
+    strokes = D.periods[D.active];
+    return src;
+  }
+  function save(){   // mark changed; the real write waits until you pause (SAVE_DELAY_MS) so writing never stutters
+    D.t = Date.now(); dirty = true;
+    setStatus(D.active + ' · saving…');
+    clearTimeout(saveTimer); saveTimer = setTimeout(function(){ writeLocal(false); }, SAVE_DELAY_MS);
+  }
+  function writeLocal(skipFile){
+    clearTimeout(saveTimer); saveTimer = null;
+    if (!dirty) return;
+    dirty = false;
+    try { localStorage.setItem(KEY, JSON.stringify(D)); setStatus(D.active + ' · saved in browser'); }
+    catch(e){ setStatus('Browser blocked storage. Use Save ink into file.'); }
+    if (fileHandle && !skipFile) writeFile(false);
+  }
+
+  /* ---------- drawing ---------- */
+  // pen ink goes on the top canvas, highlights on the layer under it, the eraser cuts through both
+  function layers(s){ return s.e ? [ctx, hctx] : s.h ? [hctx] : [ctx]; }
+  function style(g, s, sc, ox, oy){
+    g.setTransform(sc, 0, 0, sc, ox, oy);
+    g.globalCompositeOperation = s.e ? 'destination-out' : 'source-over';
+    g.strokeStyle = s.c; g.fillStyle = s.c; g.lineWidth = s.w;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+  }
+  function paint(g, s, sc, ox, oy){   // one whole stroke onto one canvas
+    var p = s.p; g.save(); style(g, s, sc, ox, oy);
+    g.beginPath();
+    if (p.length < 4) { g.arc(p[0], p[1], s.w/2, 0, 6.2832); g.fill(); }
+    else {   // curve through the midpoints between samples, so corners come out round instead of jagged
+      g.moveTo(p[0], p[1]);
+      for (var i = 2; i < p.length - 2; i += 2) g.quadraticCurveTo(p[i], p[i+1], (p[i] + p[i+2]) / 2, (p[i+1] + p[i+3]) / 2);
+      g.lineTo(p[p.length-2], p[p.length-1]);
+      g.stroke();
+    }
+    g.restore();
+  }
+  function drawStroke(s){ layers(s).forEach(function(g){ paint(g, s, scale, OX * scale, 0); }); }
+  // live drawing draws the same curve piece by piece as points arrive (matches paint exactly)
+  var live = null;   // { fx, fy: smoothed pen position; ex, ey: where the drawn line ends; k: points drawn so far }
+  function drawPieces(s, pieces){   // pieces: [x0,y0,cx,cy,x1,y1] (cx null = straight line)
+    if (!pieces.length) return;
+    layers(s).forEach(function(g){
+      g.save(); style(g, s, scale, OX * scale, 0);
+      pieces.forEach(function(q){
+        g.beginPath(); g.moveTo(q[0], q[1]);
+        if (q[2] === null) g.lineTo(q[4], q[5]); else g.quadraticCurveTo(q[2], q[3], q[4], q[5]);
+        g.stroke();
+      });
+      g.restore();
+    });
+  }
+  function liveCatchUp(s){
+    var p = s.p, n = p.length / 2, pieces = [];
+    while (live.k < n) {
+      var k = live.k;
+      if (k >= 2) {
+        var bx = p[2*k-2], by = p[2*k-1], mx = (bx + p[2*k]) / 2, my = (by + p[2*k+1]) / 2;
+        pieces.push([live.ex, live.ey, bx, by, mx, my]);
+        live.ex = mx; live.ey = my;
+      }
+      live.k++;
+    }
+    drawPieces(s, pieces);
+  }
+  function liveFinish(s){
+    var p = s.p, n = p.length;
+    if (n < 4) return;
+    liveCatchUp(s);
+    drawPieces(s, [[live.ex, live.ey, null, null, p[n-2], p[n-1]]]);
+  }
+  function clearCanvas(c, g){ g.save(); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height); g.restore(); }
+  function redraw(){
+    clearCanvas(canvas, ctx); clearCanvas(hcan, hctx);
+    for (var i = 0; i < strokes.length; i++) drawStroke(strokes[i]);
+  }
+  function calcCW(){
+    var w = 0;
+    [].forEach.call(document.querySelectorAll('.page'), function(p){ if (p.offsetWidth > w) w = p.offsetWidth; });
+    return (w || 816) + MARGIN;
+  }
+  // The canvas spans the whole window so you can write in the empty space beside the page.
+  // Ink is stored relative to the page column (CW wide, centered), so it stays lined up when the window or zoom changes.
+  var FW = 0, OX = 0;   // full canvas width (CSS px) and where the page column starts inside it
+  function size(){
+    var h = Math.ceil(body.offsetHeight), cw = calcCW();
+    var fw = Math.max(cw, document.documentElement.clientWidth);
+    var sc = Math.min(window.devicePixelRatio || 1, 2, 30000 / h, 30000 / fw, Math.sqrt(100e6 / (fw * h)));   // stay under browser canvas limits (two canvases)
+    if (h === H && sc === scale && cw === CW && fw === FW && canvas.width) return;
+    H = h; scale = sc; CW = cw; FW = fw; OX = (fw - cw) / 2;
+    [canvas, hcan].forEach(function(c){
+      c.width = Math.round(FW * scale); c.height = Math.round(H * scale);
+      c.style.width = FW + 'px'; c.style.height = H + 'px';
+    });
+    redraw();
+  }
+
+  function pt(e){
+    var r = canvas.getBoundingClientRect();
+    return [Math.round((e.clientX - r.left - OX) * 10) / 10, Math.round((e.clientY - r.top) * 10) / 10];
+  }
+  canvas.addEventListener('pointerdown', function(e){
+    if (active !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // SMART board: pen tip = "pen"; palm/fist/side of hand = "pen" with the eraser button (32); finger and round pen end = "mouse"
+    var palm = e.pointerType === 'pen' && ((e.buttons & 32) || e.button === 5);
+    var finger = e.pointerType === 'mouse' || e.pointerType === 'touch';
+    active = e.pointerId;
+    try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+    if (finger && fingerScrolls) { drag = { y: e.screenY }; e.preventDefault(); return; }
+    var q = pt(e);
+    if (palm || erasing) cur = { c: color, w: palm ? PALM_ERASER_W : 44, e: 1, p: [q[0], q[1]] };
+    else if (hiliting) cur = { c: tint(color, HIGHLIGHT_TINT), w: hlWidth, e: 0, h: 1, p: [q[0], q[1]] };
+    else cur = { c: color, w: width, e: 0, p: [q[0], q[1]] };
+    downAt = performance.now();
+    live = { fx: q[0], fy: q[1], ex: q[0], ey: q[1], k: 1 };
+    drawStroke(cur); e.preventDefault();
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if (e.pointerId === active && drag) { window.scrollBy(0, drag.y - e.screenY); drag.y = e.screenY; e.preventDefault(); return; }
+    if (e.pointerId !== active || !cur) return;
+    var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+    if (!evs || !evs.length) evs = [e];
+    for (var i = 0; i < evs.length; i++) {
+      var q = pt(evs[i]), n = cur.p.length;
+      var k = smooth / 10;                                    // steady out board jitter
+      live.fx = live.fx * k + q[0] * (1 - k);
+      live.fy = live.fy * k + q[1] * (1 - k);
+      var x = Math.round(live.fx * 10) / 10, y = Math.round(live.fy * 10) / 10;
+      if (Math.abs(x - cur.p[n-2]) + Math.abs(y - cur.p[n-1]) < 0.5) continue;
+      cur.p.push(x, y);
+    }
+    liveCatchUp(cur);
+    e.preventDefault();
+  });
+  function end(e){
+    if (e.pointerId !== active) return;
+    active = null; drag = null;
+    if (!cur) return;
+    var s = cur; cur = null;
+    if (e.type === 'pointerup' && s.p.length >= 4) {   // smoothing trails slightly behind; finish the line where the pen lifted
+      var q = pt(e), n = s.p.length;
+      if (Math.abs(q[0] - s.p[n-2]) + Math.abs(q[1] - s.p[n-1]) >= 0.5) s.p.push(q[0], q[1]);
+    }
+    liveFinish(s);
+    // the board sends a few-millisecond blip when you switch between hand and pen; drop it
+    if (performance.now() - downAt < 15 && s.p.length <= 4) { redraw(); return; }
+    strokes.push(s); lastCleared = null; save();
+  }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  function undo(){
+    if (strokes.length) { strokes.pop(); redraw(); save(); }
+    else if (lastCleared) { setStrokes(lastCleared); lastCleared = null; redraw(); save(); }
+  }
+  function clearAll(){ if (strokes.length) lastCleared = strokes; setStrokes([]); redraw(); save(); }
+  function confirmTap(btn, fn){   // first tap arms ("Sure?"), second tap within 3s does it
+    if (!btn.classList.contains('warn')) {
+      btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = 'Sure?';
+      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 3000);
+      return;
+    }
+    clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label; fn();
+  }
+
+  /* ---------- class periods ---------- */
+  function renderPeriods(){
+    periodsEl.textContent = '';
+    Object.keys(D.periods).forEach(function(n){
+      var b = document.createElement('button');
+      b.className = 'sm' + (n === D.active ? ' on' : '');
+      b.dataset.period = n; b.textContent = n; b.title = n;
+      periodsEl.appendChild(b);
+    });
+  }
+  function switchTo(name){
+    if (!D.periods[name] || name === D.active) return;
+    D.active = name; strokes = D.periods[name]; lastCleared = null;
+    redraw(); renderPeriods(); save();
+  }
+
+  /* ---------- page jump ---------- */
+  function pageTops(){
+    return [].map.call(document.querySelectorAll('.page'), function(p){ return p.getBoundingClientRect().top + window.pageYOffset; });
+  }
+  function jump(dir){
+    var tops = pageTops(), y = window.pageYOffset, target = null, i;
+    if (!tops.length) { window.scrollBy({ top: dir * Math.round(window.innerHeight * 0.9), behavior: 'smooth' }); return; }
+    if (dir > 0) { for (i = 0; i < tops.length; i++) if (tops[i] > y + 60) { target = tops[i]; break; } }
+    else { for (i = tops.length - 1; i >= 0; i--) if (tops[i] < y - 60) { target = tops[i]; break; } }
+    if (target === null) target = dir > 0 ? document.documentElement.scrollHeight : 0;
+    window.scrollTo({ top: Math.max(0, target - 12), behavior: 'smooth' });
+  }
+
+  /* ---------- save into the .html file (Chrome / Edge) ---------- */
+  function injectInk(txt, json){   // swap the contents of the ink-data block; null if the file has none (attribute order and quotes don't matter)
+    var re = /(<script\b[^>]*\bid\s*=\s*["']ink-data["'][^>]*>)[\s\S]*?(<\/script>)/i;
+    if (!re.test(txt)) return null;
+    var safe = json.replace(/</g, '\\u003c');
+    return txt.replace(re, function(m, a, b){ return a + safe + b; });
+  }
+  function idb(mode, fn){   // remembers the linked file between visits
+    return new Promise(function(resolve){
+      try {
+        var rq = indexedDB.open('ink-handles', 1);
+        rq.onupgradeneeded = function(){ rq.result.createObjectStore('h'); };
+        rq.onerror = function(){ resolve(null); };
+        rq.onsuccess = function(){
+          var db = rq.result, out = null;
+          try {
+            var tx = db.transaction('h', mode), req = fn(tx.objectStore('h'));
+            if (req) req.onsuccess = function(){ out = req.result; };
+            tx.oncomplete = function(){ db.close(); resolve(out); };
+            tx.onerror = tx.onabort = function(){ db.close(); resolve(null); };
+          } catch(e){ db.close(); resolve(null); }
+        };
+      } catch(e){ resolve(null); }
+    });
+  }
+  async function hasPermission(ask){
+    if (!fileHandle) return false;
+    var o = { mode: 'readwrite' };
+    if ((await fileHandle.queryPermission(o)) === 'granted') return true;
+    return ask ? (await fileHandle.requestPermission(o)) === 'granted' : false;
+  }
+  async function linkFile(){
+    var hs = await window.showOpenFilePicker({ types: [{ description: 'This worksheet (.html)', accept: { 'text/html': ['.html', '.htm'] } }] });
+    var h = hs[0], base = decodeURIComponent(location.pathname.split('/').pop());
+    if (base && h.name !== base && !confirm('This page is "' + base + '" but you picked "' + h.name + '". Save ink into the picked file?')) return false;
+    var txt = await (await h.getFile()).text();
+    if (injectInk(txt, '{}') === null) { setStatus('That file has no ink block. Paste the overlay snippet into it first.'); return false; }
+    fileHandle = h; idb('readwrite', function(st){ return st.put(h, KEY); });
+    return true;
+  }
+  async function writeFile(ask){
+    if (!fileHandle || fileBusy) return false;
+    fileBusy = true;
+    try {
+      if (!(await hasPermission(ask))) { setStatus(D.active + ' · tap Save ink into file to allow writing'); return false; }
+      var txt = await (await fileHandle.getFile()).text();
+      var out = injectInk(txt, JSON.stringify(D));
+      if (out === null) { setStatus('Linked file has no ink block'); return false; }
+      var w = await fileHandle.createWritable();
+      try { await w.write(out); await w.close(); }
+      catch(err){ try { await w.abort(); } catch(_){} throw err; }   // never leave the file locked if a write fails halfway
+      setStatus(D.active + ' · saved to ' + fileHandle.name + ' ' + clock());
+      return true;
+    } catch(e) {
+      setStatus(e && e.name === 'SecurityError' ? 'File linked. Tap Save ink into file again to allow writing.' : 'File save failed: ' + ((e && e.name) || e));
+      return false;
+    } finally { fileBusy = false; }
+  }
+  async function saveFile(forcePick){   // true = ink written into the file, false = not (status line says why), null = picker cancelled
+    if (!FSA) { setStatus('Save ink into file needs Chrome or Edge. Ink still saves in this browser.'); return false; }
+    try {
+      if (forcePick || !fileHandle) { if (!(await linkFile())) return null; }
+      writeLocal(true);
+      for (var i = 0; fileBusy && i < 30; i++) await new Promise(function(r){ setTimeout(r, 100); });   // let an autosave finish first
+      return await writeFile(true);
+    } catch(e) {
+      if (e && e.name === 'AbortError') return null;
+      setStatus('Could not save: ' + ((e && e.name) || e)); return false;
+    }
+  }
+  // show the result on the button itself, then put the label back
+  function flashBtn(btn, text, cls){
+    clearTimeout(btn._flash); btn.classList.remove('good', 'warn');
+    if (!btn._label) btn._label = btn.textContent;
+    btn.textContent = text; btn.classList.add(cls);
+    btn._flash = setTimeout(function(){ btn.classList.remove(cls); btn.textContent = btn._label; }, 3000);
+  }
+  async function saveAndShow(btn, forcePick){
+    var wasLinked = !forcePick && !!fileHandle && await hasPermission(false);
+    var ok = await saveFile(forcePick);
+    if (ok === null) return;
+    if (ok) flashBtn(btn, wasLinked ? 'Already saved!' : 'Saved to file!', 'good');
+    else flashBtn(btn, 'Not saved!', 'warn');
+  }
+
+  /* ---------- toolbar ---------- */
+  function isPreset(c){ return !!bar.querySelector('[data-color="' + c + '"]'); }
+  function refresh(){
+    [].forEach.call(bar.querySelectorAll('[data-color]'), function(b){ b.classList.toggle('on', !erasing && b.dataset.color === color); });
+    bar.querySelector('[data-act="custom"]').classList.toggle('on', !erasing && !!customColor && color === customColor && !isPreset(color));
+    customFill.style.background = customColor || 'transparent';
+    var w = hiliting ? hlWidth : width, shown = hiliting ? tint(color, HIGHLIGHT_TINT) : color;
+    sizeNum.textContent = w; sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px'; sizeDot.style.background = shown;
+    smoothNum.textContent = smooth ? smooth : 'Off';
+    bar.querySelector('[data-act="erase"]').classList.toggle('on', erasing);
+    bar.querySelector('[data-act="hilite"]').classList.toggle('on', hiliting && !erasing);
+    bar.querySelector('[data-act="finger"]').textContent = 'Finger: ' + (fingerScrolls ? 'scrolls' : 'draws');
+  }
+  function setMode(m){
+    canvas.classList.toggle('scroll-mode', m === 'scroll');
+    bar.querySelector('[data-act="write"]').classList.toggle('on', m === 'write');
+    bar.querySelector('[data-act="scroll"]').classList.toggle('on', m === 'scroll');
+  }
+  function pickColor(c){ color = c; erasing = false; setMode('write'); refresh(); }
+  /* - / + buttons: tap = one step; hold = keeps stepping, speeding up. Size controls the highlighter width while it's on. */
+  function stepSize(dir){
+    if (hiliting) {
+      var hv = Math.min(40, Math.max(8, hlWidth + dir * 2));
+      if (hv === hlWidth && !erasing) return false;
+      hlWidth = hv; setLS('ink-hl-width', hlWidth);
+    } else {
+      var w = Math.min(14, Math.max(1, width + dir * 0.5));
+      if (w === width && !erasing) return false;
+      width = w; setLS('ink-width', width);
+    }
+    erasing = false; setMode('write'); refresh();
+    return true;
+  }
+  function stepSmooth(dir){
+    var s = Math.min(8, Math.max(0, smooth + dir));
+    if (s === smooth) return false;
+    smooth = s; refresh(); setLS('ink-smooth', smooth);
+    return true;
+  }
+  var STEPPERS = { thinner: [stepSize, -1], thicker: [stepSize, 1], rougher: [stepSmooth, -1], smoother: [stepSmooth, 1] };
+  var holdTimer = null;
+  function stopHold(){ clearTimeout(holdTimer); holdTimer = null; }
+  Object.keys(STEPPERS).forEach(function(act){
+    var b = bar.querySelector('[data-act="' + act + '"]'), step = STEPPERS[act][0], dir = STEPPERS[act][1];
+    b.addEventListener('pointerdown', function(e){
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault(); stopHold();
+      try { b.setPointerCapture(e.pointerId); } catch(_){}
+      step(dir);
+      var delay = 160, n = 0;
+      holdTimer = setTimeout(function tick(){
+        if (!step(dir)) return stopHold();              // stop at the end of the range
+        n++; if (n === 6) delay = 80;                   // speed up after a few steps
+        holdTimer = setTimeout(tick, delay);
+      }, 450);                                          // hold this long before it starts repeating
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function(t){ b.addEventListener(t, stopHold); });
+    b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  });
+  // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
+  picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
+  bar.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.color) pickColor(b.dataset.color);
+    else if (b.dataset.period !== undefined) switchTo(b.dataset.period);
+    else switch (b.dataset.act) {
+      case 'write': setMode('write'); break;
+      case 'scroll': setMode('scroll'); break;
+      case 'erase': erasing = !erasing; setMode('write'); break;
+      case 'hilite': hiliting = erasing ? true : !hiliting; erasing = false; setMode('write'); break;
+      case 'custom':
+        if (customColor && (color !== customColor || erasing)) pickColor(customColor);
+        else { picker.value = customColor || color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch(_){ picker.click(); } }
+        break;
+      case 'finger':
+        fingerScrolls = !fingerScrolls;
+        setLS('ink-finger', fingerScrolls ? 'scroll' : 'draw');
+        break;
+      case 'thinner': case 'thicker': case 'rougher': case 'smoother':
+        if (e.detail === 0) STEPPERS[b.dataset.act][0](STEPPERS[b.dataset.act][1]);   // keyboard only; taps are handled on pointerdown
+        break;
+      case 'undo': undo(); break;
+      case 'clear': confirmTap(b, clearAll); break;
+      case 'savefile':
+        if (FSA && !fileHandle) explainPick(b, false); else saveAndShow(b, false);
+        break;
+      case 'pickfile':
+        if (FSA) explainPick(b, true); else saveFile(true);
+        break;
+      case 'prev': jump(-1); break;
+      case 'next': jump(1); break;
+      case 'side': bar.classList.toggle('right'); break;
+      case 'hide': bar.style.display = 'none'; showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show'); break;
+      case 'print': window.print(); break;
+    }
+    refresh();
+  });
+  // The browser can only write into a file you point it at, and the Mac's picker window always says "Open".
+  // So the first tap explains that, and the second tap opens the picker.
+  function explainPick(btn, forcePick){
+    if (!btn.classList.contains('warn')) {
+      var name = decodeURIComponent(location.pathname.split('/').pop()) || 'this worksheet';
+      setStatus('Ink already saves in this browser. This also saves it INSIDE the file. In the window that opens (it says "Open"), pick: ' + name);
+      btn._label = btn._label || btn.textContent; btn.classList.add('warn'); btn.textContent = 'Tap again to pick file';
+      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; setStatus(D.active + ' · ready'); }, 10000);
+      return;
+    }
+    clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label;
+    saveAndShow(bar.querySelector('[data-act="savefile"]'), forcePick);
+  }
+  document.addEventListener('keydown', function(e){ if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undo(); e.preventDefault(); } });
+
+  /* ---------- print / Save PDF: redraw the current period's ink onto each page at print sharpness ---------- */
+  function clearPrint(){ [].forEach.call(document.querySelectorAll('canvas.ink-print'), function(c){ c.remove(); }); }
+  function buildPrint(){
+    clearPrint();
+    var list = [].slice.call(document.querySelectorAll('.page'));
+    if (!list.length) list = [body];
+    var ctop = canvas.getBoundingClientRect().top, hasHl = !PRINT_INK_BLACK && strokes.some(function(s){ return s.h; });
+    list.forEach(function(pg){
+      var ph = pg.offsetHeight, pw = pg.offsetWidth, top = (pg === body) ? 0 : pg.getBoundingClientRect().top - ctop;
+      var ps = Math.min(PRINT_SCALE, 30000 / ph, Math.sqrt(60e6 / (CW * ph)));
+      // only the page column prints; ink out in the side space stays on screen
+      (hasHl ? ['hl', 'ink'] : ['ink']).forEach(function(layer){
+        var c = document.createElement('canvas'), cx = c.getContext('2d');
+        c.className = 'ink-print'; c.width = Math.round(CW * ps); c.height = Math.round(ph * ps);
+        strokes.forEach(function(s){
+          if (layer === 'hl' ? (s.h || s.e) : (!s.h || s.e)) paint(cx, (PRINT_INK_BLACK && !s.e) ? { c: '#111', w: s.w, e: 0, p: s.p } : s, ps, 0, -top * ps);
+        });
+        c.style.cssText = 'position:absolute;top:0;left:' + (-(CW - pw) / 2) + 'px;width:' + CW + 'px;height:' + ph + 'px;pointer-events:none;z-index:5' + (layer === 'hl' ? ';mix-blend-mode:multiply' : '');
+        pg.appendChild(c);
+      });
+    });
+  }
+  window.addEventListener('beforeprint', buildPrint);
+  window.addEventListener('afterprint', clearPrint);
+
+  /* ---------- never lose the last few seconds of ink ---------- */
+  window.addEventListener('pagehide', function(){ writeLocal(true); });
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true); });
+
+  /* ---------- start ---------- */
+  var src = load(); size(); renderPeriods(); refresh(); setMode('write');
+  window.addEventListener('resize', size);
+  window.addEventListener('load', size);
+  if (window.ResizeObserver) new ResizeObserver(size).observe(body);
+  setStatus(D.active + ' · ' + (src === 'file' ? 'ink loaded from file' : src === 'browser' ? 'ink restored from this browser' : src === 'old' ? 'earlier ink carried over' : 'ready'));
+  if (FSA) idb('readonly', function(st){ return st.get(KEY); }).then(function(h){
+    if (!h) return;
+    fileHandle = h;
+    hasPermission(false).then(function(ok){
+      setStatus(D.active + ' · ' + (ok ? 'autosaving to ' + h.name : 'tap Save ink into file to reconnect ' + h.name));
+    }).catch(function(){});
+  });
+})();
+</script>
+<!-- ===== INK OVERLAY END ===== -->
+</body>
+</html>

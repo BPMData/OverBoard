@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ink Input Probe</title>
+<!-- Shows what the browser AND the SMART board driver report for every touch.
+     Open in Chrome or Edge on the smartboard computer. Touch with pen, finger, fist, palm.
+     Then tap "Copy log" and paste it to Claude. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+:root{--bg:#f4f4f2;--fg:#111;--mut:#666;--card:#fff;--line:#ddd;--ok:#2e7d32;--bad:#c62828;--hi:#ffd400}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:16px Inter,system-ui,sans-serif}
+#wrap{display:grid;grid-template-columns:1fr 420px;height:100vh}
+#pad{position:relative;touch-action:none;background:repeating-linear-gradient(0deg,#fff 0 39px,#e8e8e8 39px 40px);cursor:crosshair;overflow:hidden}
+#pad canvas{position:absolute;inset:0}
+#hint{position:absolute;top:16px;left:16px;right:16px;color:var(--mut);font-size:18px;pointer-events:none}
+#side{display:flex;flex-direction:column;gap:10px;padding:12px;border-left:1px solid var(--line);overflow:hidden}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.card h2{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+#last{font-size:20px;line-height:1.4}
+#last b{font-size:24px}
+.big{font-size:28px;font-weight:800}
+#sdk{font-weight:700}
+#sdk.ok{color:var(--ok)} #sdk.bad{color:var(--bad)}
+#log{flex:1;min-height:120px;overflow:auto;font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{min-height:48px;padding:0 14px;border:0;border-radius:10px;background:#222;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer}
+button.on{background:var(--hi);color:#000}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td{padding:2px 4px;border-bottom:1px solid #eee}
+@media (max-width:800px){#wrap{grid-template-columns:1fr;grid-template-rows:55vh 45vh}#side{border-left:0;border-top:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="pad"><canvas id="cv"></canvas>
+    <div id="hint">Touch here with: the pen, one finger, two fingers, a fist, your flat palm, the side of your hand, the board eraser. Do each a few times.</div>
+  </div>
+  <div id="side">
+    <div class="card">
+      <h2>Last touch</h2>
+      <div id="last">Nothing yet</div>
+    </div>
+    <div class="card">
+      <h2>SMART board driver</h2>
+      <div id="sdk">Connecting…</div>
+      <div id="sdktool" class="big"></div>
+    </div>
+    <div class="card">
+      <h2>Totals</h2>
+      <table id="tot"></table>
+    </div>
+    <div class="btns">
+      <button id="copy">Copy log</button>
+      <button id="clear">Clear</button>
+      <button id="pts" title="Asks the SMART driver to send raw contact points for this window. May change how the board's input behaves while on.">Raw points: off</button>
+    </div>
+    <div class="card" id="log"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var cv = document.getElementById('cv'), pad = document.getElementById('pad'), ctx = cv.getContext('2d');
+  var logEl = document.getElementById('log'), lastEl = document.getElementById('last');
+  var sdkEl = document.getElementById('sdk'), sdkTool = document.getElementById('sdktool'), totEl = document.getElementById('tot');
+  var LOG = [], T0 = performance.now(), lastSdk = null, sock = null, ptsOn = false, sdkPort = null;
+  var tot = {};   // label -> {n, maxW, maxH, maxP}
+
+  function now(){ return Math.round(performance.now() - T0); }
+  function add(kind, o){
+    o.t = now(); o.k = kind; LOG.push(o); if (LOG.length > 3000) LOG.shift();
+    var line = o.t + ' ' + kind + ' ' + JSON.stringify(o, function(k, v){ return (k === 't' || k === 'k') ? undefined : v; });
+    logEl.textContent = line.slice(0, 400) + '\n' + logEl.textContent.slice(0, 20000);
+  }
+  function tally(label, w, h, p){
+    var r = tot[label] || (tot[label] = { n: 0, maxW: 0, maxH: 0, maxP: 0 });
+    r.n++; r.maxW = Math.max(r.maxW, w || 0); r.maxH = Math.max(r.maxH, h || 0); r.maxP = Math.max(r.maxP, p || 0);
+    var html = '<tr><td><b>source</b></td><td>downs</td><td>max w×h</td><td>max pressure</td></tr>';
+    Object.keys(tot).forEach(function(k){
+      var x = tot[k]; html += '<tr><td>' + k + '</td><td>' + x.n + '</td><td>' + x.maxW.toFixed(1) + '×' + x.maxH.toFixed(1) + '</td><td>' + x.maxP.toFixed(2) + '</td></tr>';
+    });
+    totEl.innerHTML = html;
+  }
+
+  /* ---------- drawing pad ---------- */
+  function size(){ var r = pad.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = r.width * d; cv.height = r.height * d; cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px'; ctx.setTransform(d,0,0,d,0,0); }
+  size(); window.addEventListener('resize', size);
+  var COLORS = { mouse: '#1565c0', pen: '#2e7d32', touch: '#d32f2f' }, prev = {};
+
+  function pinfo(e){
+    return { id: e.pointerId, type: e.pointerType, primary: e.isPrimary, x: Math.round(e.clientX), y: Math.round(e.clientY),
+      w: +(e.width || 0).toFixed(2), h: +(e.height || 0).toFixed(2), p: +(e.pressure || 0).toFixed(3),
+      tp: +(e.tangentialPressure || 0).toFixed(3), tiltX: e.tiltX, tiltY: e.tiltY, twist: e.twist, btn: e.button, btns: e.buttons };
+  }
+  pad.addEventListener('pointerdown', function(e){
+    try { pad.setPointerCapture(e.pointerId); } catch(_){}
+    var i = pinfo(e); add('pdown', i);
+    prev[e.pointerId] = [e.clientX, e.clientY, i.w, i.h];
+    tally('browser:' + e.pointerType, i.w, i.h, i.p);
+    var sdkAge = lastSdk ? (Date.now() - lastSdk.at) : null;
+    lastEl.innerHTML = 'Browser: <b>' + e.pointerType + '</b> (id ' + e.pointerId + ')<br>size ' + i.w + '×' + i.h + ' px · pressure ' + i.p +
+      '<br>SMART: <b>' + (lastSdk ? lastSdk.tool + (lastSdk.color ? ' ' + lastSdk.color : '') : 'nothing') + '</b>' +
+      (sdkAge !== null ? ' <span style="color:#666">(' + sdkAge + ' ms before)</span>' : '');
+    e.preventDefault();
+  });
+  pad.addEventListener('pointermove', function(e){
+    var p = prev[e.pointerId]; if (!p) return;
+    var r = pad.getBoundingClientRect();
+    ctx.strokeStyle = COLORS[e.pointerType] || '#000'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, Math.min(60, (e.width || 1)));
+    ctx.beginPath(); ctx.moveTo(p[0] - r.left, p[1] - r.top); ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke();
+    // log moves only when contact size changes, so the log stays readable
+    if (Math.abs((e.width||0) - p[2]) > 0.5 || Math.abs((e.height||0) - p[3]) > 0.5) add('pmove-size', pinfo(e));
+    prev[e.pointerId] = [e.clientX, e.clientY, e.width || 0, e.height || 0];
+    e.preventDefault();
+  });
+  function up(e){ if (!prev[e.pointerId]) return; delete prev[e.pointerId]; add(e.type === 'pointercancel' ? 'pcancel' : 'pup', pinfo(e)); }
+  pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up);
+  pad.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  // Touch events (only fire if the OS reports real touch; macOS usually does not)
+  ['touchstart','touchend'].forEach(function(n){
+    pad.addEventListener(n, function(e){
+      add(n, { count: e.touches.length, changed: [].map.call(e.changedTouches, function(t){
+        return { id: t.identifier, rx: +(t.radiusX||0).toFixed(1), ry: +(t.radiusY||0).toFixed(1), force: +(t.force||0).toFixed(3), type: t.touchType || '' }; }) });
+      if (n === 'touchstart') tally('touch-event', 0, 0, 0);
+    }, { passive: true });
+  });
+
+  /* ---------- SMART board driver (local socket.io service) ---------- */
+  function setSdk(t, ok){ sdkEl.textContent = t; sdkEl.className = ok === true ? 'ok' : ok === false ? 'bad' : ''; }
+  async function findPort(){
+    var list = [54748]; for (var p = 54740; p <= 54800; p++) if (p !== 54748) list.push(p);
+    for (var i = 0; i < list.length; i++) {
+      try {
+        var ctl = new AbortController(), tm = setTimeout(function(){ ctl.abort(); }, 600);
+        var r = await fetch('http://127.0.0.1:' + list[i] + '/socket.io/?EIO=4&transport=polling', { signal: ctl.signal });
+        clearTimeout(tm);
+        var tx = await r.text(); if (tx.indexOf('"sid"') > -1) return list[i];
+      } catch(e){}
+    }
+    return null;
+  }
+  async function connect(){
+    if (typeof io !== 'function') { setSdk('Could not load socket.io from the internet. Browser data still works.', false); return; }
+    setSdk('Looking for the SMART driver…');
+    sdkPort = await findPort();
+    if (!sdkPort) { setSdk('SMART driver service not found on this computer.', false); add('sdk', { status: 'not found' }); return; }
+    sock = io('http://127.0.0.1:' + sdkPort, { transports: ['websocket', 'polling'] });
+    sock.on('connect', function(){ setSdk('Connected (port ' + sdkPort + ')', true); add('sdk', { status: 'connected', port: sdkPort }); });
+    sock.on('disconnect', function(){ setSdk('Disconnected', false); add('sdk', { status: 'disconnected' }); });
+    sock.on('message', function(m){
+      if (!m || !m.type) return;
+      if (m.type === 'status') { sock.emit('message', { type: 'statusReply', data: {} }); return; }   // heartbeat
+      if (m.type === 'toolChange') {
+        var d = m.data || {}, raw = d._rawData || {}, meta = null;
+        try { meta = raw._rawXML; } catch(_){}
+        lastSdk = { tool: d.tool || '?', color: d.colorAsHTML || '', at: Date.now() };
+        sdkTool.textContent = 'Tool: ' + lastSdk.tool + (lastSdk.color ? ' ' + lastSdk.color : '');
+        tally('smart:' + lastSdk.tool, 0, 0, 0);
+        add('sdk-tool', { tool: d.tool, color: d.colorAsHTML, width: d.width, xml: meta });
+        return;
+      }
+      if (m.type === 'toolChangeRaw') return;   // same info as toolChange; raw XML is already logged
+      if (m.type === 'points') { add('sdk-points', { pts: m.data }); return; }
+      add('sdk-' + m.type, { data: m.data });
+    });
+  }
+  connect();
+
+  /* raw points: the driver only sends contact points to a window that registers its screen rectangle */
+  function sendRect(){
+    if (!sock || !ptsOn) return;
+    var r = pad.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    var chromeTop = window.outerHeight - window.innerHeight;
+    var x = Math.round((window.screenX + r.left) * d), y = Math.round((window.screenY + chromeTop + r.top) * d);
+    sock.emit('message', { type: 'windowRect', data: { origin: [x, y], size: [Math.round(r.width * d), Math.round(r.height * d)] } });
+    add('sdk', { sent: 'windowRect', x: x, y: y, w: Math.round(r.width * d), h: Math.round(r.height * d) });
+  }
+  document.getElementById('pts').addEventListener('click', function(){
+    ptsOn = !ptsOn; this.textContent = 'Raw points: ' + (ptsOn ? 'on' : 'off'); this.classList.toggle('on', ptsOn);
+    if (!sock) return;
+    if (ptsOn) sendRect();
+    else { sock.emit('message', { type: 'windowRect', data: { origin: [0, 0], size: [0, 0] } }); add('sdk', { sent: 'windowRect off' }); }
+  });
+  window.addEventListener('resize', sendRect);
+
+  /* ---------- buttons ---------- */
+  document.getElementById('copy').addEventListener('click', function(){
+    var out = JSON.stringify({ ua: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints, dpr: window.devicePixelRatio, sdkPort: sdkPort, totals: tot, log: LOG });
+    var btn = this;
+    function done(ok){ btn.textContent = ok ? 'Copied!' : 'Copy failed'; setTimeout(function(){ btn.textContent = 'Copy log'; }, 2000); }
+    if (navigator.clipboard) navigator.clipboard.writeText(out).then(function(){ done(true); }, function(){ fallback(); });
+    else fallback();
+    function fallback(){ var ta = document.createElement('textarea'); ta.value = out; document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand('copy'); } catch(_){} ta.remove(); done(ok); }
+  });
+  document.getElementById('clear').addEventListener('click', function(){
+    LOG = []; tot = {}; logEl.textContent = ''; totEl.innerHTML = ''; lastEl.textContent = 'Nothing yet'; size();
+  });
+  add('env', { ua: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints, dpr: window.devicePixelRatio });
+})();
+</script>
+</body>
+</html>
