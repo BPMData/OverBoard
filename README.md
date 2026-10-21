@@ -6,7 +6,7 @@
 
 OverBoard is a free writing layer for interactive whiteboards. Write on a worksheet with the board pen, scroll, and your ink scrolls with the page instead of floating on top of the screen. Wipe with your palm to erase. Highlight without covering the words. Save a PDF with the ink on it.
 
-It runs in the browser, needs no account, and nothing leaves your computer.
+It runs in the browser. No accounts, no uploads; your ink stays on your machine.
 
 **[Try the demo →](https://bpmdata.github.io/OverBoard/)** · **[Write on a PDF or HTML worksheet →](https://bpmdata.github.io/OverBoard/app/)**
 
@@ -47,12 +47,12 @@ The app needs an internet connection the first time it loads, to fetch the PDF r
 
 ## Use it on your own worksheets (HTML)
 
-**Option 0: no download.** Drop the `.html` file onto the [PDF app](https://bpmdata.github.io/OverBoard/app/). It saves a `Name_board.html` copy with OverBoard added (or upgraded, keeping saved ink), exactly like the installer. Double-click the copy to open it. (If the worksheet uses pictures stored as separate files, the app tells you to keep the copy in the same folder as the original.)
+**Option 1: in the browser (easiest, works on school laptops).** Open the [app](https://bpmdata.github.io/OverBoard/app/) and drop your `.html` file on it. It saves a `Name_board.html` copy with OverBoard added (or upgraded, keeping saved ink), and your original is left alone. Double-click the copy to open it. Nothing to install, so it works on locked-down Windows laptops. (If the worksheet uses pictures stored as separate files, the app tells you to keep the copy in the same folder as the original.)
 
-**Option 1: the installer.** Download this repo, then double-click:
+**Option 2: the desktop installer**, for converting a whole folder at once. Download this repo, then double-click:
 
 - Mac: `overlay/Ink Overlay Installer.command`
-- Windows: `overlay/Ink Overlay Installer.bat` (needs [Python 3](https://www.python.org/downloads/); tick "Add python.exe to PATH")
+- Windows: `overlay/Ink Overlay Installer.bat` (needs [Python 3](https://www.python.org/downloads/), which many district laptops don't allow; use Option 1 instead)
 
 Pick your `.html` files. By default the installer makes a `Name_board.html` copy for the board and leaves your original alone. If a file already has an older OverBoard, it upgrades it and keeps any ink saved inside.
 
@@ -62,7 +62,7 @@ From a terminal:
 python3 overlay/ink_overlay_installer.py worksheet.html --open
 ```
 
-**Option 2: paste it in.** Copy everything in [`overlay/ink_overlay.html`](overlay/ink_overlay.html) and paste it just before `</body>` in any HTML file.
+**Option 3: paste it in.** Copy everything in [`overlay/ink_overlay.html`](overlay/ink_overlay.html) and paste it just before `</body>` in any HTML file.
 
 Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 8.5×11 in) get page-by-page jumping and PDF output. Other pages still work and print as one long sheet.
 
@@ -90,7 +90,11 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 
 ## Privacy
 
-OverBoard has no server. Ink (and PDFs you open in the app) are stored in your browser (and, if you choose, inside your own file). Nothing is uploaded. The PDF app downloads its two open-source libraries from jsDelivr; your files never go anywhere.
+No accounts, no uploads; your ink stays on your machine.
+
+- OverBoard has no server. Ink, and PDFs you open in the app, are stored in your browser, and inside your own file if you choose.
+- What does get downloaded: the web pages themselves (from GitHub Pages) and, when the PDF app loads, two open-source libraries ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)) from the jsDelivr CDN. Your PDFs, worksheets and ink are never sent to either.
+- The optional desktop installer is a Python script that runs on your computer and only edits the files you pick.
 
 ## Contributing
 
