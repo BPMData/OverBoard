@@ -4,7 +4,7 @@
 // with internal links and one external link, a landscape page (3) and a rotated page (4).
 const fs = require('fs');
 const { test } = require('@playwright/test');
-const { expect, fixture, openApp, openPdf, strokes, fileMenu, download } = require('./support/app');
+const { expect, fixture, openApp, openPdf, strokes, fileMenu, download, penTap } = require('./support/app');
 const { pdfText } = require('./support/render');
 
 test.beforeEach(async ({ page }) => {
@@ -32,15 +32,6 @@ const imgAt = (page, n, [x, y]) => page.evaluate(([n, x, y]) => {
   const d = P.img.getContext('2d').getImageData(Math.floor((x - r.left) * P.img.width / r.width), Math.floor((y - r.top) * P.img.height / r.height), 1, 1).data;
   return d[0] + d[1] + d[2];
 }, [n, x, y]);
-
-/* a real pen tap (Chrome makes pointerType "pen" events and a click, like the SMART pen) */
-async function penTap(page, x, y) {
-  const s = await page.context().newCDPSession(page);
-  await s.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'pen' });
-  await s.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, pointerType: 'pen' });
-  await new Promise((r) => setTimeout(r, 40));   // the app drops sub-15 ms blips (hand/pen switching)
-  await s.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1, pointerType: 'pen' });
-}
 
 const linkCenter = async (page, i) => {
   await page.waitForFunction(() => __overboard.viewer.pages[0].text?.links);

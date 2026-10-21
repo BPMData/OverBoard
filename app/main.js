@@ -20,7 +20,8 @@ const ERASER_W = 44;              // eraser size (screen px) with the Eraser but
 const SMOOTHING = 3;              // starting level 0-8
 const HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
 const HIGHLIGHT_W = 22;           // starting highlighter width; the - / + buttons change it while the highlighter is on
-const HIGHLIGHT_TINT = 0.5;       // how much white is mixed into the color for highlighting
+const HIGHLIGHT_STRENGTH = 50;    // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
+const COVER_COLOR = '#111111';    // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -36,17 +37,21 @@ const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 
 /* ---------- tool state (read by the ink layer) ---------- */
 const T = {
-  mode: 'write', erasing: false, hiliting: false,
-  penColor: '#111111', hlColor: HIGHLIGHT_COLOR,   // pen and highlighter each remember their own color
+  mode: 'write', erasing: false, hiliting: false, covering: false,   // covering: the highlighter is in Cover mode
+  penColor: '#111111', hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
   color: '#111111', width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
   customColor: '', PALM_ERASER_W, ERASER_W,
-  hlInk() { return tint(this.color, HIGHLIGHT_TINT); },
+  hlStrength: HIGHLIGHT_STRENGTH,
+  hlInk() { return tint(this.color, 1 - this.hlStrength / 100); },   // mixed toward white; it multiplies, so text stays black
 };
 {
   const sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) T.width = sw;
   const hw = parseFloat(getLS('ink-hl-width')); if (hw >= 8 && hw <= 40) T.hlWidth = hw;
   const hc = getLS('ink-hl-color'); if (isHex(hc)) T.hlColor = hc;
   const cc = getLS('ink-custom'); if (isHex(cc)) T.customColor = cc;
+  T.covering = getLS('ink-hl-mode') === 'cover';
+  const hs = parseInt(getLS('ink-hl-strength'), 10); if (hs >= 10 && hs <= 100) T.hlStrength = hs;
+  const kc = getLS('ink-cover-color'); if (isHex(kc)) T.coverColor = kc;
   const sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) T.smooth = +sl;
   const fm = getLS('ink-finger'); if (fm) T.fingerScrolls = fm === 'scroll';
 }
@@ -445,11 +450,18 @@ function refresh() {
   for (const b of bar.querySelectorAll('[data-color]')) b.classList.toggle('on', !T.erasing && b.dataset.color === T.color);
   $('[data-act="custom"]', bar).classList.toggle('on', !T.erasing && !!T.customColor && T.color === T.customColor && !isPreset(T.color));
   customFill.style.background = T.customColor || 'transparent';
-  const w = T.hiliting ? T.hlWidth : T.width, shown = T.hiliting ? T.hlInk() : T.color;
+  const w = T.hiliting ? T.hlWidth : T.width, shown = T.hiliting && !T.covering ? T.hlInk() : T.color;
   sizeNum.textContent = w; sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px'; sizeDot.style.background = shown;
   smoothNum.textContent = T.smooth ? T.smooth : 'Off';
   $('[data-act="erase"]', bar).classList.toggle('on', T.erasing);
-  $('[data-act="hilite"]', bar).classList.toggle('on', T.hiliting && !T.erasing);
+  const hb = $('[data-act="hilite"]', bar);
+  hb.classList.toggle('on', T.hiliting && !T.erasing);
+  hb.classList.toggle('cover', T.covering);
+  hb.textContent = T.covering ? 'Cover' : 'Highlighter';   // the ▾ choice shows on the button
+  strengthIn.value = T.hlStrength; strengthPct.textContent = T.hlStrength + '%';
+  strengthIn.style.setProperty('--fill', tint(T.hlColor, 1 - T.hlStrength / 100));
+  for (const b of hlMenu.querySelectorAll('[data-mode]'))
+    b.classList.toggle('on', b.dataset.mode === 'cover' ? T.covering && b.dataset.cover === T.coverColor : !T.covering);
   $('[data-act="finger"]', bar).textContent = 'Finger: ' + (T.fingerScrolls ? 'scrolls' : 'draws');
   refreshZoom();
 }
@@ -459,9 +471,11 @@ function setMode(m) {
   $('[data-act="write"]', bar).classList.toggle('on', m === 'write');
   $('[data-act="scroll"]', bar).classList.toggle('on', m === 'scroll');
 }
+function toolColor() { return T.hiliting ? (T.covering ? T.coverColor : T.hlColor) : T.penColor; }
 function pickColor(c) {
   T.color = c;
-  if (T.hiliting) { T.hlColor = c; setLS('ink-hl-color', c); } else T.penColor = c;
+  if (T.hiliting && T.covering) { T.coverColor = c; setLS('ink-cover-color', c); }
+  else if (T.hiliting) { T.hlColor = c; setLS('ink-hl-color', c); } else T.penColor = c;
   T.erasing = false; setMode('write'); refresh();
 }
 /* - / + : size controls the highlighter width while it's on */
@@ -490,23 +504,40 @@ holdRepeat($('[data-act="zoom-in"]', bar), () => { if (viewer.zoom >= 6) return 
 holdRepeat($('[data-act="zoom-out"]', bar), () => { if (viewer.zoom <= 0.2) return false; zoomBy(1 / 1.1); return true; });
 
 picker.addEventListener('input', () => { T.customColor = picker.value; setLS('ink-custom', T.customColor); pickColor(T.customColor); });
-/* File menu: pops out beside the toolbar (Export PDF, ink files, open another PDF, move toolbar) */
+/* Popout menus beside the toolbar (File, Highlighter ▾). They open on a tap and stay open until a choice
+   is tapped, a tap lands anywhere else, or Escape. Lifting the pen or finger never closes them. */
 const fileMenu = $('#ob-filemenu'), fileBtn = $('[data-act="file"]', bar);
-function placeFileMenu() {
-  const r = fileBtn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = fileMenu.offsetHeight;
-  fileMenu.style.top = Math.max(10, Math.min(r.bottom - h, innerHeight - h - 10)) + 'px';
-  if (bar.classList.contains('right')) { fileMenu.style.left = ''; fileMenu.style.right = (innerWidth - b.left + 8) + 'px'; }
-  else { fileMenu.style.right = ''; fileMenu.style.left = (b.right + 8) + 'px'; }
+const hlMenu = $('#ob-hlmenu'), hlBtn = $('[data-act="hl-menu"]', bar);
+function placeMenu(menu, btn, alignTop) {
+  const r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = menu.offsetHeight;
+  menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) + 'px';
+  if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) + 'px'; }
+  else { menu.style.right = ''; menu.style.left = (b.right + 8) + 'px'; }
 }
+const placeFileMenu = () => placeMenu(fileMenu, fileBtn, false);
 function showFileMenu(open) {
   fileMenu.hidden = !open;
   fileBtn.setAttribute('aria-expanded', String(open));
-  if (open) placeFileMenu();
+  if (open) { showHlMenu(false); placeFileMenu(); }
 }
-document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes it
+function showHlMenu(open) {
+  hlMenu.hidden = !open;
+  hlBtn.setAttribute('aria-expanded', String(open));
+  if (open) { showFileMenu(false); placeMenu(hlMenu, hlBtn, true); }
+}
+document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes them
   if (!fileMenu.hidden && !fileMenu.contains(e.target) && !fileBtn.contains(e.target)) showFileMenu(false);
+  if (!hlMenu.hidden && !hlMenu.contains(e.target) && !hlBtn.contains(e.target)) showHlMenu(false);
 }, true);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !fileMenu.hidden) showFileMenu(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { showFileMenu(false); showHlMenu(false); } });
+// the strength slider switches to Highlight but keeps the menu open (it isn't a final choice)
+const strengthIn = $('#ob-hl-strength'), strengthPct = $('#ob-hl-pct');
+strengthIn.addEventListener('input', () => {
+  T.hlStrength = +strengthIn.value; setLS('ink-hl-strength', T.hlStrength);
+  T.covering = false; setLS('ink-hl-mode', 'hl');
+  T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); refresh();
+});
+hlMenu.addEventListener('click', (e) => { if (e.target.closest('button')) { onToolbarClick(e); showHlMenu(false); } });
 fileMenu.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   onToolbarClick(e);
@@ -526,8 +557,14 @@ function onToolbarClick(e) {
     case 'erase': T.erasing = !T.erasing; setMode('write'); break;
     case 'hilite':
       T.hiliting = T.erasing ? true : !T.hiliting;
-      T.color = T.hiliting ? T.hlColor : T.penColor;   // highlighter gets its own color back; turning it off restores your pen color
+      T.color = toolColor();   // highlighter (or cover) gets its own color back; turning it off restores your pen color
       T.erasing = false; setMode('write'); break;
+    case 'hl-menu': showHlMenu(hlMenu.hidden); return;
+    case 'hl-mode':   // a choice in the Highlighter ▾ menu turns the highlighter on in that mode
+      T.covering = b.dataset.mode === 'cover';
+      if (T.covering) { T.coverColor = b.dataset.cover; setLS('ink-cover-color', T.coverColor); }
+      setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
+      T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); break;
     case 'custom':
       if (T.customColor && (T.color !== T.customColor || T.erasing)) pickColor(T.customColor);
       else { picker.value = T.customColor || T.color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch (_) { picker.click(); } }
@@ -563,7 +600,7 @@ function onToolbarClick(e) {
       break;
     case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
-      showFileMenu(false);
+      showFileMenu(false); showHlMenu(false);
       bar.style.display = 'none';
       showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show');
       if (viewer.fit) { fitSpace(); viewer.layout(); }
@@ -599,18 +636,37 @@ function isOnScreen(n) {
 const baseName = () => doc.name.replace(/\.pdf$/i, '');
 // only the active period is exported, so the name says which: Moby_Dick_annotated_P1.pdf
 const exportName = () => (baseName() + '_annotated_' + D.active).replace(/\s+/g, '_') + '.pdf';
+const coverWarn = $('#ob-coverwarn');
+function ask(dialog) {   // resolves true for the dialog's "ok" button
+  return new Promise((done) => {
+    const onClick = (e) => {
+      const b = e.target.closest('button');
+      if (!b && e.target !== dialog) return;
+      dialog.removeEventListener('click', onClick);
+      dialog.close();
+      done(!!b && b.value === 'ok');
+    };
+    dialog.addEventListener('click', onClick);
+    dialog.addEventListener('cancel', () => { dialog.removeEventListener('click', onClick); done(false); }, { once: true });
+    dialog.showModal();
+  });
+}
 async function exportPdf(btn) {
   if (!doc) return;
+  let covered = false;
   await writeNow();
   if (!ink.count()) { flashBtn(btn, 'No ink yet', 'warn'); setStatus(D.active + ' has no ink to export'); return; }
   btn.disabled = true;
   setStatus('Making the PDF…');
   try {
-    const { exportAnnotatedPdf } = await import('./export.js');
+    const { exportAnnotatedPdf, hasCovers } = await import('./export.js');
+    // covers hide answers in the PDF too, but the text under them is still in the file: say so plainly
+    covered = hasCovers(ink.byPage);
+    if (covered && !(await ask(coverWarn))) { setStatus(D.active + ' · export cancelled'); return; }
     const bytes = new Uint8Array(await doc.file.slice(0, doc.base).arrayBuffer());   // without the stored ink
     const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus('Making the PDF… ' + n + ' pages'));
     store.download(new Blob([out], { type: 'application/pdf' }), exportName());
-    setStatus(D.active + ' · PDF downloaded');
+    setStatus(D.active + ' · PDF downloaded' + (covered ? '. Covered answers are hidden but can still be copied from it.' : ''));
     flashBtn(btn, 'Downloaded!', 'good');
   } catch (e) {
     console.error(e);

@@ -29,9 +29,9 @@
 Key facts for contributors:
 
 - **Coordinates.** Ink is in PDF points measured from the top-left of the page *as shown* (PDF.js viewport at scale 1, so `/Rotate` and the crop box are already applied). Screen px = points × `zoom` (+ the gutter). Zoom never moves ink.
-- **Stroke format.** v1's stroke plus `page` (1-based): `{ page, c, w, e, h, p }`, with `w` and `p` in points. Data is `{ v: 3, t, active, at: lastPage, periods: { P1: [strokes in drawing order] } }`. The sidecar wraps the same periods: `{ app: "OverBoard", kind: "pdf-ink", v: 3, pdf: { sha256, name, pages }, t, active, periods }`.
+- **Stroke format.** v1's stroke plus `page` (1-based): `{ page, c, w, e, h, o, p }`, with `w` and `p` in points. `o: 1` (with `h: 1`) is a **cover**: an opaque highlighter stroke (see below). Data without `o` loads as before. Data is `{ v: 3, t, active, at: lastPage, periods: { P1: [strokes in drawing order] } }`. The sidecar wraps the same periods: `{ app: "OverBoard", kind: "pdf-ink", v: 3, pdf: { sha256, name, pages }, t, active, periods }`.
 - **Sizes.** Toolbar sizes keep v1's units (1/96 in), stored as points (× 0.75), so pen and highlighter scale with the page. Eraser and palm widths are screen px ÷ zoom, so the palm feels the same at any zoom.
-- **Colors.** Same as v1: `penColor` / `hlColor`, highlighter starts yellow, saved as `ink-hl-color` (shared with the overlay on the same site).
+- **Colors.** Same as v1: `penColor` / `hlColor`, highlighter starts yellow, saved as `ink-hl-color` (shared with the overlay on the same site). Highlight strength (▾ slider, 10–100%, default 50 = v1's look, saved as `ink-hl-strength`) sets how far the color is mixed toward white when the stroke is drawn; the mixed color is stored in `c`, so stored ink and export don't change. Because highlights multiply, this works like opacity and text stays black.
 - **Clear** clears only the current page in the PDF app (Undo restores it).
 - **Export.** Each page's ink is mapped back with the inverse of the PDF.js viewport transform. PDFs have no eraser, so erasers are applied geometrically on export: sample points of earlier strokes under the eraser path are dropped and the strokes split there. Only the active period is exported.
 - **Memory** (measured headless at 1920×1080, devicePixelRatio 2, 320-page book): page process peaks around 640 MB while fast-scrolling, about 450 MB above the empty app, and settles near 520 MB. Each page image is capped at 12 MP.
@@ -50,6 +50,10 @@ Added after v2:
   - **Find text** (`app/find.js`, File menu or Ctrl/⌘+F) reads each page with `getTextContent` (kept as plain strings for the next search), lists up to 500 hits with page numbers, and marks matches inside the live text layers (`<mark class="hit">`). Matches that cross two text runs are listed but not marked.
   - **Exports keep the text.** Export PDF only appends drawing operators to the original pages and Save ink into PDF only appends an update, so the original text, fonts and links are untouched. Tests check `getTextContent` on both outputs equals the original's.
 
+- **Highlighter ▾ Cover.** The Highlighter button is split: the main part toggles the highlighter, the ▾ (same row, so the toolbar doesn't grow) opens `#ob-hlmenu`, a popout like the File menu: Highlight (see-through multiply) with a strength slider, or Cover in black, dark gray or light gray. Moving the slider switches to Highlight but leaves the menu open. It stays open until a choice, a tap elsewhere, or Escape; lifting the pen or finger never closes it (no long-press: invisible, and the SMART driver holds back a still finger). The chosen mode shows on the button ("Highlighter" / "Cover") and is remembered (`ink-hl-mode`, `ink-cover-color`); palette colors set the cover's own color while covering. Covers are stored as `{ h: 1, o: 1 }` and drawn on the pen canvas in drawing order (above the page and its text layer, not multiplied), so eraser, palm and Undo remove them like any stroke. An older app version would draw them as multiply highlights (black still hides).
+  - **Export.** Covers are drawn opaque with the pen ink, over the page. They do **not** remove the text underneath (we never delete or rasterize the PDF's text), so when the exported period still has covers after erasers, a dialog says plainly that covered answers can still be copied from the PDF, and the status line repeats it.
+  - **Not in the HTML overlay yet.** The overlay has its own highlighter code; adding Cover there means moving the layer choice into `shared/ink-core.js` and bumping the overlay version.
+
 Left for later from v2:
 
 - Export all periods at once (one PDF per period, or layers).
@@ -61,5 +65,6 @@ Left for later from v2:
 - **Splitter tool**: split a PDF by its outline (chapters) or every N pages, with pdf-lib, entirely in the browser.
 - **Generic touch mode** for non-SMART boards (Windows touch screens report `pointerType: "touch"` with real contact sizes, so palm detection can use `width`/`height`). Ask contributors for probe logs.
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."
-- **Highlighter opacity / redaction**: long-press the Highlighter button for an opacity control, so a dark highlight can black out answers and be erased later. Must not add toolbar clutter.
+- **Cover in the HTML overlay** (see Highlighter ▾ Cover above).
+- **"Remove covered text" export** (opt-in, clearly labeled, original file untouched): would need rewriting page content streams to drop text under covers. Until then: print on paper to hand out answer-free copies.
 - **Large-document HTML mode**: per-`.page` canvases in the v1 overlay too, so very long HTML packets stay sharp.

@@ -1,13 +1,15 @@
 // Ink on PDF pages: one pen canvas (+ a highlighter canvas under it, only when needed) per page,
 // created only for pages near the screen that have ink. Same input rules as the overlay.
-// Strokes: { page: n, c, w, e, h, p: [x,y,...] } with x, y, w in PDF points from the page's top-left,
-// so zooming never moves ink.
+// Strokes: { page: n, c, w, e, h, o, p: [x,y,...] } with x, y, w in PDF points from the page's top-left,
+// so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
+// layer, above the page and its text, instead of multiplied underneath.
 
 import { pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
 export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
 const MAX_INK_PX = 8e6;            // per ink canvas
+const seeThrough = (s) => s.h && !s.o;   // highlights go on the multiply layer; covers and pen ink don't
 
 export class Ink {
   constructor(viewer, tools, onChange) {
@@ -71,7 +73,7 @@ export class Ink {
     for (const k of ['ink', 'hl']) if (P[k]) { P[k].width = 0; P[k].remove(); P[k] = null; }
   }
 
-  layersFor(P, s) { return (s.e ? [P.ink, P.hl] : s.h ? [P.hl] : [P.ink]).filter(Boolean); }
+  layersFor(P, s) { return (s.e ? [P.ink, P.hl] : seeThrough(s) ? [P.hl] : [P.ink]).filter(Boolean); }
 
   redraw(P) {
     for (const c of [P.ink, P.hl]) if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
@@ -85,13 +87,13 @@ export class Ink {
     const list = this.pageList(n);
     if (!list.length) { this.free(P); return; }
     if (!this.v.want.has(P) && !P.ink) return;        // off screen: drawn when it comes back
-    if (P.hl && !list.some((s) => s.h)) { P.hl.width = 0; P.hl.remove(); P.hl = null; }
-    this.ensure(P, list.some((s) => s.h));
+    if (P.hl && !list.some(seeThrough)) { P.hl.width = 0; P.hl.remove(); P.hl = null; }
+    this.ensure(P, list.some(seeThrough));
     this.redraw(P);
   }
 
   // viewer hooks
-  show(P) { if (this.pageList(P.n).length && !P.ink) { this.ensure(P, this.pageList(P.n).some((s) => s.h)); this.redraw(P); } }
+  show(P) { if (this.pageList(P.n).length && !P.ink) { this.ensure(P, this.pageList(P.n).some(seeThrough)); this.redraw(P); } }
   hide(P) { if (P !== this.curP) this.free(P); }
   resize(P) {
     for (const c of [P.ink, P.hl]) if (c) this.sizeCanvas(P, c);
@@ -132,11 +134,12 @@ export class Ink {
     let s;
     // the palm / eraser width is about the hand, so it stays the same size on screen at any zoom
     if (kind === 'palm' || T.erasing) s = { page: P.n, c: T.color, w: (kind === 'palm' ? T.PALM_ERASER_W : T.ERASER_W) / z, e: 1, p: q };
+    else if (T.hiliting && T.covering) s = { page: P.n, c: T.color, w: T.hlWidth * PT_PER_UNIT, e: 0, h: 1, o: 1, p: q };
     else if (T.hiliting) s = { page: P.n, c: T.hlInk(), w: T.hlWidth * PT_PER_UNIT, e: 0, h: 1, p: q };
     else s = { page: P.n, c: T.color, w: T.width * PT_PER_UNIT, e: 0, p: q };
     s.w = Math.round(s.w * 100) / 100;
     this.cur = s; this.curP = P;
-    this.ensure(P, !!s.h);
+    this.ensure(P, seeThrough(s));
     this.downAt = performance.now();
     this.live = liveStart(q[0], q[1]);
     for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);

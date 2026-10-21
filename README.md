@@ -21,6 +21,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Palm eraser** on SMART Boards: wipe with your palm, fist or the side of your hand
 - **Finger scrolls, pen writes**, with a toolbar switch if you lose the pen
 - **Highlighter** that sits behind the printed text, so words stay readable
+- **Cover** (PDFs): tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page
@@ -34,6 +35,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
 - **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo.
+- **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
 - **Clear page** clears the page you're looking at (Undo brings it back), so a textbook's other pages are safe.
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
