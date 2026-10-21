@@ -5,7 +5,7 @@
    So: plain ES5 function declarations only, no imports, no top-level state.
    The export line at the bottom is stripped when it is inlined.
 
-   Stroke: { c: color, w: width, e: 1 if eraser, h: 1 if highlight, p: [x0,y0,x1,y1,...] }  */
+   Stroke: { c: color, w: width, e: 1 if eraser, h: 1 if highlight, o: 1 if cover (opaque highlight), p: [x0,y0,x1,y1,...] }  */
 
 /* mix a #rrggbb color toward white (amt 0..1) */
 function tint(hex, amt){
@@ -141,4 +141,65 @@ function flashBtn(btn, text, cls){
   btn._flash = setTimeout(function(){ btn.classList.remove(cls); btn.textContent = btn._label; }, 3000);
 }
 
-export { tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+/* ---- Highlighter ▾ menu: Highlight (with a strength slider) or Cover ---- */
+
+/* highlights go on the multiply layer under the ink; covers (o: 1) and pen ink go on the top layer */
+function seeThrough(s){ return !!s.h && !s.o; }
+
+/* highlight color at a strength in % (10-100): mixed toward white. It multiplies, so printed text stays black. */
+function hlInk(color, strength){ return tint(color, 1 - strength / 100); }
+
+/* put a popout beside the toolbar, next to btn (alignTop: tops line up; otherwise bottoms) */
+function placeMenu(menu, btn, bar, alignTop){
+  var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = menu.offsetHeight;
+  menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) + 'px';
+  if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) + 'px'; }
+  else { menu.style.right = ''; menu.style.left = (b.right + 8) + 'px'; }
+}
+
+/* The ▾ beside the Highlighter button opens this menu. It stays open until a choice is tapped, a tap lands
+   anywhere else, or Escape; lifting the pen or finger never closes it (no long-press: nobody finds one, and
+   the SMART driver holds back a finger that stays still). The slider isn't a final choice, so it keeps it open.
+   S: { covering, coverColor, hlStrength, hlColor }. The menu changes S, then calls onPick() so the caller
+   turns the highlighter on, saves the settings and refreshes. onOpen() closes the caller's other popouts.
+   Returns { el, show(open), sync() }. */
+function makeHlMenu(bar, S, onPick, onOpen){
+  var btn = bar.querySelector('[data-act="hl-menu"]');
+  var covers = [['#111111', 'Cover: black', 'hides answers'], ['#5f5f5f', 'Cover: dark gray', ''], ['#a6a6a6', 'Cover: light gray', '']];
+  var m = document.createElement('div');
+  m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.hidden = true;
+  var html = '<button data-mode="hl"><span class="sw hl"></span>Highlight<small>see-through</small></button>' +
+    '<label class="strength"><span>Highlight strength <b id="ob-hl-pct"></b></span>' +
+    '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength (percent)"></label>';
+  for (var i = 0; i < covers.length; i++)
+    html += '<button data-mode="cover" data-cover="' + covers[i][0] + '"><span class="sw" style="background:' + covers[i][0] + '"></span>' +
+      covers[i][1] + (covers[i][2] ? '<small>' + covers[i][2] + '</small>' : '') + '</button>';
+  m.innerHTML = html;
+  document.body.appendChild(m);
+  var slider = m.querySelector('input'), pct = m.querySelector('b');
+  function show(open){
+    m.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { if (onOpen) onOpen(); placeMenu(m, btn, bar, true); }
+  }
+  function sync(){
+    slider.value = S.hlStrength; pct.textContent = S.hlStrength + '%';
+    slider.style.setProperty('--fill', hlInk(S.hlColor, S.hlStrength));
+    var bs = m.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++)
+      bs[i].classList.toggle('on', bs[i].dataset.mode === 'cover' ? S.covering && bs[i].dataset.cover === S.coverColor : !S.covering);
+  }
+  btn.addEventListener('click', function(){ show(m.hidden); });
+  m.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    S.covering = b.dataset.mode === 'cover';
+    if (S.covering) S.coverColor = b.dataset.cover;
+    show(false); onPick();
+  });
+  slider.addEventListener('input', function(){ S.hlStrength = +slider.value; S.covering = false; onPick(); });
+  document.addEventListener('pointerdown', function(e){ if (!m.hidden && !m.contains(e.target) && !btn.contains(e.target)) show(false); }, true);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !m.hidden) show(false); });
+  return { el: m, show: show, sync: sync };
+}
+
+export { seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

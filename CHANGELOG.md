@@ -6,6 +6,7 @@
 - **Find text** searches the whole PDF (File ▸ Find text…, or Ctrl/⌘+F).
 - **Cover** (Highlighter ▾): solid black or gray bars that hide answers on the board and erase like any ink. Export PDF keeps them and warns that covered text can still be copied.
 - **Highlight strength** slider (10–100%) in the same ▾ menu.
+- **HTML overlay v16**: the same Highlighter ▾ menu (Cover and strength). Save PDF warns when covered text can still be copied.
 
 ## v1.0.0 (2026-10-21)
 

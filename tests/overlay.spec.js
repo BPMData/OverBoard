@@ -63,3 +63,65 @@ test('holding + keeps stepping, and ink saves in the browser', async ({ page }) 
   const n = await page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')))).periods.P1.length);
   expect(n).toBe(1);
 });
+
+/* ---- Highlighter ▾ in the overlay: the same shared menu as the PDF app (Cover + strength) ---- */
+const { tapOn } = require('./support/app');
+const rgba = (page, x, y, id) => page.evaluate(([x, y, id]) => {
+  const c = document.getElementById(id) || document.querySelector(id), r = c.getBoundingClientRect();
+  return Array.from(c.getContext('2d').getImageData(Math.round((x - r.left) * c.width / r.width), Math.round((y - r.top) * c.height / r.height), 1, 1).data);
+}, [x, y, id]);
+
+test('Cover: the ▾ menu works with pen and finger taps; covers are opaque on the top layer and erase with the palm', async ({ page }) => {
+  await tapOn(page, '[data-act="hl-menu"]', 'mouse');            // finger
+  await expect(page.locator('#ob-hlmenu')).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.locator('#ob-hlmenu')).toBeVisible();        // lifting didn't close it
+  await tapOn(page, '#ob-hlmenu [data-cover="#111111"]', 'pen');
+  await expect(page.locator('#ob-hlmenu')).toBeHidden();
+  await expect(page.locator('[data-act="hilite"]')).toHaveText('Cover');
+  await stroke(page, line(500, 400, 800, 400));
+  expect(await rgba(page, 650, 400, 'ink-canvas')).toEqual([17, 17, 17, 255]);
+  expect(await alpha(page, 650, 400, 'ink-hl')).toBe(0);
+  await stroke(page, line(650, 360, 650, 440), { buttons: 32 });   // palm reveals
+  expect(await alpha(page, 650, 400)).toBe(0);
+  expect(await alpha(page, 550, 400)).toBe(255);
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const s = await page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')))).periods.P1);
+  expect(s[0]).toMatchObject({ h: 1, o: 1, c: '#111111' });
+
+  // strength slider: full-strength yellow on the multiply layer
+  await tapOn(page, '[data-act="hl-menu"]', 'pen');
+  await page.locator('#ob-hl-strength').fill('100');
+  await expect(page.locator('#ob-hlmenu')).toBeVisible();        // the slider keeps it open
+  await expect(page.locator('[data-act="hilite"]')).toHaveText('Highlighter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#ob-hlmenu')).toBeHidden();
+  await page.click('[data-color="#fdd835"]');
+  await stroke(page, line(500, 500, 800, 500));
+  expect(await rgba(page, 650, 500, 'ink-hl')).toEqual([253, 216, 53, 255]);
+});
+
+test('Save PDF with covers: the teacher is told the text can still be copied; covers print solid above the page', async ({ page }) => {
+  await page.evaluate(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
+  const box = await page.locator('.page').first().boundingBox(), y = box.y + 200, x0 = box.x + 100;
+  await stroke(page, line(x0, y, x0 + 300, y));                  // pen: no notice
+  await page.click('[data-act="print"]');
+  expect(await page.evaluate(() => window.__printed)).toBe(1);
+  await tapOn(page, '[data-act="hl-menu"]', 'pen');
+  await tapOn(page, '#ob-hlmenu [data-cover="#5f5f5f"]', 'pen');
+  await stroke(page, line(x0, y + 60, x0 + 300, y + 60));
+  let msg = '';
+  page.once('dialog', (d) => { msg = d.message(); d.dismiss(); });
+  await page.click('[data-act="print"]');
+  expect(msg).toContain('still in it');
+  expect(await page.evaluate(() => window.__printed)).toBe(1);   // cancelled
+  page.once('dialog', (d) => d.accept());
+  await page.click('[data-act="print"]');
+  expect(await page.evaluate(() => window.__printed)).toBe(2);
+
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  const layers = await page.evaluate(() => [...document.querySelectorAll('.page')[0].querySelectorAll('canvas.ink-print')].map((c) => c.style.mixBlendMode));
+  expect(layers).toEqual(['']);                                  // no highlights: one layer, covers on it
+  expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([95, 95, 95, 255]);
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+});

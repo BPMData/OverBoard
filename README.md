@@ -21,7 +21,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Palm eraser** on SMART Boards: wipe with your palm, fist or the side of your hand
 - **Finger scrolls, pen writes**, with a toolbar switch if you lose the pen
 - **Highlighter** that sits behind the printed text, so words stay readable
-- **Cover** (PDFs): tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them
+- **Cover**: tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them. The same menu sets **highlight strength** (10–100%)
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page

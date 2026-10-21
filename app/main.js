@@ -1,7 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { tint, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
+import { hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -42,7 +42,7 @@ const T = {
   color: '#111111', width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
   customColor: '', PALM_ERASER_W, ERASER_W,
   hlStrength: HIGHLIGHT_STRENGTH,
-  hlInk() { return tint(this.color, 1 - this.hlStrength / 100); },   // mixed toward white; it multiplies, so text stays black
+  hlInk() { return hlInk(this.color, this.hlStrength); },   // mixed toward white; it multiplies, so text stays black
 };
 {
   const sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) T.width = sw;
@@ -458,10 +458,7 @@ function refresh() {
   hb.classList.toggle('on', T.hiliting && !T.erasing);
   hb.classList.toggle('cover', T.covering);
   hb.textContent = T.covering ? 'Cover' : 'Highlighter';   // the ▾ choice shows on the button
-  strengthIn.value = T.hlStrength; strengthPct.textContent = T.hlStrength + '%';
-  strengthIn.style.setProperty('--fill', tint(T.hlColor, 1 - T.hlStrength / 100));
-  for (const b of hlMenu.querySelectorAll('[data-mode]'))
-    b.classList.toggle('on', b.dataset.mode === 'cover' ? T.covering && b.dataset.cover === T.coverColor : !T.covering);
+  hlMenu.sync();
   $('[data-act="finger"]', bar).textContent = 'Finger: ' + (T.fingerScrolls ? 'scrolls' : 'draws');
   refreshZoom();
 }
@@ -504,40 +501,27 @@ holdRepeat($('[data-act="zoom-in"]', bar), () => { if (viewer.zoom >= 6) return 
 holdRepeat($('[data-act="zoom-out"]', bar), () => { if (viewer.zoom <= 0.2) return false; zoomBy(1 / 1.1); return true; });
 
 picker.addEventListener('input', () => { T.customColor = picker.value; setLS('ink-custom', T.customColor); pickColor(T.customColor); });
-/* Popout menus beside the toolbar (File, Highlighter ▾). They open on a tap and stay open until a choice
-   is tapped, a tap lands anywhere else, or Escape. Lifting the pen or finger never closes them. */
+/* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
+   anywhere else, or Escape. Lifting the pen or finger never closes them. */
 const fileMenu = $('#ob-filemenu'), fileBtn = $('[data-act="file"]', bar);
-const hlMenu = $('#ob-hlmenu'), hlBtn = $('[data-act="hl-menu"]', bar);
-function placeMenu(menu, btn, alignTop) {
-  const r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = menu.offsetHeight;
-  menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) + 'px';
-  if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) + 'px'; }
-  else { menu.style.right = ''; menu.style.left = (b.right + 8) + 'px'; }
-}
-const placeFileMenu = () => placeMenu(fileMenu, fileBtn, false);
+const placeFileMenu = () => placeMenu(fileMenu, fileBtn, bar, false);
 function showFileMenu(open) {
   fileMenu.hidden = !open;
   fileBtn.setAttribute('aria-expanded', String(open));
-  if (open) { showHlMenu(false); placeFileMenu(); }
+  if (open) { hlMenu.show(false); placeFileMenu(); }
 }
-function showHlMenu(open) {
-  hlMenu.hidden = !open;
-  hlBtn.setAttribute('aria-expanded', String(open));
-  if (open) { showFileMenu(false); placeMenu(hlMenu, hlBtn, true); }
-}
-document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes them
+document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes it
   if (!fileMenu.hidden && !fileMenu.contains(e.target) && !fileBtn.contains(e.target)) showFileMenu(false);
-  if (!hlMenu.hidden && !hlMenu.contains(e.target) && !hlBtn.contains(e.target)) showHlMenu(false);
 }, true);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { showFileMenu(false); showHlMenu(false); } });
-// the strength slider switches to Highlight but keeps the menu open (it isn't a final choice)
-const strengthIn = $('#ob-hl-strength'), strengthPct = $('#ob-hl-pct');
-strengthIn.addEventListener('input', () => {
-  T.hlStrength = +strengthIn.value; setLS('ink-hl-strength', T.hlStrength);
-  T.covering = false; setLS('ink-hl-mode', 'hl');
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') showFileMenu(false); });
+// Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
+// A choice, or moving the slider, turns the highlighter on in that mode.
+const hlMenu = makeHlMenu(bar, T, () => {
+  setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
+  setLS('ink-hl-strength', T.hlStrength);
+  if (T.covering) setLS('ink-cover-color', T.coverColor);
   T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); refresh();
-});
-hlMenu.addEventListener('click', (e) => { if (e.target.closest('button')) { onToolbarClick(e); showHlMenu(false); } });
+}, () => showFileMenu(false));
 fileMenu.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   onToolbarClick(e);
@@ -559,12 +543,6 @@ function onToolbarClick(e) {
       T.hiliting = T.erasing ? true : !T.hiliting;
       T.color = toolColor();   // highlighter (or cover) gets its own color back; turning it off restores your pen color
       T.erasing = false; setMode('write'); break;
-    case 'hl-menu': showHlMenu(hlMenu.hidden); return;
-    case 'hl-mode':   // a choice in the Highlighter ▾ menu turns the highlighter on in that mode
-      T.covering = b.dataset.mode === 'cover';
-      if (T.covering) { T.coverColor = b.dataset.cover; setLS('ink-cover-color', T.coverColor); }
-      setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
-      T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); break;
     case 'custom':
       if (T.customColor && (T.color !== T.customColor || T.erasing)) pickColor(T.customColor);
       else { picker.value = T.customColor || T.color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch (_) { picker.click(); } }
@@ -600,7 +578,7 @@ function onToolbarClick(e) {
       break;
     case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
-      showFileMenu(false); showHlMenu(false);
+      showFileMenu(false); hlMenu.show(false);
       bar.style.display = 'none';
       showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show');
       if (viewer.fit) { fitSpace(); viewer.layout(); }
