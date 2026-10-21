@@ -5,6 +5,7 @@ import { tint, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
+import { Finder } from './find.js';
 import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
@@ -56,8 +57,9 @@ let D = null;         // ink data: { v: 3, t, active, at, periods: { P1: [stroke
 let saveTimer = null, dirty = false;
 
 const viewer = new Viewer(pagesEl, {
-  show: (P) => ink.show(P), hide: (P) => ink.hide(P), resize: (P) => ink.resize(P),
+  show: (P) => ink.show(P), hide: (P) => ink.hide(P), resize: (P) => ink.resize(P), textReady: (P) => finder.showHit(P),
 });
+const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus);
 const ink = new Ink(viewer, T, () => markDirty());
 ink.attach(pagesEl);
 window.__overboard = { viewer, ink, get doc() { return doc; }, get data() { return D; }, flush: () => writeNow() };   // for tests and the curious
@@ -276,6 +278,7 @@ async function closeDoc(showStart = true) {
   try { await doc.pdf.destroy(); } catch (e) { /* already gone */ }
   doc = null; D = null;
   toc.hidden = true; tocBtn.disabled = true; outline = [];
+  finder.close(); finder.reset();
   if (showStart) {
     document.body.classList.add('start'); bar.hidden = true; showBtn.classList.remove('show');
     document.title = 'OverBoard PDF';
@@ -352,7 +355,7 @@ async function loadOutline(pdf) {
       const entry = { button: b, page: null, dest: it.dest, num: n };
       outline.push(entry);
       b.addEventListener('click', async () => {
-        const p = entry.page || await resolveDest(pdf, it.dest);
+        const p = entry.page || await viewer.resolveDest(it.dest);
         if (p) { viewer.goTo(p); if (window.innerWidth < 900) toc.hidden = true; }
       });
       li.appendChild(b);
@@ -363,19 +366,10 @@ async function loadOutline(pdf) {
   build(items, ul);
   for (const entry of outline) {   // page numbers fill in shortly after
     if (doc?.pdf !== pdf) return;
-    entry.page = await resolveDest(pdf, entry.dest);
+    entry.page = await viewer.resolveDest(entry.dest);
     if (entry.page) entry.num.textContent = entry.page;
   }
   markChapter();
-}
-async function resolveDest(pdf, dest) {
-  try {
-    if (typeof dest === 'string') dest = await pdf.getDestination(dest);
-    if (!Array.isArray(dest)) return null;
-    const ref = dest[0];
-    if (typeof ref === 'number') return ref + 1;
-    return (await pdf.getPageIndex(ref)) + 1;
-  } catch (e) { return null; }
 }
 function markChapter() {
   if (toc.hidden || !outline.length) return;
@@ -386,6 +380,7 @@ function markChapter() {
 }
 function toggleToc() {
   toc.hidden = !toc.hidden;
+  if (!toc.hidden && !findPanel.hidden) finder.close();
   toc.classList.toggle('left', bar.classList.contains('right'));
   if (!toc.hidden) { markChapter(); const h = $('.here', toc); if (h) h.scrollIntoView({ block: 'center' }); }
 }
@@ -553,6 +548,7 @@ function onToolbarClick(e) {
       break;
     }
     case 'toc': toggleToc(); break;
+    case 'find': openFind(); break;
     case 'prev': jump(-1); break;
     case 'next': jump(1); break;
     case 'export': exportPdf(b); break;
@@ -563,6 +559,7 @@ function onToolbarClick(e) {
     case 'side':
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));
+      findPanel.classList.toggle('left', bar.classList.contains('right'));
       break;
     case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
@@ -579,8 +576,19 @@ showBtn.addEventListener('click', () => {
   if (viewer.fit && doc) { fitSpace(); viewer.layout(); }
 });
 $('[data-act="toc-close"]', toc).addEventListener('click', () => { toc.hidden = true; });
+$('[data-act="find-close"]', findPanel).addEventListener('click', () => finder.close());
+function openFind() {
+  if (!doc) return;
+  toc.hidden = true;
+  findPanel.classList.toggle('left', bar.classList.contains('right'));
+  finder.open();
+}
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && doc && document.activeElement !== pageInput) { ink.undo(); e.preventDefault(); }
+  const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && doc && !typing) { ink.undo(); e.preventDefault(); }
+  // the browser's own find only sees pages near the screen; ours searches the whole PDF
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f' && doc) { openFind(); e.preventDefault(); }
+  if (e.key === 'Escape' && !findPanel.hidden) finder.close();
 });
 function isOnScreen(n) {
   const r = viewer.pages[n - 1].el.getBoundingClientRect();

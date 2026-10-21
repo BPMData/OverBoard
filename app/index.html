@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="18d7241287b6">
+<meta name="ob-version" content="85b5a6eb0d3e">
 <link rel="stylesheet" href="../shared/toolbar.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -37,6 +37,13 @@
 
 <nav id="ob-toc" aria-label="Chapters" hidden>
   <div class="head"><strong>Chapters</strong><button data-act="toc-close" aria-label="Close chapters">&times;</button></div>
+  <ul></ul>
+</nav>
+
+<nav id="ob-find" aria-label="Find text" hidden>
+  <div class="head"><strong>Find text</strong><button data-act="find-close" aria-label="Close find">&times;</button></div>
+  <form><input type="search" id="ob-find-q" placeholder="Word or phrase" aria-label="Find text" enterkeyhint="search" autocomplete="off"><button type="submit">Find</button></form>
+  <p class="msg" role="status"></p>
   <ul></ul>
 </nav>
 
@@ -73,6 +80,7 @@
 </div>
 <div id="ob-filemenu" role="menu" aria-label="File" hidden>
   <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
+  <button data-act="find" class="wide" title="Search the text of the whole PDF (Ctrl+F)">Find text…</button>
   <button data-act="ink-save" title="Download the ink (all periods) as a small .overboard.json file">Save ink</button>
   <button data-act="ink-load" title="Load ink from an .overboard.json file">Load ink</button>
   <button data-act="pdf-link" class="sm wide" title="Keep the ink inside a PDF file (you choose the file)">Save ink into PDF…</button>

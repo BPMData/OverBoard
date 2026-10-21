@@ -1,6 +1,9 @@
 // PDF pages laid out in one scrolling column. Page images render only near the viewport
 // (IntersectionObserver) and are freed again far away, so a 600-page book stays light.
 // Units: page sizes are PDF points as shown (PDF.js viewport at scale 1); `zoom` is CSS px per point.
+// Each page also gets selectable text and clickable links (textlayer.js), made and freed with its image.
+
+import { addLayers, freeLayers, markHits } from './textlayer.js';
 
 export const GUTTER = 36;            // writable margin beside each page, in points (0.5 in), like the overlay's side space
 const MAX_IMG_PX = 12e6;             // cap per page image (about 48 MB); keeps memory bounded on 4K boards
@@ -11,7 +14,7 @@ const MAX_ZOOM = 6, MIN_ZOOM = 0.2;
 export class Viewer {
   constructor(container, hooks) {
     this.box = container;
-    this.hooks = hooks;              // { show(P), hide(P), resize(P), pagesChanged() }
+    this.hooks = hooks;              // { show(P), hide(P), resize(P), textReady(P) }
     this.pages = [];
     this.zoom = 1;
     this.fit = true;
@@ -19,6 +22,13 @@ export class Viewer {
     this.want = new Set();
     this.busy = 0;
     this.gen = 0;                    // bumps on close, so stale async work stops
+    this.query = '';                 // search text marked in the text layers (lower case)
+    container.addEventListener('click', (e) => {   // internal links (e.g. a contents page) jump inside the PDF
+      const a = e.target.closest && e.target.closest('a.ob-link');
+      if (!a || (!a._dest && !a._action)) return;
+      e.preventDefault();
+      this.follow(a);
+    });
   }
 
   async open(pdf) {
@@ -35,7 +45,7 @@ export class Viewer {
       const sheet = document.createElement('div');
       sheet.className = 'sheet';
       el.appendChild(sheet);
-      const P = { n, w: first.width, h: first.height, sized: n === 1, el, sheet, img: null, imgZoom: 0, task: null, ink: null, hl: null };
+      const P = { n, w: first.width, h: first.height, sized: n === 1, el, sheet, img: null, imgZoom: 0, task: null, text: null, ink: null, hl: null };
       el._P = P;
       this.pages.push(P);
       frag.appendChild(el);
@@ -107,6 +117,7 @@ export class Viewer {
     const z = this.zoom;
     P.el.style.width = (P.w + 2 * GUTTER) * z + 'px';
     P.el.style.height = P.h * z + 'px';
+    P.el.style.setProperty('--scale-factor', z);   // sizes the text layer (PDF.js) without rebuilding it
     P.sheet.style.left = GUTTER * z + 'px';
     P.sheet.style.width = P.w * z + 'px';
   }
@@ -199,6 +210,13 @@ export class Viewer {
       P.img = c;
       P.imgZoom = z;
       P.sheet.appendChild(c);
+      if (!P.text) {
+        addLayers(P, page, () => gen === this.gen && this.want.has(P)).then(() => {
+          if (!P.text || gen !== this.gen) return;
+          if (this.query) markHits(P, this.query);
+          if (this.hooks.textReady) this.hooks.textReady(P);
+        });
+      }
     } catch (e) {
       c.width = 0;
       if (!e || e.name !== 'RenderingCancelledException') console.warn('page', P.n, e);
@@ -213,16 +231,43 @@ export class Viewer {
     if (P.task) { try { P.task.cancel(); } catch (e) { /* already done */ } }
     if (P.img) { P.img.width = 0; P.img.height = 0; P.img.remove(); P.img = null; }
     P.imgZoom = 0;
+    freeLayers(P);
     if (this.pdf) this.pdf.getPage(P.n).then((pg) => pg.cleanup()).catch(() => {});
+  }
+
+  /* ---------- links and search marks ---------- */
+
+  async follow(a) {
+    const n = this.currentPage(), last = this.pages.length;
+    const to = a._action ? { NextPage: n + 1, PrevPage: n - 1, FirstPage: 1, LastPage: last }[a._action] : await this.resolveDest(a._dest);
+    if (to) this.goTo(to);
+  }
+
+  /* a PDF destination (name or array) -> page number, or null */
+  async resolveDest(dest) {
+    const pdf = this.pdf;
+    try {
+      if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+      if (!Array.isArray(dest)) return null;
+      const ref = dest[0];
+      if (typeof ref === 'number') return ref + 1;
+      return (await pdf.getPageIndex(ref)) + 1;
+    } catch (e) { return null; }
+  }
+
+  setQuery(q) {
+    this.query = q;
+    for (const P of this.pages) if (P.text) markHits(P, q);
   }
 
   /* how many page images and ink layers are alive (for the memory check) */
   stats() {
-    let img = 0, ink = 0, px = 0;
+    let img = 0, ink = 0, px = 0, text = 0;
     for (const P of this.pages) {
       if (P.img) { img++; px += P.img.width * P.img.height; }
+      if (P.text) text++;
       for (const c of [P.ink, P.hl]) if (c) { ink++; px += c.width * c.height; }
     }
-    return { pages: this.pages.length, images: img, inkLayers: ink, megapixels: Math.round(px / 1e6) };
+    return { pages: this.pages.length, images: img, textLayers: text, inkLayers: ink, megapixels: Math.round(px / 1e6) };
   }
 }
