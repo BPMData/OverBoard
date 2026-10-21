@@ -6,6 +6,7 @@ import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
 import * as store from './store.js';
+import { isHtml, boardName, addOverlay, layoutWarnings, saveBoardCopy } from './html.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
 const PERIODS = ['P1', 'P2', 'P3', 'P4'];
@@ -89,10 +90,34 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const errorEl = $('#ob-error');
 function showError(msg) { errorEl.textContent = msg; errorEl.hidden = !msg; }
 
-async function openFile(file) {
+const msgEl = $('#ob-msg');
+function showMsg(msg) { msgEl.textContent = msg; msgEl.hidden = !msg; }
+
+/* an .html worksheet: make a board copy with the overlay, like the installer */
+async function makeBoardCopy(file, handlePromise) {
+  showError(''); showMsg('');
+  try {
+    const { status, html, message } = await addOverlay(await file.text());
+    const name = boardName(file.name);
+    if (status === 'same' && name === file.name) { showMsg(file.name + ' ' + message + '. Just open it in Chrome.'); return; }
+    const handle = handlePromise ? await handlePromise.catch(() => null) : null;
+    const where = await saveBoardCopy(html, name, handle && handle.kind === 'file' ? handle : undefined);
+    if (!where) return;
+    const warns = layoutWarnings(html);
+    showMsg(file.name + ': ' + message + '; ' + where + '. Double-click it to open it in Chrome and write on it. ' +
+      'Keep it in the same folder as the original so its pictures load.' +
+      (warns.length ? ' Heads-up: ' + warns.join('; ') + ', so ink may not stay on the page.' : ''));
+    if (doc) setStatus(name + ' saved');
+  } catch (e) {
+    showError('Could not add OverBoard to "' + file.name + '": ' + ((e && e.message) || e));
+  }
+}
+
+async function openFile(file, handlePromise) {
   if (!file) return;
-  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { showError('"' + file.name + '" is not a PDF. (Word files: File → Save as PDF first.)'); return; }
-  showError('');
+  if (isHtml(file)) { if (doc) await closeDoc(true); return makeBoardCopy(file, handlePromise); }
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { showError('"' + file.name + '" is not a PDF or an HTML worksheet. (Word files: File → Save as PDF first.)'); return; }
+  showError(''); showMsg('');
   const drop = $('#ob-drop strong'), label = drop.textContent;
   drop.textContent = 'Opening ' + file.name + '…';
   try {
@@ -160,8 +185,11 @@ window.addEventListener('drop', (e) => {
   e.preventDefault(); dragDepth = 0; cover.hidden = true; dropZone.classList.remove('over');
   const f = e.dataTransfer && e.dataTransfer.files[0];
   if (!f) return;
+  // Chrome/Edge: a handle to the dropped file lets the board copy be saved next to it (must be asked for during the drop)
+  const item = e.dataTransfer.items && e.dataTransfer.items[0];
+  const handle = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
   if (/\.json$/i.test(f.name)) { if (doc) importInk(f); else showError('Open the PDF first, then drop its ink file.'); }
-  else openFile(f);
+  else openFile(f, handle);
 });
 
 /* ---------- recent files ---------- */

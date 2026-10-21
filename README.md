@@ -44,7 +44,9 @@ The app needs an internet connection the first time it loads, to fetch the PDF r
 
 ## Use it on your own worksheets (HTML)
 
-**Option 1: the installer (easiest).** Download this repo, then double-click:
+**Option 0: no download.** Drop the `.html` file onto the [PDF app](https://bpmdata.github.io/OverBoard/app/). It saves a `Name_board.html` copy with OverBoard added (or upgraded, keeping saved ink), exactly like the installer. Keep the copy in the same folder as the original so its pictures load, then double-click it.
+
+**Option 1: the installer.** Download this repo, then double-click:
 
 - Mac: `overlay/Ink Overlay Installer.command`
 - Windows: `overlay/Ink Overlay Installer.bat` (needs [Python 3](https://www.python.org/downloads/); tick "Add python.exe to PATH")
