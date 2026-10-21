@@ -76,33 +76,14 @@ body.start #ob-pages { display: none; }
 #ink-bar #ob-zoom button[data-act="zoom-in"], #ink-bar #ob-zoom button[data-act="zoom-out"] { font-size: 28px; line-height: 1; padding: 0; }
 #ink-bar button[data-act="file"][aria-expanded="true"] { background: #fff; color: #000; }
 /* File menu: pops out beside the toolbar so the toolbar itself fits a 1080p screen */
-:is(#ob-filemenu, #ob-hlmenu) { position: fixed; z-index: 101; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; width: 196px; box-sizing: border-box; background: #1f1f1f; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.5); font-family: Inter, system-ui, sans-serif; touch-action: manipulation; }
-:is(#ob-filemenu, #ob-hlmenu) button { min-height: 56px; border: 3px solid transparent; border-radius: 12px; background: #3a3a3a; color: #fff; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer; padding: 4px; }
-:is(#ob-filemenu, #ob-hlmenu) button.sm { min-height: 48px; font-size: 13px; }
-:is(#ob-filemenu, #ob-hlmenu) .wide { grid-column: 1 / 3; }
-:is(#ob-filemenu, #ob-hlmenu) button.warn { background: #c62828; }
-:is(#ob-filemenu, #ob-hlmenu) button.good { background: #2e7d32; }
-:is(#ob-filemenu, #ob-hlmenu) button:disabled { opacity: .4; cursor: default; }
+#ob-filemenu { position: fixed; z-index: 101; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; width: 196px; box-sizing: border-box; background: #1f1f1f; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.5); font-family: Inter, system-ui, sans-serif; touch-action: manipulation; }
+#ob-filemenu button { min-height: 56px; border: 3px solid transparent; border-radius: 12px; background: #3a3a3a; color: #fff; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer; padding: 4px; }
+#ob-filemenu button.sm { min-height: 48px; font-size: 13px; }
+#ob-filemenu .wide { grid-column: 1 / 3; }
+#ob-filemenu button.warn { background: #c62828; }
+#ob-filemenu button.good { background: #2e7d32; }
+#ob-filemenu button:disabled { opacity: .4; cursor: default; }
 #ink-bar button:disabled { opacity: .4; cursor: default; }
-/* Highlighter: the main part turns it on/off; the ▾ opens Highlight / Cover choices (same row, so no extra height) */
-#ob-hl { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 44px; gap: 6px; }
-#ink-bar #ob-hl button[data-act="hl-menu"] { padding: 0; font-size: 20px; }
-#ink-bar #ob-hl button[data-act="hl-menu"][aria-expanded="true"] { background: #fff; color: #000; }
-#ink-bar button[data-act="hilite"].cover.on { background: #111; color: #fff; border-color: #ffd400; }
-#ob-hlmenu { width: 240px; grid-template-columns: 1fr; }
-#ob-hlmenu button { display: grid; grid-template-columns: 30px 1fr; align-items: center; column-gap: 10px; text-align: left; padding: 4px 12px; }
-#ob-hlmenu button small { grid-column: 2; font-weight: 500; font-size: 12px; color: #bbb; }
-#ob-hlmenu button.on { border-color: #ffd400; }
-#ob-hlmenu .strength { display: grid; gap: 2px; padding: 4px 6px 8px; color: #fff; font: 700 13px Inter, system-ui, sans-serif; }
-#ob-hlmenu .strength b { color: #ffd400; }
-/* a tall, thick slider: easy to grab with a finger or the pen */
-#ob-hl-strength { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer; touch-action: none; }
-#ob-hl-strength::-webkit-slider-runnable-track { height: 14px; border-radius: 7px; background: linear-gradient(90deg, #fff, var(--fill, #feec9a)); box-shadow: inset 0 0 0 2px #555; }
-#ob-hl-strength::-webkit-slider-thumb { -webkit-appearance: none; width: 36px; height: 36px; margin-top: -11px; border-radius: 50%; background: #fff; border: 4px solid #ffd400; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
-#ob-hl-strength::-moz-range-track { height: 14px; border-radius: 7px; background: linear-gradient(90deg, #fff, var(--fill, #feec9a)); }
-#ob-hl-strength::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 4px solid #ffd400; }
-#ob-hlmenu .sw { grid-row: 1 / 3; width: 28px; height: 28px; border-radius: 6px; box-shadow: 0 0 0 2px #fff; }
-#ob-hlmenu .sw.hl { background: linear-gradient(transparent 30%, #fff176 30%, #fff176 75%, transparent 75%), repeating-linear-gradient(90deg, #ddd 0 3px, #fff 3px 6px); }
 
 /* ---------- chapters ---------- */
 :is(#ob-toc, #ob-find) { position: fixed; top: 10px; bottom: 10px; right: 10px; width: min(360px, calc(100vw - 220px)); z-index: 99; background: #1f1f1f; color: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.5); display: flex; flex-direction: column; font-family: Inter, system-ui, sans-serif; }

@@ -21,7 +21,7 @@
 2. ✅ **Render with PDF.js** `4.10.38` (pinned in `app/libs.js`, served from `app/vendor/`; refresh with `tools/vendor_libs.py`). Each page is a `.pg` element sized to the page.
 3. ✅ **One ink canvas per page** (plus a highlighter canvas under it, only when the page has highlights). Kept the side space: each page has a 36 pt writable gutter left and right; it doesn't export.
 4. ✅ **Lazy rendering.** Page images render within 1 screen of the viewport and are freed 2 screens away; ink canvases exist only for nearby pages that have ink. Page sizes start at page 1's size and are corrected in the background.
-5. ✅ **Shared code.** `shared/ink-core.js` (curve drawing, live drawing, smoothing, pen/palm/finger classification, hold-to-repeat, confirm tap) and `shared/toolbar.css` are imported by the app and inlined into the overlay by `tools/build.py` (overlay v15). The overlay is still one self-contained paste-in block.
+5. ✅ **Shared code.** `shared/ink-core.js` (curve drawing, live drawing, smoothing, pen/palm/finger classification, hold-to-repeat, confirm tap) and `shared/toolbar.css` are imported by the app and inlined into the overlay by `tools/build.py` (overlay v16). The Highlighter ▾ menu (`makeHlMenu`, `seeThrough`, `hlInk`, `placeMenu`) and its styles are shared too, so the app and the overlay behave the same. The overlay is still one self-contained paste-in block.
 6. ✅ **Persistence** in IndexedDB (`overboard` database: `ink` and `files` stores) keyed by the SHA-256 of the PDF bytes. **Save ink / Load ink** uses an `.overboard.json` sidecar.
 7. ✅ **Export PDF** with pdf-lib `1.17.1`: strokes become vector Bézier paths in the original PDF; highlights use the Multiply blend mode under the pen ink.
 8. ✅ **Page navigation:** page number box, ▲/▼ Page, and the PDF outline as a Chapters panel (current chapter marked).
@@ -52,7 +52,7 @@ Added after v2:
 
 - **Highlighter ▾ Cover.** The Highlighter button is split: the main part toggles the highlighter, the ▾ (same row, so the toolbar doesn't grow) opens `#ob-hlmenu`, a popout like the File menu: Highlight (see-through multiply) with a strength slider, or Cover in black, dark gray or light gray. Moving the slider switches to Highlight but leaves the menu open. It stays open until a choice, a tap elsewhere, or Escape; lifting the pen or finger never closes it (no long-press: invisible, and the SMART driver holds back a still finger). The chosen mode shows on the button ("Highlighter" / "Cover") and is remembered (`ink-hl-mode`, `ink-cover-color`); palette colors set the cover's own color while covering. Covers are stored as `{ h: 1, o: 1 }` and drawn on the pen canvas in drawing order (above the page and its text layer, not multiplied), so eraser, palm and Undo remove them like any stroke. An older app version would draw them as multiply highlights (black still hides).
   - **Export.** Covers are drawn opaque with the pen ink, over the page. They do **not** remove the text underneath (we never delete or rasterize the PDF's text), so when the exported period still has covers after erasers, a dialog says plainly that covered answers can still be copied from the PDF, and the status line repeats it.
-  - **Not in the HTML overlay yet.** The overlay has its own highlighter code; adding Cover there means moving the layer choice into `shared/ink-core.js` and bumping the overlay version.
+  - **HTML overlay (v16)** has the same ▾ menu, covers and strength slider (shared code). Covers go on `#ink-canvas` above the page and print as solid bars. **Save PDF** with covers first asks, via `confirm()`, after saying the text under covers stays in the PDF and in the worksheet file. Ctrl+P skips that question, since printing can't be stopped from `beforeprint`. Older overlays draw covers as multiply highlights.
 
 Left for later from v2:
 
@@ -65,6 +65,5 @@ Left for later from v2:
 - **Splitter tool**: split a PDF by its outline (chapters) or every N pages, with pdf-lib, entirely in the browser.
 - **Generic touch mode** for non-SMART boards (Windows touch screens report `pointerType: "touch"` with real contact sizes, so palm detection can use `width`/`height`). Ask contributors for probe logs.
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."
-- **Cover in the HTML overlay** (see Highlighter ▾ Cover above).
 - **"Remove covered text" export** (opt-in, clearly labeled, original file untouched): would need rewriting page content streams to drop text under covers. Until then: print on paper to hand out answer-free copies.
 - **Large-document HTML mode**: per-`.page` canvases in the v1 overlay too, so very long HTML packets stay sharp.

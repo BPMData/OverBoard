@@ -4,12 +4,11 @@
 // so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
 // layer, above the page and its text, instead of multiplied underneath.
 
-import { pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
+import { seeThrough, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
 export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
 const MAX_INK_PX = 8e6;            // per ink canvas
-const seeThrough = (s) => s.h && !s.o;   // highlights go on the multiply layer; covers and pen ink don't
 
 export class Ink {
   constructor(viewer, tools, onChange) {

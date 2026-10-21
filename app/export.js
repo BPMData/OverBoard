@@ -3,6 +3,7 @@
 // (PDF.js viewport at scale 1), so each page maps them back with the inverse of that viewport's transform.
 
 import { loadPdfLib } from './libs.js';
+import { seeThrough } from '../shared/ink-core.js';
 
 /* The PDF has no "eraser". Apply erasers geometrically: drop the sample points of earlier strokes that the
    eraser passed over, and split those strokes where the gap is. Returns highlight and pen strokes in order. */
@@ -112,7 +113,7 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, onProgress) {
     const ops = [L.pushGraphicsState(), L.concatTransformationMatrix(...m.map(r3)),
       L.setLineCap(L.LineCapStyle.Round), L.setLineJoin(L.LineJoinStyle.Round)];
     // covers (o: 1) are opaque and drawn in order with the pen ink, over the page's text, like on screen
-    const hl = drawn.filter((s) => s.h && !s.o), pen = drawn.filter((s) => !s.h || s.o);
+    const hl = drawn.filter(seeThrough), pen = drawn.filter((s) => !seeThrough(s));
     if (hl.length) {   // highlights go under the pen ink and multiply, so printed text stays readable
       const gs = page.doc.context.obj({ Type: 'ExtGState', BM: 'Multiply' });
       const key = page.node.newExtGState('GS', gs);

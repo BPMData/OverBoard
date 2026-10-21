@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="fc3e82ce7ace">
+<meta name="ob-version" content="c95b9a20bf27">
 <link rel="stylesheet" href="../shared/toolbar.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -77,13 +77,6 @@
   <button data-act="hide">Hide</button>
   <div id="ink-status">Ready</div>
   <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
-</div>
-<div id="ob-hlmenu" role="menu" aria-label="Highlighter" hidden>
-  <button data-act="hl-mode" data-mode="hl" class="wide"><span class="sw hl"></span>Highlight<small>see-through</small></button>
-  <label class="strength"><span>Highlight strength <b id="ob-hl-pct">50%</b></span><input type="range" id="ob-hl-strength" min="10" max="100" step="5" value="50" aria-label="Highlight strength (percent)"></label>
-  <button data-act="hl-mode" data-mode="cover" data-cover="#111111" class="wide"><span class="sw" style="background:#111"></span>Cover: black<small>hides answers</small></button>
-  <button data-act="hl-mode" data-mode="cover" data-cover="#5f5f5f" class="wide"><span class="sw" style="background:#5f5f5f"></span>Cover: dark gray</button>
-  <button data-act="hl-mode" data-mode="cover" data-cover="#a6a6a6" class="wide"><span class="sw" style="background:#a6a6a6"></span>Cover: light gray</button>
 </div>
 <div id="ob-filemenu" role="menu" aria-label="File" hidden>
   <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
