@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v14) =====
+<!-- ===== INK OVERLAY START (v15) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -15,6 +15,7 @@
 #ink-canvas{z-index:50;touch-action:none;cursor:crosshair}
 #ink-hl{z-index:49;pointer-events:none;mix-blend-mode:multiply}
 #ink-canvas.scroll-mode{pointer-events:none}
+/* ===== SHARED TOOLBAR CSS: generated from shared/toolbar.css by tools/build_overlay.py; edit that file ===== */
 #ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
@@ -45,6 +46,7 @@
 #ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;border-radius:50%;border:0;background:#1f1f1f;color:#ffd400;font:700 26px Inter,system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85}
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
+/* ===== END SHARED TOOLBAR CSS ===== */
 @media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show{display:none!important}}
 </style>
 <canvas id="ink-hl"></canvas>
@@ -86,6 +88,151 @@
 <script id="ink-script">
 (function(){
   if (window.__inkLoaded) return; window.__inkLoaded = true;
+
+  /* ===== SHARED CORE: generated from shared/ink-core.js by tools/build_overlay.py; edit that file ===== */
+  /* OverBoard shared ink core.
+     Used two ways:
+     - as an ES module by the PDF app (app/*.js imports it), and
+     - inlined into the paste-in overlay (overlay/ink_overlay.html) by tools/build_overlay.py.
+     So: plain ES5 function declarations only, no imports, no top-level state.
+     The export line at the bottom is stripped when it is inlined.
+
+     Stroke: { c: color, w: width, e: 1 if eraser, h: 1 if highlight, p: [x0,y0,x1,y1,...] }  */
+
+  /* mix a #rrggbb color toward white (amt 0..1) */
+  function tint(hex, amt){
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    function m(c){ return Math.round(c + (255 - c) * amt); }
+    return '#' + ((1 << 24) | (m(r) << 16) | (m(g) << 8) | m(b)).toString(16).slice(1);
+  }
+
+  /* SMART Board on macOS: pen tip = "pen"; palm/fist/side of hand = "pen" with the eraser button (32);
+     finger and the pen's round end = "mouse". Touch screens report "touch". */
+  function pointerKind(e){
+    if (e.pointerType === 'pen' && ((e.buttons & 32) || e.button === 5)) return 'palm';
+    if (e.pointerType === 'mouse' || e.pointerType === 'touch') return 'finger';
+    return 'pen';
+  }
+
+  function inkStyle(g, s, sc, ox, oy){
+    g.setTransform(sc, 0, 0, sc, ox, oy);
+    g.globalCompositeOperation = s.e ? 'destination-out' : 'source-over';
+    g.strokeStyle = s.c; g.fillStyle = s.c; g.lineWidth = s.w;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+  }
+
+  /* one whole stroke onto one canvas: quadratic curves through the midpoints between samples,
+     so corners come out round instead of jagged. Ink coordinates map to canvas px as x*sc+ox. */
+  function paintStroke(g, s, sc, ox, oy){
+    var p = s.p; g.save(); inkStyle(g, s, sc, ox, oy);
+    g.beginPath();
+    if (p.length < 4) { g.arc(p[0], p[1], s.w/2, 0, 6.2832); g.fill(); }
+    else {
+      g.moveTo(p[0], p[1]);
+      for (var i = 2; i < p.length - 2; i += 2) g.quadraticCurveTo(p[i], p[i+1], (p[i] + p[i+2]) / 2, (p[i+1] + p[i+3]) / 2);
+      g.lineTo(p[p.length-2], p[p.length-1]);
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  /* ---- live drawing: draws the same curve as paintStroke, piece by piece as points arrive ----
+     live = { fx, fy: smoothed pen position; ex, ey: where the drawn line ends; k: points drawn so far } */
+  function liveStart(x, y){ return { fx: x, fy: y, ex: x, ey: y, k: 1 }; }
+
+  /* add one raw sample through the smoothing filter (level 0-8). Returns true if a point was kept. */
+  function liveAdd(s, live, x, y, level){
+    var k = level / 10, n = s.p.length;
+    live.fx = live.fx * k + x * (1 - k);
+    live.fy = live.fy * k + y * (1 - k);
+    var px = Math.round(live.fx * 10) / 10, py = Math.round(live.fy * 10) / 10;
+    if (Math.abs(px - s.p[n-2]) + Math.abs(py - s.p[n-1]) < 0.5) return false;
+    s.p.push(px, py);
+    return true;
+  }
+
+  /* pieces not drawn yet: [x0,y0,cx,cy,x1,y1] (cx null = straight line) */
+  function livePieces(s, live){
+    var p = s.p, n = p.length / 2, pieces = [];
+    while (live.k < n) {
+      var k = live.k;
+      if (k >= 2) {
+        var bx = p[2*k-2], by = p[2*k-1], mx = (bx + p[2*k]) / 2, my = (by + p[2*k+1]) / 2;
+        pieces.push([live.ex, live.ey, bx, by, mx, my]);
+        live.ex = mx; live.ey = my;
+      }
+      live.k++;
+    }
+    return pieces;
+  }
+
+  /* the last straight bit to where the pen lifted; call once at the end of a stroke */
+  function liveEndPieces(s, live){
+    var p = s.p, n = p.length;
+    if (n < 4) return [];
+    var pieces = livePieces(s, live);
+    pieces.push([live.ex, live.ey, null, null, p[n-2], p[n-1]]);
+    return pieces;
+  }
+
+  function paintPieces(g, s, pieces, sc, ox, oy){
+    if (!pieces.length) return;
+    g.save(); inkStyle(g, s, sc, ox, oy);
+    for (var i = 0; i < pieces.length; i++) {
+      var q = pieces[i];
+      g.beginPath(); g.moveTo(q[0], q[1]);
+      if (q[2] === null) g.lineTo(q[4], q[5]); else g.quadraticCurveTo(q[2], q[3], q[4], q[5]);
+      g.stroke();
+    }
+    g.restore();
+  }
+
+  /* finish the stroke where the pen lifted (smoothing trails slightly behind) */
+  function liveLift(s, x, y){
+    var n = s.p.length;
+    if (n >= 4 && Math.abs(x - s.p[n-2]) + Math.abs(y - s.p[n-1]) >= 0.5) s.p.push(x, y);
+  }
+
+  /* ---- toolbar helpers ---- */
+
+  /* - / + buttons: tap = one step; hold = keeps stepping, speeding up, until step() returns false */
+  function holdRepeat(b, step){
+    var timer = null;
+    function stop(){ clearTimeout(timer); timer = null; }
+    b.addEventListener('pointerdown', function(e){
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault(); stop();
+      try { b.setPointerCapture(e.pointerId); } catch(_){}
+      step();
+      var delay = 160, n = 0;
+      timer = setTimeout(function tick(){
+        if (!step()) return stop();               // stop at the end of the range
+        n++; if (n === 6) delay = 80;             // speed up after a few steps
+        timer = setTimeout(tick, delay);
+      }, 450);                                    // hold this long before it starts repeating
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function(t){ b.addEventListener(t, stop); });
+    b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
+
+  /* first tap arms ("Sure?"), second tap within 3s does it */
+  function confirmTap(btn, fn){
+    if (!btn.classList.contains('warn')) {
+      btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = 'Sure?';
+      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 3000);
+      return;
+    }
+    clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label; fn();
+  }
+
+  /* show a result on the button itself, then put the label back */
+  function flashBtn(btn, text, cls){
+    clearTimeout(btn._flash); btn.classList.remove('good', 'warn');
+    if (!btn._label) btn._label = btn.textContent;
+    btn.textContent = text; btn.classList.add(cls);
+    btn._flash = setTimeout(function(){ btn.classList.remove(cls); btn.textContent = btn._label; }, 3000);
+  }
+  /* ===== END SHARED CORE ===== */
 
   /* ===== SETTINGS ===== */
   var PERIODS = ['P1', 'P2', 'P3', 'P4'];  // the period tabs; used only until ink has been saved once ("Period 1" etc. from older versions become "P1")
@@ -133,11 +280,6 @@
 
   function setStatus(t){ statusEl.textContent = t; }
   function clock(){ return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-  function tint(hex, amt){   // mix a #rrggbb color toward white
-    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-    function m(c){ return Math.round(c + (255 - c) * amt); }
-    return '#' + ((1 << 24) | (m(r) << 16) | (m(g) << 8) | m(b)).toString(16).slice(1);
-  }
 
   /* ---------- data: { v, t, active, periods: { name: [strokes] } }   stroke: { c, w, e: eraser, h: highlight, p: [x,y,...] } ---------- */
   function parse(s){ try { var o = JSON.parse(s); if (o && o.periods && typeof o.periods === 'object') return o; } catch(e){} return null; }
@@ -187,58 +329,10 @@
   /* ---------- drawing ---------- */
   // pen ink goes on the top canvas, highlights on the layer under it, the eraser cuts through both
   function layers(s){ return s.e ? [ctx, hctx] : s.h ? [hctx] : [ctx]; }
-  function style(g, s, sc, ox, oy){
-    g.setTransform(sc, 0, 0, sc, ox, oy);
-    g.globalCompositeOperation = s.e ? 'destination-out' : 'source-over';
-    g.strokeStyle = s.c; g.fillStyle = s.c; g.lineWidth = s.w;
-    g.lineCap = 'round'; g.lineJoin = 'round';
-  }
-  function paint(g, s, sc, ox, oy){   // one whole stroke onto one canvas
-    var p = s.p; g.save(); style(g, s, sc, ox, oy);
-    g.beginPath();
-    if (p.length < 4) { g.arc(p[0], p[1], s.w/2, 0, 6.2832); g.fill(); }
-    else {   // curve through the midpoints between samples, so corners come out round instead of jagged
-      g.moveTo(p[0], p[1]);
-      for (var i = 2; i < p.length - 2; i += 2) g.quadraticCurveTo(p[i], p[i+1], (p[i] + p[i+2]) / 2, (p[i+1] + p[i+3]) / 2);
-      g.lineTo(p[p.length-2], p[p.length-1]);
-      g.stroke();
-    }
-    g.restore();
-  }
-  function drawStroke(s){ layers(s).forEach(function(g){ paint(g, s, scale, OX * scale, 0); }); }
-  // live drawing draws the same curve piece by piece as points arrive (matches paint exactly)
-  var live = null;   // { fx, fy: smoothed pen position; ex, ey: where the drawn line ends; k: points drawn so far }
-  function drawPieces(s, pieces){   // pieces: [x0,y0,cx,cy,x1,y1] (cx null = straight line)
-    if (!pieces.length) return;
-    layers(s).forEach(function(g){
-      g.save(); style(g, s, scale, OX * scale, 0);
-      pieces.forEach(function(q){
-        g.beginPath(); g.moveTo(q[0], q[1]);
-        if (q[2] === null) g.lineTo(q[4], q[5]); else g.quadraticCurveTo(q[2], q[3], q[4], q[5]);
-        g.stroke();
-      });
-      g.restore();
-    });
-  }
-  function liveCatchUp(s){
-    var p = s.p, n = p.length / 2, pieces = [];
-    while (live.k < n) {
-      var k = live.k;
-      if (k >= 2) {
-        var bx = p[2*k-2], by = p[2*k-1], mx = (bx + p[2*k]) / 2, my = (by + p[2*k+1]) / 2;
-        pieces.push([live.ex, live.ey, bx, by, mx, my]);
-        live.ex = mx; live.ey = my;
-      }
-      live.k++;
-    }
-    drawPieces(s, pieces);
-  }
-  function liveFinish(s){
-    var p = s.p, n = p.length;
-    if (n < 4) return;
-    liveCatchUp(s);
-    drawPieces(s, [[live.ex, live.ey, null, null, p[n-2], p[n-1]]]);
-  }
+  function drawStroke(s){ layers(s).forEach(function(g){ paintStroke(g, s, scale, OX * scale, 0); }); }
+  // live drawing draws the same curve piece by piece as points arrive (matches paintStroke exactly)
+  var live = null;
+  function drawPieces(s, pieces){ layers(s).forEach(function(g){ paintPieces(g, s, pieces, scale, OX * scale, 0); }); }
   function clearCanvas(c, g){ g.save(); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height); g.restore(); }
   function redraw(){
     clearCanvas(canvas, ctx); clearCanvas(hcan, hctx);
@@ -273,8 +367,7 @@
     if (active !== null) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     // SMART board: pen tip = "pen"; palm/fist/side of hand = "pen" with the eraser button (32); finger and round pen end = "mouse"
-    var palm = e.pointerType === 'pen' && ((e.buttons & 32) || e.button === 5);
-    var finger = e.pointerType === 'mouse' || e.pointerType === 'touch';
+    var kind = pointerKind(e), palm = kind === 'palm', finger = kind === 'finger';
     active = e.pointerId;
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
     if (finger && fingerScrolls) { drag = { y: e.screenY }; e.preventDefault(); return; }
@@ -283,7 +376,7 @@
     else if (hiliting) cur = { c: tint(color, HIGHLIGHT_TINT), w: hlWidth, e: 0, h: 1, p: [q[0], q[1]] };
     else cur = { c: color, w: width, e: 0, p: [q[0], q[1]] };
     downAt = performance.now();
-    live = { fx: q[0], fy: q[1], ex: q[0], ey: q[1], k: 1 };
+    live = liveStart(q[0], q[1]);
     drawStroke(cur); e.preventDefault();
   });
   canvas.addEventListener('pointermove', function(e){
@@ -291,16 +384,8 @@
     if (e.pointerId !== active || !cur) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
     if (!evs || !evs.length) evs = [e];
-    for (var i = 0; i < evs.length; i++) {
-      var q = pt(evs[i]), n = cur.p.length;
-      var k = smooth / 10;                                    // steady out board jitter
-      live.fx = live.fx * k + q[0] * (1 - k);
-      live.fy = live.fy * k + q[1] * (1 - k);
-      var x = Math.round(live.fx * 10) / 10, y = Math.round(live.fy * 10) / 10;
-      if (Math.abs(x - cur.p[n-2]) + Math.abs(y - cur.p[n-1]) < 0.5) continue;
-      cur.p.push(x, y);
-    }
-    liveCatchUp(cur);
+    for (var i = 0; i < evs.length; i++) { var q = pt(evs[i]); liveAdd(cur, live, q[0], q[1], smooth); }   // smoothing steadies board jitter
+    drawPieces(cur, livePieces(cur, live));
     e.preventDefault();
   });
   function end(e){
@@ -308,11 +393,8 @@
     active = null; drag = null;
     if (!cur) return;
     var s = cur; cur = null;
-    if (e.type === 'pointerup' && s.p.length >= 4) {   // smoothing trails slightly behind; finish the line where the pen lifted
-      var q = pt(e), n = s.p.length;
-      if (Math.abs(q[0] - s.p[n-2]) + Math.abs(q[1] - s.p[n-1]) >= 0.5) s.p.push(q[0], q[1]);
-    }
-    liveFinish(s);
+    if (e.type === 'pointerup') { var q = pt(e); liveLift(s, q[0], q[1]); }   // smoothing trails slightly behind; finish where the pen lifted
+    drawPieces(s, liveEndPieces(s, live));
     // the board sends a few-millisecond blip when you switch between hand and pen; drop it
     if (performance.now() - downAt < 15 && s.p.length <= 4) { redraw(); return; }
     strokes.push(s); lastCleared = null; save();
@@ -326,14 +408,6 @@
     else if (lastCleared) { setStrokes(lastCleared); lastCleared = null; redraw(); save(); }
   }
   function clearAll(){ if (strokes.length) lastCleared = strokes; setStrokes([]); redraw(); save(); }
-  function confirmTap(btn, fn){   // first tap arms ("Sure?"), second tap within 3s does it
-    if (!btn.classList.contains('warn')) {
-      btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = 'Sure?';
-      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 3000);
-      return;
-    }
-    clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label; fn();
-  }
 
   /* ---------- class periods ---------- */
   function renderPeriods(){
@@ -434,13 +508,6 @@
       setStatus('Could not save: ' + ((e && e.name) || e)); return false;
     }
   }
-  // show the result on the button itself, then put the label back
-  function flashBtn(btn, text, cls){
-    clearTimeout(btn._flash); btn.classList.remove('good', 'warn');
-    if (!btn._label) btn._label = btn.textContent;
-    btn.textContent = text; btn.classList.add(cls);
-    btn._flash = setTimeout(function(){ btn.classList.remove(cls); btn.textContent = btn._label; }, 3000);
-  }
   async function saveAndShow(btn, forcePick){
     var wasLinked = !forcePick && !!fileHandle && await hasPermission(false);
     var ok = await saveFile(forcePick);
@@ -493,24 +560,9 @@
     return true;
   }
   var STEPPERS = { thinner: [stepSize, -1], thicker: [stepSize, 1], rougher: [stepSmooth, -1], smoother: [stepSmooth, 1] };
-  var holdTimer = null;
-  function stopHold(){ clearTimeout(holdTimer); holdTimer = null; }
   Object.keys(STEPPERS).forEach(function(act){
     var b = bar.querySelector('[data-act="' + act + '"]'), step = STEPPERS[act][0], dir = STEPPERS[act][1];
-    b.addEventListener('pointerdown', function(e){
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      e.preventDefault(); stopHold();
-      try { b.setPointerCapture(e.pointerId); } catch(_){}
-      step(dir);
-      var delay = 160, n = 0;
-      holdTimer = setTimeout(function tick(){
-        if (!step(dir)) return stopHold();              // stop at the end of the range
-        n++; if (n === 6) delay = 80;                   // speed up after a few steps
-        holdTimer = setTimeout(tick, delay);
-      }, 450);                                          // hold this long before it starts repeating
-    });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function(t){ b.addEventListener(t, stopHold); });
-    b.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    holdRepeat(b, function(){ return step(dir); });
   });
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
@@ -583,7 +635,7 @@
         var c = document.createElement('canvas'), cx = c.getContext('2d');
         c.className = 'ink-print'; c.width = Math.round(CW * ps); c.height = Math.round(ph * ps);
         strokes.forEach(function(s){
-          if (layer === 'hl' ? (s.h || s.e) : (!s.h || s.e)) paint(cx, (PRINT_INK_BLACK && !s.e) ? { c: '#111', w: s.w, e: 0, p: s.p } : s, ps, 0, -top * ps);
+          if (layer === 'hl' ? (s.h || s.e) : (!s.h || s.e)) paintStroke(cx, (PRINT_INK_BLACK && !s.e) ? { c: '#111', w: s.w, e: 0, p: s.p } : s, ps, 0, -top * ps);
         });
         c.style.cssText = 'position:absolute;top:0;left:' + (-(CW - pw) / 2) + 'px;width:' + CW + 'px;height:' + ph + 'px;pointer-events:none;z-index:5' + (layer === 'hl' ? ';mix-blend-mode:multiply' : '');
         pg.appendChild(c);

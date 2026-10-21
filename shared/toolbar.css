@@ -1,0 +1,31 @@
+/* OverBoard toolbar styles, shared by the PDF app (linked) and the paste-in overlay (inlined by tools/build_overlay.py). */
+#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
+#ink-bar.right{left:auto;right:10px}
+#ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
+#ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
+#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
+#ink-bar button[data-act="hilite"].on{background:#fff176;color:#000}
+#ink-bar button.warn{background:#c62828}
+#ink-bar button.good{background:#2e7d32;color:#fff}
+#ink-bar button.sm{min-height:44px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ink-bar .wide{grid-column:1 / 3}
+#ink-colors{grid-column:1 / 3;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#ink-bar #ink-colors button{min-height:46px;height:46px;padding:0;border:3px solid transparent}
+#ink-bar #ink-colors button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
+#ink-colors .cwrap{position:relative;display:grid}
+#ink-bar #ink-colors button[data-act="custom"]{background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336);display:flex;align-items:center;justify-content:center}
+#ink-colors .fill{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:transparent}
+#ink-picker{position:absolute;left:0;bottom:0;width:100%;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+#ink-size,#ink-smooth{grid-column:1 / 3;display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center}
+#ink-bar #ink-size button,#ink-bar #ink-smooth button{font-size:28px;line-height:1;padding:0}
+#ink-size .val,#ink-smooth .val{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;font:700 16px Inter,system-ui,sans-serif;min-width:0}
+#ink-size .dot{display:block;border-radius:50%;box-shadow:0 0 0 2px #fff}
+#ink-smooth .val{gap:0}
+#ink-smooth .cap{display:block}
+#ink-bar .lbl{grid-column:1 / 3;color:#bbb;font:700 11px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+#ink-periods{grid-column:1 / 3;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#ink-bar #ink-periods button{padding:0}
+#ink-status{grid-column:1 / 3;color:#bbb;font:600 11px Inter,system-ui,sans-serif;text-align:center;line-height:1.3}
+#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;border-radius:50%;border:0;background:#1f1f1f;color:#ffd400;font:700 26px Inter,system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85}
+#ink-show.right{left:auto;right:16px}
+#ink-show.show{display:block}
