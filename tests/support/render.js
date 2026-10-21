@@ -21,7 +21,26 @@ async function pdfPixels(page, file, pageNo, points) {
   }, { b64, pageNo, points });
 }
 
+/* the text (per page) and link annotations a PDF file carries, read with PDF.js like any PDF reader would */
+async function pdfText(page, file) {
+  const b64 = fs.readFileSync(file).toString('base64');
+  return page.evaluate(async (b64) => {
+    const lib = await import(new URL('vendor/pdfjs-dist@4.10.38/pdf.min.mjs', new URL('/app/', location.href)).href);
+    lib.GlobalWorkerOptions.workerSrc = new URL('/app/vendor/pdfjs-dist@4.10.38/pdf.worker.min.mjs', location.href).href;
+    const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const pdf = await lib.getDocument({ data }).promise;
+    const text = [], links = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const pg = await pdf.getPage(n);
+      text.push((await pg.getTextContent()).items.map((i) => i.str).join(' '));
+      for (const a of await pg.getAnnotations()) if (a.subtype === 'Link') links.push({ page: n, url: a.url || null, dest: !!a.dest });
+    }
+    await pdf.destroy();
+    return { text, links };
+  }, b64);
+}
+
 const dark = ([r, g, b]) => r + g + b < 200;
 const white = ([r, g, b]) => r + g + b > 740;
 
-module.exports = { pdfPixels, dark, white };
+module.exports = { pdfPixels, pdfText, dark, white };

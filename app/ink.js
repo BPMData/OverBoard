@@ -119,9 +119,13 @@ export class Ink {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const T = this.T, kind = pointerKind(e);
     const scrolling = T.mode === 'scroll' || (kind === 'finger' && T.fingerScrolls);
+    // Scroll mode: pressing on the PDF's text selects it and links open, like any PDF viewer.
+    // (The text and link layers only take pointer events in Scroll mode, so this never happens in Write mode.)
+    const layer = T.mode === 'scroll' && e.target.closest && e.target.closest('.textLayer, a.ob-link');
+    if (layer) { if (layer.classList.contains('textLayer')) this.selecting(layer); return; }
     this.active = e.pointerId;
     try { this.box.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-    if (scrolling) { this.drag = { x: e.screenX, y: e.screenY }; e.preventDefault(); return; }
+    if (scrolling) { this.drag = { x: e.screenX, y: e.screenY, x0: e.screenX, y0: e.screenY }; e.preventDefault(); return; }
     const el = e.target.closest('.pg');
     if (!el) { this.active = null; return; }
     const P = el._P, q = this.pt(e, P), z = this.v.zoom;
@@ -161,7 +165,12 @@ export class Ink {
 
   end(e) {
     if (e.pointerId !== this.active) return;
+    const drag = this.drag;
     this.active = null; this.drag = null;
+    // a tap (not a drag) in Scroll mode clears a text selection, like clicking beside text does
+    if (drag && this.T.mode === 'scroll' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) < 8) {
+      const sel = window.getSelection(); if (sel) sel.removeAllRanges();
+    }
     const s = this.cur, P = this.curP;
     if (!s) return;
     this.cur = null; this.curP = null;
@@ -176,6 +185,14 @@ export class Ink {
     this.lastCleared = null;
     if (!this.v.want.has(P)) this.free(P);
     this.onChange();
+  }
+
+  /* while selecting, the layer's filler covers the gaps between words so the selection doesn't jump */
+  selecting(layer) {
+    layer.classList.add('selecting');
+    const done = () => { layer.classList.remove('selecting'); window.removeEventListener('pointerup', done, true); window.removeEventListener('pointercancel', done, true); };
+    window.addEventListener('pointerup', done, true);
+    window.addEventListener('pointercancel', done, true);
   }
 
   /* ---------- undo / clear / periods ---------- */

@@ -44,13 +44,16 @@ Added after v2:
 - **Self-hosted libraries.** PDF.js and pdf-lib are served from `app/vendor/` (copied by `tools/vendor_libs.py`), so the app never contacts another site.
 - **Version stamp.** `app/index.html` loads its modules through a small loader that reads `app/version.json` fresh and maps every module to `?v=<hash>` with an import map (the hash covers `app/` and `shared/`; `tools/build.py` writes it). An older cached copy of the page reloads itself once. This avoids mixing files during GitHub Pages' 10-minute browser cache.
 - **Toolbar fits 1080p.** Page ▲ / number / ▼ share one row, and Export PDF, ink files, Save ink into PDF, Open another PDF and Move toolbar are in a File ▸ menu beside the toolbar.
-- **Tests.** Playwright suite in `tests/` (28 tests) plus both `--check`s, run on every pull request.
+- **Tests.** Playwright suite in `tests/` plus both `--check`s, run on every pull request.
+- **Text layer and links** (`app/textlayer.js`). Each page gets a PDF.js `TextLayer` (selectable, invisible text over the image) and a `.links` box of `<a>` elements from its Link annotations. Both are made after the page image renders and freed with it, so only pages near the screen have them. They are laid out once at scale 1 in % of the page; `--scale-factor` on each `.pg` (= zoom) sizes the text, so zooming doesn't rebuild them. Rotated pages: `TextLayer` sets `data-main-rotation` and `app.css` rotates the layer (rules adapted from PDF.js's `pdf_viewer.css`); link boxes come from the rotated viewport. External links (`url`, which PDF.js only fills for safe schemes) open in a new tab; internal ones (`dest`, or Next/Prev/First/Last page actions) go through `viewer.goTo`.
+  - **Input.** In Write mode the layers have `pointer-events: none`, so pen, palm and finger draw, erase and scroll exactly as before. In Scroll mode a press on text or a link is left to the browser (select, click); a press anywhere else still drag-scrolls, and a tap there clears the selection.
+  - **Find text** (`app/find.js`, File menu or Ctrl/⌘+F) reads each page with `getTextContent` (kept as plain strings for the next search), lists up to 500 hits with page numbers, and marks matches inside the live text layers (`<mark class="hit">`). Matches that cross two text runs are listed but not marked.
+  - **Exports keep the text.** Export PDF only appends drawing operators to the original pages and Save ink into PDF only appends an update, so the original text, fonts and links are untouched. Tests check `getTextContent` on both outputs equals the original's.
 
 Left for later from v2:
 
 - Export all periods at once (one PDF per period, or layers).
 - Pinch-zoom on touch screens (trackpad pinch and the toolbar buttons work).
-- Text selection / links inside the PDF (no text layer yet).
 - Offline use (the libraries are now served from the site; a service worker would let the app open with no connection at all).
 
 ## Later

@@ -27,15 +27,20 @@ test('chapters, page box and page buttons', async ({ page }) => {
   await expect.poll(() => current(page)).toBe(301);
 });
 
-test('only pages near the screen keep images while scrolling the whole book', async ({ page }) => {
-  let most = 0;
+test('only pages near the screen keep images and text layers while scrolling the whole book', async ({ page }) => {
+  let most = 0, mostText = 0, text = 0;
   for (let i = 0; i < 60; i++) {
     await page.evaluate(() => scrollBy(0, innerHeight * 1.5));
     await page.waitForTimeout(30);
-    most = Math.max(most, (await page.evaluate(() => __overboard.viewer.stats())).images);
+    const s = await page.evaluate(() => ({ ...__overboard.viewer.stats(), dom: document.querySelectorAll('.textLayer').length }));
+    most = Math.max(most, s.images);
+    mostText = Math.max(mostText, s.textLayers, s.dom);
+    text += s.textLayers;
   }
   expect(await current(page)).toBeGreaterThan(40);
   expect(most).toBeLessThanOrEqual(8);
+  expect(text).toBeGreaterThan(0);              // text layers were made on the way
+  expect(mostText).toBeLessThanOrEqual(8);      // and freed with the images
 });
 
 test('mixed page sizes and rotation; export puts ink in the right place', async ({ page }, info) => {

@@ -25,6 +25,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page
 - **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
+- **The PDF's text stays text**: select and copy it, follow its links, and search the whole book (great with OCR'd scans). Exports keep it.
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
 - **Hide the toolbar** down to a small button when you want the whole screen
 
@@ -36,8 +37,10 @@ Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app
 - **Clear page** clears the page you're looking at (Undo brings it back), so a textbook's other pages are safe.
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
+- **Text and links work like a normal PDF reader** in **Scroll** mode: drag across text to select and copy it (scanned PDFs too, if they were OCR'd), tap a link in a contents page to jump there, and web links open in a new tab. In **Write** mode the pen, palm and finger work exactly as before; the text never gets in the way.
+- **Find text** (File ▸ Find text…, or Ctrl/⌘+F) searches every page of the PDF, not just the ones on screen. Tap a result to jump to it.
 - **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time.
-- **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class.
+- **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class. The original text and links stay in it, so it can still be searched and copied.
 - **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
 - **Save ink into PDF** (optional, off until you turn it on) keeps all periods' ink inside a PDF file you choose, by default a new `Name_board.pdf`. The pages aren't changed: the ink is added at the end of the file, so other apps show the plain PDF. Open that file in OverBoard on any computer and keep writing. In Chrome or Edge it then saves into the file automatically; tap the button again to stop. Other browsers get a one-time download.
 
@@ -72,7 +75,7 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 - `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay.
 - **After editing anything in `app/` or `shared/`, run `python3 tools/build.py`.** It copies the shared code into the paste-in overlay (which must stay one self-contained file) and the demo page, and updates the app's version stamp (`app/version.json`), so browsers never mix old and new files after an update. `--check` fails if you forgot.
 - **Libraries** (PDF.js, pdf-lib) live in `app/vendor/`, so the app works behind school web filters that block CDNs. Versions are pinned in `app/libs.js`; after changing one, run `python3 tools/vendor_libs.py` (downloads from npm and verifies checksums).
-- **Tests** run in a real browser (Playwright): pen, palm, finger, highlighter, zoom alignment, saving, ink files, Export PDF, Save ink into PDF, HTML board copies and the overlay.
+- **Tests** run in a real browser (Playwright): pen, palm, finger, highlighter, zoom alignment, text selection and links, search, saving, ink files, Export PDF (and that it keeps the PDF's text), Save ink into PDF, HTML board copies and the overlay.
 
   ```bash
   npm install

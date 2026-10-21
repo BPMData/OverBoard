@@ -1,13 +1,15 @@
 {
-  "v": "18d7241287b6",
+  "v": "85b5a6eb0d3e",
   "js": [
     "embed.js",
     "export.js",
+    "find.js",
     "html.js",
     "ink.js",
     "libs.js",
     "main.js",
     "store.js",
+    "textlayer.js",
     "viewer.js",
     "../shared/ink-core.js"
   ],
