@@ -13,18 +13,35 @@
 - **Saving.** Browser `localStorage` (key `ink-v2:<path>:<title>`), plus optional File System Access write into the `<script id="ink-data">` block of the .html file.
 - **Print.** `beforeprint` redraws each page's strokes as vectors at `PRINT_SCALE` onto per-page canvases.
 
-## Next: v2, the PDF viewer (main project)
+## Done: v2 (PDF app)
 
-Goal: a teacher opens the GitHub Pages site, drops in a PDF (worksheet or whole textbook), and annotates it on the board with the same toolbar and behavior as v1.
+`app/index.html` opens a PDF in the browser (no server, no build step; plain ES modules). Status of the original v2 plan:
 
-1. **App shell** at `app/index.html` (linked from the demo page): drop zone / file picker, no build step required (plain ES modules; libraries from a pinned CDN version).
-2. **Render with PDF.js** (pinned version). Each PDF page becomes a `.page` element sized to the page's aspect ratio.
-3. **One ink canvas per page** instead of one giant canvas. Strokes store `{ page: n, ... }` with coordinates in *page units* (fraction of page width, or PDF points) so zoom changes never misalign ink. Keep the margin/side-space idea if practical (a per-page gutter), or drop it for PDFs.
-4. **Lazy rendering for books.** Only render the PDF page images and ink canvases for pages within ~2 screens of the viewport (IntersectionObserver); free the rest. A 600-page book must scroll smoothly and stay under ~500 MB of memory.
-5. **Reuse the v1 toolbar and input logic.** Factor the shared parts (toolbar, input handling, smoothing, palm/finger rules, periods) out of `ink_overlay.html` into a module both v1 and v2 can use, without breaking the paste-in snippet (the snippet can stay a generated, self-contained build artifact).
-6. **Persistence.** Key ink by a hash of the PDF file (SHA-256 of the bytes, or of the first few MB + size). Store in IndexedDB (not localStorage: books are big). **Export / import ink** as a small `.overboard.json` sidecar file.
-7. **Export annotated PDF** with pdf-lib: draw each page's strokes into the original PDF as vector paths (highlights with multiply blend or opacity), so the result is small and crisp. This is the headline teacher feature.
-8. **Page navigation** for long documents: page number box, jump to page, and the PDF's outline (chapters) in a side list.
+1. ✅ **App shell** at `app/` (linked from the demo page): drop zone, file picker, drop anywhere, "Open again" list.
+2. ✅ **Render with PDF.js** `4.10.38` from jsDelivr (pinned in `app/libs.js`). Each page is a `.pg` element sized to the page.
+3. ✅ **One ink canvas per page** (plus a highlighter canvas under it, only when the page has highlights). Kept the side space: each page has a 36 pt writable gutter left and right; it doesn't export.
+4. ✅ **Lazy rendering.** Page images render within 1 screen of the viewport and are freed 2 screens away; ink canvases exist only for nearby pages that have ink. Page sizes start at page 1's size and are corrected in the background.
+5. ✅ **Shared code.** `shared/ink-core.js` (curve drawing, live drawing, smoothing, pen/palm/finger classification, hold-to-repeat, confirm tap) and `shared/toolbar.css` are imported by the app and inlined into the overlay by `tools/build_overlay.py` (overlay v15). The overlay is still one self-contained paste-in block.
+6. ✅ **Persistence** in IndexedDB (`overboard` database: `ink` and `files` stores) keyed by the SHA-256 of the PDF bytes. **Save ink / Load ink** uses an `.overboard.json` sidecar.
+7. ✅ **Export PDF** with pdf-lib `1.17.1`: strokes become vector Bézier paths in the original PDF; highlights use the Multiply blend mode under the pen ink.
+8. ✅ **Page navigation:** page number box, ▲/▼ Page, and the PDF outline as a Chapters panel (current chapter marked).
+
+Key facts for contributors:
+
+- **Coordinates.** Ink is in PDF points measured from the top-left of the page *as shown* (PDF.js viewport at scale 1, so `/Rotate` and the crop box are already applied). Screen px = points × `zoom` (+ the gutter). Zoom never moves ink.
+- **Stroke format.** v1's stroke plus `page` (1-based): `{ page, c, w, e, h, p }`, with `w` and `p` in points. Data is `{ v: 3, t, active, at: lastPage, periods: { P1: [strokes in drawing order] } }`. The sidecar wraps the same periods: `{ app: "OverBoard", kind: "pdf-ink", v: 3, pdf: { sha256, name, pages }, t, active, periods }`.
+- **Sizes.** Toolbar sizes keep v1's units (1/96 in), stored as points (× 0.75), so pen and highlighter scale with the page. Eraser and palm widths are screen px ÷ zoom, so the palm feels the same at any zoom.
+- **Colors.** Same as v1: `penColor` / `hlColor`, highlighter starts yellow, saved as `ink-hl-color` (shared with the overlay on the same site).
+- **Clear** clears only the current page in the PDF app (Undo restores it).
+- **Export.** Each page's ink is mapped back with the inverse of the PDF.js viewport transform. PDFs have no eraser, so erasers are applied geometrically on export: sample points of earlier strokes under the eraser path are dropped and the strokes split there. Only the active period is exported.
+- **Memory** (measured headless at 1920×1080, devicePixelRatio 2, 320-page book): page process peaks around 640 MB while fast-scrolling, about 450 MB above the empty app, and settles near 520 MB. Each page image is capped at 12 MP.
+
+Left for later from v2:
+
+- Export all periods at once (one PDF per period, or layers).
+- Pinch-zoom on touch screens (trackpad pinch and the toolbar buttons work).
+- Text selection / links inside the PDF (no text layer yet).
+- Offline use without the CDN (vendor the two libraries or add a service worker).
 
 ## Later
 

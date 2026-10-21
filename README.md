@@ -6,7 +6,7 @@ OverBoard is a free writing layer for interactive whiteboards. Write on a worksh
 
 It runs in the browser, needs no account, and nothing leaves your computer.
 
-**[Try the demo →](https://bpmdata.github.io/OverBoard/)**
+**[Try the demo →](https://bpmdata.github.io/OverBoard/)** · **[Write on a PDF →](https://bpmdata.github.io/OverBoard/app/)**
 
 ## Why this exists
 
@@ -22,12 +22,27 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page
+- **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
 - **Hide the toolbar** down to a small button when you want the whole screen
 
-## Use it on your own worksheets (HTML)
+## Use it on a PDF
 
-OverBoard currently works on HTML worksheets. PDF support is next; see the [roadmap](docs/ROADMAP.md).
+Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
+
+- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo.
+- **Clear page** clears the page you're looking at (Undo brings it back), so a textbook's other pages are safe.
+- **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
+- **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
+- **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time.
+- **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class.
+- **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
+
+Word files: in Word, choose File → Save as PDF, then open the PDF.
+
+The app needs an internet connection the first time it loads, to fetch the PDF reader ([PDF.js](https://mozilla.github.io/pdf.js/)) and, for Export PDF, [pdf-lib](https://pdf-lib.js.org/), both from jsDelivr.
+
+## Use it on your own worksheets (HTML)
 
 **Option 1: the installer (easiest).** Download this repo, then double-click:
 
@@ -46,6 +61,16 @@ python3 overlay/ink_overlay_installer.py worksheet.html --open
 
 Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 8.5×11 in) get page-by-page jumping and PDF output. Other pages still work and print as one long sheet.
 
+## For contributors
+
+- `app/` is the PDF app: plain ES modules, no build step. Library versions are pinned in `app/libs.js`.
+- `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay. The overlay must stay one paste-in file, so after editing them run:
+
+  ```bash
+  python3 tools/build_overlay.py          # copies them into overlay/ink_overlay.html and the demo page
+  python3 tools/build_overlay.py --check  # fails if something is out of date
+  ```
+
 ## Smartboard tips
 
 - **Turn off the board's own ink tool** so it doesn't fight OverBoard. On a Mac with SMART software, this stops SMART Ink from starting:
@@ -60,7 +85,7 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 
 ## Privacy
 
-OverBoard has no server. Ink is stored in your browser (and, if you choose, inside your own file). Nothing is uploaded.
+OverBoard has no server. Ink (and PDFs you open in the app) are stored in your browser (and, if you choose, inside your own file). Nothing is uploaded. The PDF app downloads its two open-source libraries from jsDelivr; your files never go anywhere.
 
 ## Contributing
 
