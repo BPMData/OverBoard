@@ -6,6 +6,7 @@
 
 - **Coordinates.** Ink is stored in CSS px relative to the *page column*: a band `CW` wide (widest `.page` + 96 px margin), centered in the body. The canvas spans the full window; `OX` is where the column starts inside it. This keeps ink aligned across zoom and resize.
 - **Stroke format.** `{ c: color, w: width, e: 1 if eraser, h: 1 if highlight, p: [x0,y0,x1,y1,...] }`. Data is `{ v: 2, t: savedAtMs, active: "P1", periods: { P1: [strokes], ... } }`.
+- **Colors.** Pen and highlighter each remember their own color (`penColor`, `hlColor`; highlighter starts yellow `#fdd835`, saved as `ink-hl-color`). Toggling the highlighter swaps between them.
 - **Layers.** Pen ink on `#ink-canvas`; highlights on `#ink-hl` underneath with `mix-blend-mode: multiply`; eraser strokes cut through both.
 - **Rendering.** Strokes are quadratic curves through sample midpoints, with an exponential smoothing filter on input (`SMOOTHING` level 0–8). Live drawing renders the identical curve piece by piece.
 - **Input (SMART Board on macOS, observed with `tools/board-probe.html`).** Pen tip → `pointerType: "pen"`, `buttons: 1`. Palm/fist/side of hand → `"pen"` with `buttons: 32` (eraser). Finger and the pen's round end → `"mouse"`. Contact size is always 1×1. Only one pointer reaches the browser at a time. A still finger is held back by the driver until it moves.
@@ -30,4 +31,5 @@ Goal: a teacher opens the GitHub Pages site, drops in a PDF (worksheet or whole 
 - **Splitter tool**: split a PDF by its outline (chapters) or every N pages, with pdf-lib, entirely in the browser.
 - **Generic touch mode** for non-SMART boards (Windows touch screens report `pointerType: "touch"` with real contact sizes, so palm detection can use `width`/`height`). Ask contributors for probe logs.
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."
+- **Highlighter opacity / redaction**: long-press the Highlighter button for an opacity control, so a dark highlight can black out answers and be erased later. Must not add toolbar clutter.
 - **Large-document HTML mode**: per-`.page` canvases in the v1 overlay too, so very long HTML packets stay sharp.

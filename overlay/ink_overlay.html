@@ -1,8 +1,8 @@
-<!-- ===== INK OVERLAY START (v13) =====
+<!-- ===== INK OVERLAY START (v14) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
-  HIGHLIGHTER: toggle it on, then any color highlights. Highlights sit under the pen ink and never hide the printed text.
+  HIGHLIGHTER: toggle it on (starts yellow; it remembers its own color separately from the pen), then any color highlights. Highlights sit under the pen ink and never hide the printed text.
   Works best with fixed-size .page elements (any paper size): Page jump and Save PDF then work per page.
   Without .page elements it still scrolls and prints the whole body as one sheet.
   PERIODS: each class period (P1-P4) keeps its own ink on the same worksheet. Tap a period button to switch.
@@ -94,6 +94,7 @@
   var FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. false = finger draws too. The toolbar button flips this (remembered per browser).
   var PALM_ERASER_W = 92;         // eraser size (px) when you wipe with your palm, fist or side of hand
   var SMOOTHING = 3;              // starting level 0-8 (toolbar buttons change it, remembered per browser). 0 = off. 3-6 = steadier, rounder lines. 7-8 lag behind the pen.
+  var HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
   var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
   var HIGHLIGHT_TINT = 0.5;       // how much white is mixed into the color for highlighting (0 = full color, 0.8 = very pale)
   var PRINT_SCALE = 3;            // Save PDF redraws the ink at this sharpness (3 = crisp print)
@@ -112,11 +113,13 @@
   var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
   var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
   var D, strokes, lastCleared = null, cur = null, active = null;
-  var color = '#111111', width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
+  var penColor = '#111111', hlColor = HIGHLIGHT_COLOR;   // pen and highlighter each remember their own color
+  var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function setLS(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
   var sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) width = sw;
   var hw = parseFloat(getLS('ink-hl-width')); if (hw >= 8 && hw <= 40) hlWidth = hw;
+  var hc = getLS('ink-hl-color'); if (/^#[0-9a-f]{6}$/i.test(hc || '')) hlColor = hc;
   var cc = getLS('ink-custom'); if (/^#[0-9a-f]{6}$/i.test(cc || '')) customColor = cc;
   var showBtn = document.getElementById('ink-show');   // little round button left behind when the toolbar is hidden
   showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); });
@@ -464,7 +467,11 @@
     bar.querySelector('[data-act="write"]').classList.toggle('on', m === 'write');
     bar.querySelector('[data-act="scroll"]').classList.toggle('on', m === 'scroll');
   }
-  function pickColor(c){ color = c; erasing = false; setMode('write'); refresh(); }
+  function pickColor(c){
+    color = c;
+    if (hiliting) { hlColor = c; setLS('ink-hl-color', c); } else penColor = c;
+    erasing = false; setMode('write'); refresh();
+  }
   /* - / + buttons: tap = one step; hold = keeps stepping, speeding up. Size controls the highlighter width while it's on. */
   function stepSize(dir){
     if (hiliting) {
@@ -515,7 +522,10 @@
       case 'write': setMode('write'); break;
       case 'scroll': setMode('scroll'); break;
       case 'erase': erasing = !erasing; setMode('write'); break;
-      case 'hilite': hiliting = erasing ? true : !hiliting; erasing = false; setMode('write'); break;
+      case 'hilite':
+        hiliting = erasing ? true : !hiliting;
+        color = hiliting ? hlColor : penColor;   // highlighter gets its own color back; turning it off restores your pen color
+        erasing = false; setMode('write'); break;
       case 'custom':
         if (customColor && (color !== customColor || erasing)) pickColor(customColor);
         else { picker.value = customColor || color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch(_){ picker.click(); } }
