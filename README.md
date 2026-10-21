@@ -8,7 +8,7 @@ OverBoard is a free writing layer for interactive whiteboards. Write on a worksh
 
 It runs in the browser, needs no account, and nothing leaves your computer.
 
-**[Try the demo →](https://bpmdata.github.io/OverBoard/)** · **[Write on a PDF →](https://bpmdata.github.io/OverBoard/app/)**
+**[Try the demo →](https://bpmdata.github.io/OverBoard/)** · **[Write on a PDF or HTML worksheet →](https://bpmdata.github.io/OverBoard/app/)**
 
 ## Why this exists
 
