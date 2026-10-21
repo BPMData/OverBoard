@@ -36,6 +36,11 @@ Key facts for contributors:
 - **Export.** Each page's ink is mapped back with the inverse of the PDF.js viewport transform. PDFs have no eraser, so erasers are applied geometrically on export: sample points of earlier strokes under the eraser path are dropped and the strokes split there. Only the active period is exported.
 - **Memory** (measured headless at 1920×1080, devicePixelRatio 2, 320-page book): page process peaks around 640 MB while fast-scrolling, about 450 MB above the empty app, and settles near 520 MB. Each page image is capped at 12 MP.
 
+Added after v2:
+
+- **HTML in the app.** Dropping an `.html` worksheet makes a `Name_board.html` copy with the overlay, the same as the installer (`app/html.js` mirrors `ink_overlay_installer.py`; output is byte-identical).
+- **Save ink into PDF** (opt-in, `app/embed.js`). The ink (sidecar format) is stored as the attachment `overboard-ink.json`, written as one standard incremental update after the original bytes: new embedded-file, filespec, name-tree and Names objects, a new version of the catalog, and an xref section of the same kind as the original's (table or stream) with `/Prev`. The trailer carries `/OverBoardBase <original length>`, so each save writes *original + a fresh update* (the file doesn't grow) and OverBoard hashes only the original bytes (same ink key as the plain PDF). If another app saves after us, the whole file counts as the original. Encrypted PDFs are refused. Export PDF uses the original bytes, so exports don't carry the stored ink. The chosen file handle is remembered in IndexedDB (`links` store); after a browser restart the button asks for permission again.
+
 Left for later from v2:
 
 - Export all periods at once (one PDF per period, or layers).

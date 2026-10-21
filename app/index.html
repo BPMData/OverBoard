@@ -15,17 +15,19 @@
     <h1>OverBoard <span>PDF</span></h1>
     <p class="lead">Write on any PDF on your smartboard: a worksheet or a whole textbook.</p>
     <label id="ob-drop" tabindex="0">
-      <input type="file" id="ob-file" accept="application/pdf,.pdf" hidden>
+      <input type="file" id="ob-file" accept="application/pdf,.pdf,text/html,.html,.htm" hidden>
       <strong>Drop a PDF here</strong>
       <span>or tap to choose one</span>
     </label>
     <p id="ob-error" role="alert" hidden></p>
+    <p id="ob-msg" role="status" hidden></p>
     <section id="ob-recent" hidden>
       <h2>Open again</h2>
       <ul></ul>
     </section>
     <p class="note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
       Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here.
+      Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on (same as the installer).
       <br><a href="../">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard">About OverBoard</a></p>
   </div>
 </main>
@@ -71,6 +73,7 @@
   <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
   <button data-act="ink-save" title="Download the ink (all periods) as a small .overboard.json file">Save ink</button>
   <button data-act="ink-load" title="Load ink from an .overboard.json file">Load ink</button>
+  <button data-act="pdf-link" class="sm wide" title="Keep the ink inside a PDF file (you choose the file)">Save ink into PDF…</button>
   <button data-act="close" class="sm wide" title="Close this PDF and pick another (ink is saved)">Open another PDF</button>
   <button data-act="side">&#9664; Move &#9654;</button>
   <button data-act="hide">Hide</button>
@@ -78,6 +81,19 @@
   <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
+<dialog id="ob-embed" aria-labelledby="ob-embed-h">
+  <h2 id="ob-embed-h">Keep the ink inside a PDF file?</h2>
+  <ul>
+    <li>OverBoard saves a PDF on this computer with <b>all class periods' ink</b> stored inside it.</li>
+    <li><b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.</li>
+    <li>Open that file in OverBoard on any computer and the ink comes back, ready to keep writing.</li>
+    <li class="fsa">While this is on, every change is saved into that file a few seconds after you stop writing. Tap the same button to turn it off.</li>
+    <li class="fsa">We suggest a new file, <b class="name">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.</li>
+    <li class="nofsa">This browser can't keep saving into a file, so you get a one-time download, <b class="name">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.</li>
+  </ul>
+  <p class="off">Leave it off and nothing changes: ink still saves in this browser.</p>
+  <div class="row"><button value="cancel">Cancel</button><button value="ok" class="go">Choose file…</button></div>
+</dialog>
 <div id="ob-dropcover" hidden><div>Drop to open</div></div>
 
 <script type="module" src="main.js"></script>

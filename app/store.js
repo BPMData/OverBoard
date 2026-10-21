@@ -2,7 +2,7 @@
 // Nothing here leaves the browser.
 
 const DB_NAME = 'overboard';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const MAX_RECENT = 12;          // PDFs kept for one-tap reopening (ink is kept even after a PDF is dropped from this list)
 
 let dbPromise = null;
@@ -14,6 +14,7 @@ function db() {
         const d = rq.result;
         if (!d.objectStoreNames.contains('ink')) d.createObjectStore('ink');     // hash -> ink data
         if (!d.objectStoreNames.contains('files')) d.createObjectStore('files'); // hash -> { hash, name, size, pages, opened, blob }
+        if (!d.objectStoreNames.contains('links')) d.createObjectStore('links'); // hash -> file handle that "Save ink into PDF" writes to
       };
       rq.onsuccess = () => resolve(rq.result);
       rq.onerror = () => reject(rq.error);
@@ -54,6 +55,10 @@ export async function listFiles() {   // newest first, without the PDF bytes
   const recs = await run('files', 'readonly', (s) => s.getAll());
   return (recs || []).map(({ blob, ...r }) => r).sort((a, b) => b.opened - a.opened);
 }
+
+export const getLink = (hash) => run('links', 'readonly', (s) => s.get(hash));
+export const setLink = (hash, handle) => run('links', 'readwrite', (s) => s.put(handle, hash));
+export const forgetLink = (hash) => run('links', 'readwrite', (s) => s.delete(hash));
 
 export const getFile = (hash) => run('files', 'readonly', (s) => s.get(hash));
 export const forgetFile = (hash) => run('files', 'readwrite', (s) => s.delete(hash));
