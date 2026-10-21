@@ -35,7 +35,7 @@ Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
 - **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time.
-- **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines. Share it, print it, or post it to your class.
+- **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class.
 - **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
 
 Word files: in Word, choose File → Save as PDF, then open the PDF.

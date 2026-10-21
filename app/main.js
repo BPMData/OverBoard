@@ -420,6 +420,8 @@ function isOnScreen(n) {
 
 /* ---------- export annotated PDF ---------- */
 const baseName = () => doc.name.replace(/\.pdf$/i, '');
+// only the active period is exported, so the name says which: Moby_Dick_annotated_P1.pdf
+const exportName = () => (baseName() + '_annotated_' + D.active).replace(/\s+/g, '_') + '.pdf';
 async function exportPdf(btn) {
   if (!doc) return;
   await writeNow();
@@ -430,7 +432,7 @@ async function exportPdf(btn) {
     const { exportAnnotatedPdf } = await import('./export.js');
     const bytes = new Uint8Array(await doc.file.arrayBuffer());
     const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus('Making the PDF… ' + n + ' pages'));
-    store.download(new Blob([out], { type: 'application/pdf' }), baseName() + ' (' + D.active + ' ink).pdf');
+    store.download(new Blob([out], { type: 'application/pdf' }), exportName());
     setStatus(D.active + ' · PDF downloaded');
     flashBtn(btn, 'Downloaded!', 'good');
   } catch (e) {
