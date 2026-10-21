@@ -31,4 +31,20 @@ async function download(page, action) {
   return dl;
 }
 
-module.exports = { expect, fixture, openApp, openPdf, strokes, last, fileMenu, download };
+/* real taps through Chrome's input pipeline (pointer events + click), like the SMART Board sends them:
+   the pen tip is pointerType "pen", a finger is "mouse" */
+async function tap(page, x, y, pointerType = 'pen') {
+  const s = await page.context().newCDPSession(page);
+  await s.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType });
+  await s.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, pointerType });
+  await new Promise((r) => setTimeout(r, 40));   // the app drops sub-15 ms blips (hand/pen switching)
+  await s.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1, pointerType });
+  await s.detach();
+}
+async function tapOn(page, selector, pointerType) {
+  const b = await page.locator(selector).boundingBox();
+  await tap(page, b.x + b.width / 2, b.y + b.height / 2, pointerType);
+}
+const penTap = (page, x, y) => tap(page, x, y, 'pen');
+
+module.exports = { expect, fixture, openApp, openPdf, strokes, last, fileMenu, download, tap, tapOn, penTap };

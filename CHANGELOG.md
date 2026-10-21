@@ -4,6 +4,7 @@
 
 - **PDF text is selectable and links work** (in Scroll mode): copy text, follow contents-page links, open web links. Write mode is unchanged. Exports keep the original text.
 - **Find text** searches the whole PDF (File ▸ Find text…, or Ctrl/⌘+F).
+- **Cover** (Highlighter ▾): solid black or gray bars that hide answers on the board and erase like any ink. Export PDF keeps them and warns that covered text can still be copied.
 
 ## v1.0.0 (2026-10-21)
 

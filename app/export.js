@@ -91,6 +91,12 @@ function strokeOps(L, s) {
 
 /* bytes: the original PDF. pdf: the open PDF.js document (for each page's viewport transform).
    byPage: Map(pageNumber -> strokes in drawing order). Returns the new PDF's bytes. */
+/* true if any cover is still there after erasers (its text underneath stays in the PDF) */
+export function hasCovers(byPage) {
+  for (const list of byPage.values()) if (list.some((s) => s.o) && applyErasers(list).some((s) => s.o)) return true;
+  return false;
+}
+
 export async function exportAnnotatedPdf(bytes, pdf, byPage, onProgress) {
   const L = await loadPdfLib();
   const out = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
@@ -105,7 +111,8 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, onProgress) {
     const m = invert(vp.transform);            // page-as-shown points -> PDF user space
     const ops = [L.pushGraphicsState(), L.concatTransformationMatrix(...m.map(r3)),
       L.setLineCap(L.LineCapStyle.Round), L.setLineJoin(L.LineJoinStyle.Round)];
-    const hl = drawn.filter((s) => s.h), pen = drawn.filter((s) => !s.h);
+    // covers (o: 1) are opaque and drawn in order with the pen ink, over the page's text, like on screen
+    const hl = drawn.filter((s) => s.h && !s.o), pen = drawn.filter((s) => !s.h || s.o);
     if (hl.length) {   // highlights go under the pen ink and multiply, so printed text stays readable
       const gs = page.doc.context.obj({ Type: 'ExtGState', BM: 'Multiply' });
       const key = page.node.newExtGState('GS', gs);

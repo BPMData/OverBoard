@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="85b5a6eb0d3e">
+<meta name="ob-version" content="fdc7594630b0">
 <link rel="stylesheet" href="../shared/toolbar.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -54,7 +54,7 @@
   <button data-act="finger" class="sm wide">Finger: scrolls</button>
   <div class="lbl">Class period</div>
   <div id="ink-periods"></div>
-  <button data-act="hilite" class="wide">Highlighter</button>
+  <div id="ob-hl"><button data-act="hilite" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" title="Highlight or cover (black out answers)">&#9662;</button></div>
   <div id="ink-colors">
     <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
     <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue"></button>
@@ -78,6 +78,12 @@
   <div id="ink-status">Ready</div>
   <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
 </div>
+<div id="ob-hlmenu" role="menu" aria-label="Highlighter" hidden>
+  <button data-act="hl-mode" data-mode="hl" class="wide"><span class="sw hl"></span>Highlight<small>see-through</small></button>
+  <button data-act="hl-mode" data-mode="cover" data-cover="#111111" class="wide"><span class="sw" style="background:#111"></span>Cover: black<small>hides answers</small></button>
+  <button data-act="hl-mode" data-mode="cover" data-cover="#5f5f5f" class="wide"><span class="sw" style="background:#5f5f5f"></span>Cover: dark gray</button>
+  <button data-act="hl-mode" data-mode="cover" data-cover="#a6a6a6" class="wide"><span class="sw" style="background:#a6a6a6"></span>Cover: light gray</button>
+</div>
 <div id="ob-filemenu" role="menu" aria-label="File" hidden>
   <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
   <button data-act="find" class="wide" title="Search the text of the whole PDF (Ctrl+F)">Find text…</button>
@@ -100,6 +106,15 @@
   </ul>
   <p class="off">Leave it off and nothing changes: ink still saves in this browser.</p>
   <div class="row"><button value="cancel">Cancel</button><button value="ok" class="go">Choose file…</button></div>
+</dialog>
+<dialog id="ob-coverwarn" aria-labelledby="ob-coverwarn-h">
+  <h2 id="ob-coverwarn-h">Covered answers can still be copied from this PDF</h2>
+  <ul>
+    <li>The covers look the same in the PDF: answers are hidden on screen and on paper.</li>
+    <li><b>But the text under a cover is still in the file.</b> Anyone with the PDF can select, copy or search it.</li>
+    <li>To hand out a copy with the answers truly gone, print it on paper, or remove the answers from the original document before making the PDF.</li>
+  </ul>
+  <div class="row"><button value="cancel">Cancel</button><button value="ok" class="go">Export anyway</button></div>
 </dialog>
 <div id="ob-dropcover" hidden><div>Drop to open</div></div>
 
