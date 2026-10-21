@@ -47,7 +47,7 @@ The app needs an internet connection the first time it loads, to fetch the PDF r
 
 ## Use it on your own worksheets (HTML)
 
-**Option 0: no download.** Drop the `.html` file onto the [PDF app](https://bpmdata.github.io/OverBoard/app/). It saves a `Name_board.html` copy with OverBoard added (or upgraded, keeping saved ink), exactly like the installer. Keep the copy in the same folder as the original so its pictures load, then double-click it.
+**Option 0: no download.** Drop the `.html` file onto the [PDF app](https://bpmdata.github.io/OverBoard/app/). It saves a `Name_board.html` copy with OverBoard added (or upgraded, keeping saved ink), exactly like the installer. Double-click the copy to open it. (If the worksheet uses pictures stored as separate files, the app tells you to keep the copy in the same folder as the original.)
 
 **Option 1: the installer.** Download this repo, then double-click:
 

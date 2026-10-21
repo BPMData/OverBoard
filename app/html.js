@@ -76,3 +76,20 @@ export async function saveBoardCopy(text, name, startIn) {
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
   return 'downloaded ' + name;
 }
+
+/* Files the worksheet loads from next to itself (pictures, stylesheets, scripts, fonts), e.g. "images/diagram.png".
+   Those break if the board copy is saved in a different folder. Web links, data: URLs and drawn/inline SVG are fine. */
+export function localFiles(html) {
+  const page = html.replace(BLOCK_RE, '').replace(/<!--[\s\S]*?-->/g, '');
+  const found = new Set();
+  const local = (u) => u && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(u.trim()) && u.trim() !== '';
+  const add = (u) => { u = (u || '').trim().replace(/^["']|["']$/g, ''); if (local(u)) found.add(u.split(/[?#]/)[0]); };
+  for (const m of page.matchAll(/<(?:img|source|script|video|audio|track|embed|iframe|input)\b[^>]*?\s(?:src|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi)) add(m[1]);
+  for (const m of page.matchAll(/<(?:img|source)\b[^>]*?\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi)) m[1].slice(1, -1).split(',').forEach((c) => add(c.trim().split(/\s+/)[0]));
+  for (const m of page.matchAll(/<link\b[^>]*>/gi)) {
+    if (!/\brel\s*=\s*["']?[^"'>]*(?:stylesheet|icon|preload)/i.test(m[0])) continue;
+    const h = /\shref\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i.exec(m[0]); if (h) add(h[1]);
+  }
+  for (const m of page.matchAll(/url\(\s*("[^"]*"|'[^']*'|[^)]*)\s*\)/gi)) add(m[1]);
+  return [...found];
+}
