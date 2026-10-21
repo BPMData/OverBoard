@@ -144,3 +144,45 @@ test('Export PDF: covers look the same, the teacher is told the text can still b
   await expect(page.locator('#ob-coverwarn')).toBeHidden();
   await expect(page.locator('#ink-status')).toHaveText('P1 · PDF downloaded');
 });
+
+test('highlight strength slider (10-100%): finger or pen drag, menu stays open, ink and export follow it', async ({ page }, info) => {
+  const drag = async (to, pointerType) => {   // a real drag on the slider, from its left end
+    const b = await page.locator('#ob-hl-strength').boundingBox(), y = b.y + b.height / 2;
+    const s = await page.context().newCDPSession(page);
+    const ev = (type, x, buttons) => s.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1, pointerType });
+    await ev('mouseMoved', b.x + 4, 0); await ev('mousePressed', b.x + 4, 1);
+    for (let i = 1; i <= 8; i++) await ev('mouseMoved', b.x + 4 + (b.width * to - 4) * i / 8, 1);
+    await ev('mouseReleased', b.x + b.width * to, 0);
+    await s.detach();
+  };
+  await pickCover(page);                                       // start in Cover: the slider switches back to Highlight
+  await tapOn(page, '[data-act="hl-menu"]', 'mouse');
+  await expect(page.locator('#ob-hl-pct')).toHaveText('50%');
+  await drag(1.05, 'mouse');                                    // finger, all the way right
+  await expect(page.locator('#ob-hl-pct')).toHaveText('100%');
+  await expect(menu(page)).toBeVisible();                       // not a final choice: stays open
+  await expect(hl(page)).toHaveText('Highlighter');
+  await expect(hl(page)).toHaveClass(/\bon\b/);
+  await page.keyboard.press('Escape');
+  await draw(page, line(80, 300, 400, 300));
+  expect(await last(page)).toMatchObject({ h: 1, c: '#fdd835' });   // full yellow; no cover flag
+  expect((await last(page)).o).toBeUndefined();
+
+  await tapOn(page, '[data-act="hl-menu"]', 'pen');
+  await drag(-0.1, 'pen');                                      // pen, all the way left: the floor is 10%
+  await expect(page.locator('#ob-hl-pct')).toHaveText('10%');
+  await page.keyboard.press('Escape');
+  await draw(page, line(80, 400, 400, 400));
+  expect((await last(page)).c).toBe('#fffbeb');                 // yellow mixed 90% toward white
+
+  const dl = await download(page, () => fileMenu(page, 'export'));   // no covers: no notice
+  const file = info.outputPath('strength.pdf');
+  await dl.saveAs(file);
+  const r = await pdfPixels(page, file, 1, [[300, 300], [300, 400]]);
+  expect(r.px[0]).toEqual([253, 216, 53]);
+  expect(r.px[1]).toEqual([255, 251, 235]);
+
+  await page.reload();                                          // remembered, like the colors
+  await page.waitForFunction(() => window.__overboard);
+  expect(await page.locator('#ob-hl-strength').inputValue()).toBe('10');
+});

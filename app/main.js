@@ -20,7 +20,7 @@ const ERASER_W = 44;              // eraser size (screen px) with the Eraser but
 const SMOOTHING = 3;              // starting level 0-8
 const HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
 const HIGHLIGHT_W = 22;           // starting highlighter width; the - / + buttons change it while the highlighter is on
-const HIGHLIGHT_TINT = 0.5;       // how much white is mixed into the color for highlighting
+const HIGHLIGHT_STRENGTH = 50;    // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
 const COVER_COLOR = '#111111';    // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
 
@@ -41,7 +41,8 @@ const T = {
   penColor: '#111111', hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
   color: '#111111', width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
   customColor: '', PALM_ERASER_W, ERASER_W,
-  hlInk() { return tint(this.color, HIGHLIGHT_TINT); },
+  hlStrength: HIGHLIGHT_STRENGTH,
+  hlInk() { return tint(this.color, 1 - this.hlStrength / 100); },   // mixed toward white; it multiplies, so text stays black
 };
 {
   const sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) T.width = sw;
@@ -49,6 +50,7 @@ const T = {
   const hc = getLS('ink-hl-color'); if (isHex(hc)) T.hlColor = hc;
   const cc = getLS('ink-custom'); if (isHex(cc)) T.customColor = cc;
   T.covering = getLS('ink-hl-mode') === 'cover';
+  const hs = parseInt(getLS('ink-hl-strength'), 10); if (hs >= 10 && hs <= 100) T.hlStrength = hs;
   const kc = getLS('ink-cover-color'); if (isHex(kc)) T.coverColor = kc;
   const sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) T.smooth = +sl;
   const fm = getLS('ink-finger'); if (fm) T.fingerScrolls = fm === 'scroll';
@@ -456,6 +458,8 @@ function refresh() {
   hb.classList.toggle('on', T.hiliting && !T.erasing);
   hb.classList.toggle('cover', T.covering);
   hb.textContent = T.covering ? 'Cover' : 'Highlighter';   // the ▾ choice shows on the button
+  strengthIn.value = T.hlStrength; strengthPct.textContent = T.hlStrength + '%';
+  strengthIn.style.setProperty('--fill', tint(T.hlColor, 1 - T.hlStrength / 100));
   for (const b of hlMenu.querySelectorAll('[data-mode]'))
     b.classList.toggle('on', b.dataset.mode === 'cover' ? T.covering && b.dataset.cover === T.coverColor : !T.covering);
   $('[data-act="finger"]', bar).textContent = 'Finger: ' + (T.fingerScrolls ? 'scrolls' : 'draws');
@@ -526,6 +530,13 @@ document.addEventListener('pointerdown', (e) => {   // a tap anywhere else close
   if (!hlMenu.hidden && !hlMenu.contains(e.target) && !hlBtn.contains(e.target)) showHlMenu(false);
 }, true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { showFileMenu(false); showHlMenu(false); } });
+// the strength slider switches to Highlight but keeps the menu open (it isn't a final choice)
+const strengthIn = $('#ob-hl-strength'), strengthPct = $('#ob-hl-pct');
+strengthIn.addEventListener('input', () => {
+  T.hlStrength = +strengthIn.value; setLS('ink-hl-strength', T.hlStrength);
+  T.covering = false; setLS('ink-hl-mode', 'hl');
+  T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); refresh();
+});
 hlMenu.addEventListener('click', (e) => { if (e.target.closest('button')) { onToolbarClick(e); showHlMenu(false); } });
 fileMenu.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
