@@ -94,7 +94,7 @@ window.addEventListener('beforeunload', (e) => { if (doc && pdfDirty && doc.link
 // doc.link = file handle, doc.linkOn = permission granted and saving. See app/embed.js for what is written.
 let pdfTimer = null, pdfDirty = false, pdfBusy = null;
 const FSA = typeof window.showSaveFilePicker === 'function';
-const linkBtn = $('[data-act="pdf-link"]', bar), dlg = $('#ob-embed');
+const linkBtn = $('[data-act="pdf-link"]'), dlg = $('#ob-embed');
 
 function refreshLink() {
   if (!doc) return;
@@ -249,7 +249,7 @@ async function openFile(file, handlePromise) {
     document.body.classList.remove('start');
     bar.hidden = false;
     document.title = file.name.replace(/\.pdf$/i, '') + ' · OverBoard';
-    pagesTotal.textContent = '/ ' + pdf.numPages;
+    pagesTotal.textContent = 'of ' + pdf.numPages;
     fitSpace();
     await viewer.open(pdf);
     ink.setData(D);
@@ -264,7 +264,7 @@ async function openFile(file, handlePromise) {
     doc = null; D = null;
     document.body.classList.add('start'); bar.hidden = true;
     showError(e && e.name === 'PasswordException' ? 'That PDF is locked with a password.' :
-      e && /fetch|import|module/i.test(String(e.message)) ? 'Could not load the PDF reader. Check the internet connection (it loads once from cdn.jsdelivr.net).' :
+      e && /fetch|import|module/i.test(String(e.message)) ? 'Could not load the PDF reader. Check the internet connection and reload the page.' :
       'Could not open "' + file.name + '": ' + ((e && e.message) || e));
   } finally { drop.textContent = label; }
 }
@@ -495,7 +495,33 @@ holdRepeat($('[data-act="zoom-in"]', bar), () => { if (viewer.zoom >= 6) return 
 holdRepeat($('[data-act="zoom-out"]', bar), () => { if (viewer.zoom <= 0.2) return false; zoomBy(1 / 1.1); return true; });
 
 picker.addEventListener('input', () => { T.customColor = picker.value; setLS('ink-custom', T.customColor); pickColor(T.customColor); });
-bar.addEventListener('click', (e) => {
+/* File menu: pops out beside the toolbar (Export PDF, ink files, open another PDF, move toolbar) */
+const fileMenu = $('#ob-filemenu'), fileBtn = $('[data-act="file"]', bar);
+function placeFileMenu() {
+  const r = fileBtn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = fileMenu.offsetHeight;
+  fileMenu.style.top = Math.max(10, Math.min(r.bottom - h, innerHeight - h - 10)) + 'px';
+  if (bar.classList.contains('right')) { fileMenu.style.left = ''; fileMenu.style.right = (innerWidth - b.left + 8) + 'px'; }
+  else { fileMenu.style.right = ''; fileMenu.style.left = (b.right + 8) + 'px'; }
+}
+function showFileMenu(open) {
+  fileMenu.hidden = !open;
+  fileBtn.setAttribute('aria-expanded', String(open));
+  if (open) placeFileMenu();
+}
+document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes it
+  if (!fileMenu.hidden && !fileMenu.contains(e.target) && !fileBtn.contains(e.target)) showFileMenu(false);
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !fileMenu.hidden) showFileMenu(false); });
+fileMenu.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  onToolbarClick(e);
+  // keep it open while a two-tap confirm ("Sure?") is waiting, or after moving the toolbar
+  if (!b.classList.contains('warn') && b.dataset.act !== 'side') showFileMenu(false);
+  else if (b.dataset.act === 'side') placeFileMenu();
+});
+
+bar.addEventListener('click', onToolbarClick);
+function onToolbarClick(e) {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.color) pickColor(b.dataset.color);
   else if (b.dataset.period !== undefined) { if (ink.switchTo(b.dataset.period)) renderPeriods(); }
@@ -538,14 +564,16 @@ bar.addEventListener('click', (e) => {
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));
       break;
+    case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
+      showFileMenu(false);
       bar.style.display = 'none';
       showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show');
       if (viewer.fit) { fitSpace(); viewer.layout(); }
       break;
   }
   refresh();
-});
+}
 showBtn.addEventListener('click', () => {
   bar.style.display = ''; showBtn.classList.remove('show');
   if (viewer.fit && doc) { fitSpace(); viewer.layout(); }

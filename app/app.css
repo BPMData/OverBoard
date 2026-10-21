@@ -44,12 +44,23 @@ body.start #ob-pages { display: none; }
 .pg canvas.ink { pointer-events: none; }
 
 /* ---------- toolbar extras (the rest is shared/toolbar.css) ---------- */
-#ob-pagebox { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; color: #fff; font: 700 16px Inter, system-ui, sans-serif; }
-#ob-page { min-width: 0; height: 48px; border-radius: 12px; border: 3px solid #3a3a3a; background: #fff; color: #000; font: 700 20px Inter, system-ui, sans-serif; text-align: center; }
+#ob-pagebox { grid-column: 1 / 3; display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: stretch; }
+#ink-bar #ob-pagebox button { font-size: 22px; padding: 0; }
+#ob-pagebox label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; color: #bbb; font: 700 11px Inter, system-ui, sans-serif; }
+#ob-page { width: 100%; min-width: 0; height: 40px; border-radius: 10px; border: 3px solid #3a3a3a; background: #fff; color: #000; font: 700 19px Inter, system-ui, sans-serif; text-align: center; }
 #ob-page:focus { border-color: #ffd400; outline: none; }
 #ob-zoom { grid-column: 1 / 3; display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; }
 #ink-bar #ob-zoom button[data-act="zoom-fit"] { padding: 0; font-size: 15px; }
 #ink-bar #ob-zoom button[data-act="zoom-in"], #ink-bar #ob-zoom button[data-act="zoom-out"] { font-size: 28px; line-height: 1; padding: 0; }
+#ink-bar button[data-act="file"][aria-expanded="true"] { background: #fff; color: #000; }
+/* File menu: pops out beside the toolbar so the toolbar itself fits a 1080p screen */
+#ob-filemenu { position: fixed; z-index: 101; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; width: 196px; box-sizing: border-box; background: #1f1f1f; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.5); font-family: Inter, system-ui, sans-serif; touch-action: manipulation; }
+#ob-filemenu button { min-height: 56px; border: 3px solid transparent; border-radius: 12px; background: #3a3a3a; color: #fff; font: 700 15px Inter, system-ui, sans-serif; cursor: pointer; padding: 4px; }
+#ob-filemenu button.sm { min-height: 48px; font-size: 13px; }
+#ob-filemenu .wide { grid-column: 1 / 3; }
+#ob-filemenu button.warn { background: #c62828; }
+#ob-filemenu button.good { background: #2e7d32; }
+#ob-filemenu button:disabled { opacity: .4; cursor: default; }
 #ink-bar button:disabled { opacity: .4; cursor: default; }
 
 /* ---------- chapters ---------- */

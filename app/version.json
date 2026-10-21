@@ -1,0 +1,18 @@
+{
+  "v": "18d7241287b6",
+  "js": [
+    "embed.js",
+    "export.js",
+    "html.js",
+    "ink.js",
+    "libs.js",
+    "main.js",
+    "store.js",
+    "viewer.js",
+    "../shared/ink-core.js"
+  ],
+  "css": [
+    "../shared/toolbar.css",
+    "app.css"
+  ]
+}

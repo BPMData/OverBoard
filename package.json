@@ -1,0 +1,12 @@
+{
+  "name": "overboard",
+  "private": true,
+  "description": "Browser tests for OverBoard. The site itself needs no build step and no npm packages.",
+  "license": "MIT",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0"
+  }
+}

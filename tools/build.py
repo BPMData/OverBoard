@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""Everything that has to be regenerated after editing the site:
+
+1. the overlay: copies shared/ink-core.js and shared/toolbar.css into overlay/ink_overlay.html
+   and the demo page (see tools/build_overlay.py);
+2. the PDF app's version stamp: app/version.json and the ob-version tag in app/index.html.
+   GitHub Pages lets browsers reuse files for up to 10 minutes, so right after an update a browser
+   could mix old and new app files. The app's loader reads version.json fresh and loads every
+   file at that version, so they always match.
+
+    python3 tools/build.py          # rebuild
+    python3 tools/build.py --check  # exit 1 if anything is out of date (CI runs this)
+"""
+import hashlib
+import json
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import build_overlay  # noqa: E402
+
+ROOT = build_overlay.ROOT
+APP = os.path.join(ROOT, 'app')
+INDEX = os.path.join(APP, 'index.html')
+VERSION = os.path.join(APP, 'version.json')
+META_RE = re.compile(r'(<meta name="ob-version" content=")[^"]*(">)')
+
+
+def app_files():
+    """The app's own modules and styles, as paths relative to app/ (vendor/ is versioned by folder name)."""
+    js = sorted(f for f in os.listdir(APP) if f.endswith('.js'))
+    css = sorted(f for f in os.listdir(APP) if f.endswith('.css'))
+    shared = os.path.join(ROOT, 'shared')
+    js += ['../shared/' + f for f in sorted(os.listdir(shared)) if f.endswith('.js')]
+    css = ['../shared/' + f for f in sorted(os.listdir(shared)) if f.endswith('.css')] + css
+    return js, css
+
+
+def stamp(index_text):
+    js, css = app_files()
+    h = hashlib.sha256()
+    for rel in js + css:
+        with open(os.path.normpath(os.path.join(APP, rel)), 'rb') as f:
+            h.update(rel.encode() + b'\0' + f.read() + b'\0')
+    h.update(META_RE.sub(r'\1\2', index_text).encode())   # the page itself, minus its own stamp
+    v = h.hexdigest()[:12]
+    version = json.dumps({'v': v, 'js': js, 'css': css}, indent=2) + '\n'
+    if not META_RE.search(index_text):
+        sys.exit('app/index.html has no <meta name="ob-version"> tag')
+    return v, META_RE.sub(lambda m: m.group(1) + v + m.group(2), index_text), version
+
+
+def read(path):
+    try:
+        with open(path, encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+
+def main():
+    out = build_overlay.build()
+    v, index, version = stamp(read(INDEX))
+    out[INDEX] = index
+    out[VERSION] = version
+    stale = [p for p, text in out.items() if read(p) != text]
+    if '--check' in sys.argv:
+        for p in stale:
+            print('out of date:', os.path.relpath(p, ROOT), '(run python3 tools/build.py)')
+        sys.exit(1 if stale else 0)
+    for p in stale:
+        with open(p, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(out[p])
+        print('updated', os.path.relpath(p, ROOT))
+    print('app version', v)
+
+
+if __name__ == '__main__':
+    main()
