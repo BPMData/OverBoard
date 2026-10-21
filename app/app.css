@@ -67,6 +67,17 @@ body.start #ob-pages { display: none; }
 #ob-toc ul ul { padding-left: 16px; }
 #ob-toc ul ul button { font-weight: 500; min-height: 42px; }
 
+/* ---------- "Save ink into PDF" opt-in ---------- */
+#ob-embed { width: min(560px, calc(100vw - 32px)); border: 0; border-radius: 16px; padding: 24px; box-shadow: 0 8px 40px rgba(0,0,0,.45); font: 17px/1.45 Inter, system-ui, sans-serif; color: var(--ink); }
+#ob-embed::backdrop { background: rgba(0,0,0,.45); }
+#ob-embed h2 { margin: 0 0 10px; font-size: 24px; }
+#ob-embed ul { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+#ob-embed .off { color: var(--mute); font-size: 15px; margin: 14px 0 0; }
+#ob-embed.nofsa .fsa, #ob-embed:not(.nofsa) .nofsa { display: none; }
+#ob-embed .row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+#ob-embed .row button { min-height: 56px; min-width: 130px; border: 0; border-radius: 12px; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer; background: #e6e4dc; color: #111; padding: 0 18px; }
+#ob-embed .row button.go { background: #111; color: #ffd400; }
+
 #ob-dropcover { position: fixed; inset: 0; z-index: 200; background: rgba(255, 212, 0, .25); border: 6px dashed #e6b800; display: grid; place-items: center; pointer-events: none; }
 #ob-dropcover div { background: #111; color: #ffd400; font: 700 28px Inter, system-ui, sans-serif; padding: 16px 28px; border-radius: 14px; }
 

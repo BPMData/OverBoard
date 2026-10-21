@@ -7,10 +7,12 @@ import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
 import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, saveBoardCopy } from './html.js';
+import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
 const PERIODS = ['P1', 'P2', 'P3', 'P4'];
 const SAVE_DELAY_MS = 3000;       // after you stop writing, wait this long, then save. Also saves when the tab is hidden or closed.
+const PDF_SAVE_DELAY_MS = 8000;   // "Save ink into PDF" (when on) writes the file this long after you stop writing
 const FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. The toolbar button flips this (remembered per browser).
 const PALM_ERASER_W = 92;         // eraser size (screen px) when you wipe with your palm, fist or side of hand
 const ERASER_W = 44;              // eraser size (screen px) with the Eraser button
@@ -74,6 +76,7 @@ function markDirty() {
   D.t = Date.now(); dirty = true;
   setStatus(D.active + ' · saving…');
   clearTimeout(saveTimer); saveTimer = setTimeout(writeNow, SAVE_DELAY_MS);
+  if (doc.link && doc.linkOn) { pdfDirty = true; clearTimeout(pdfTimer); pdfTimer = setTimeout(writePdf, PDF_SAVE_DELAY_MS); }
 }
 async function writeNow() {
   clearTimeout(saveTimer); saveTimer = null;
@@ -83,8 +86,109 @@ async function writeNow() {
   try { await store.saveInk(doc.hash, D); setStatus(D.active + ' · saved in this browser'); }
   catch (e) { dirty = true; setStatus('Could not save in this browser (' + ((e && e.name) || e) + '). Use Save ink.'); }
 }
-window.addEventListener('pagehide', () => { if (doc) { dirty = true; writeNow(); } });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && doc) { dirty = true; writeNow(); } });
+window.addEventListener('pagehide', () => { if (doc) { dirty = true; writeNow(); writePdf(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && doc) { dirty = true; writeNow(); writePdf(); } });
+window.addEventListener('beforeunload', (e) => { if (doc && pdfDirty && doc.linkOn) { writePdf(); e.preventDefault(); } });   // the PDF write takes a moment
+
+/* ---------- "Save ink into PDF" (opt-in): the ink lives inside a PDF file the teacher chose ---------- */
+// doc.link = file handle, doc.linkOn = permission granted and saving. See app/embed.js for what is written.
+let pdfTimer = null, pdfDirty = false, pdfBusy = null;
+const FSA = typeof window.showSaveFilePicker === 'function';
+const linkBtn = $('[data-act="pdf-link"]', bar), dlg = $('#ob-embed');
+
+function refreshLink() {
+  if (!doc) return;
+  linkBtn.classList.toggle('good', !!doc.linkOn);
+  linkBtn.textContent = doc.linkOn ? 'Saving into PDF ✓' : doc.link ? 'Resume saving into PDF' : FSA ? 'Save ink into PDF…' : 'Download PDF + ink…';
+  linkBtn.title = doc.linkOn ? 'Ink is saved inside ' + doc.link.name + '. Tap to turn this off.' :
+    doc.link ? 'Tap to allow saving into ' + doc.link.name + ' again' : 'Keep the ink inside a PDF file (you choose the file)';
+  linkBtn._label = linkBtn.textContent;
+}
+const baseBlob = () => doc.file.slice(0, doc.base);
+async function linkInfo() {
+  if (!doc.info) doc.info = await inspectBase(new Uint8Array(await baseBlob().arrayBuffer()));
+  return doc.info;
+}
+async function writePdf() {
+  clearTimeout(pdfTimer); pdfTimer = null;
+  if (!doc || !doc.link || !doc.linkOn || !pdfDirty) return pdfBusy;
+  if (pdfBusy) { await pdfBusy; return writePdf(); }
+  const d = doc;
+  pdfDirty = false;
+  pdfBusy = (async () => {
+    try {
+      const update = await buildUpdate(await linkInfo(), d.base, store.makeSidecar(D, d));
+      await writeInto(d.link, baseBlob(), update);
+      d.file = await d.link.getFile();   // same original bytes + the new ink; keeps working even if it was the file we opened
+      if (doc === d) setStatus(D.active + ' · saved into ' + d.link.name + ' ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    } catch (e) {
+      pdfDirty = true;
+      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) { d.linkOn = false; refreshLink(); setStatus('Tap Resume saving into PDF to allow it again'); }
+      else setStatus('Could not save into the PDF: ' + ((e && e.message) || e));
+    } finally { pdfBusy = null; }
+  })();
+  return pdfBusy;
+}
+async function startLink(handle) {
+  try {
+    doc.link = handle; doc.linkOn = true; pdfDirty = true;
+    refreshLink(); setStatus('Saving ink into ' + handle.name + '…');
+    await writePdf();
+    if (!doc.linkOn) return;
+    await store.setLink(doc.hash, handle).catch(() => {});
+    flashBtn(linkBtn, 'Saved!', 'good');
+    setStatus('Ink saves into ' + handle.name + ' from now on');
+  } catch (e) { setStatus('Could not save into the PDF: ' + ((e && e.message) || e)); }
+}
+async function stopLink() {
+  await writePdf();
+  const name = doc.link && doc.link.name;
+  doc.link = null; doc.linkOn = false; doc.info = null;
+  await store.forgetLink(doc.hash).catch(() => {});
+  refreshLink();
+  setStatus('Stopped saving into ' + name + ' (its ink stays in it). Ink still saves in this browser.');
+}
+async function downloadWithInk() {   // browsers without file access: a one-time copy
+  try {
+    const update = await buildUpdate(await linkInfo(), doc.base, store.makeSidecar(D, doc));
+    store.download(new Blob([baseBlob(), update], { type: 'application/pdf' }), boardPdfName());
+    setStatus('Downloaded ' + boardPdfName() + ' with the ink inside');
+  } catch (e) { setStatus('Could not make the PDF: ' + ((e && e.message) || e)); }
+}
+const boardPdfName = () => doc.name.replace(/\.pdf$/i, '').replace(/_board$/, '') + '_board.pdf';
+function onLinkButton(b) {
+  if (doc.linkOn) { confirmTap(b, stopLink); return; }
+  if (doc.link) {   // reconnect: the browser asks again after a restart
+    doc.link.requestPermission({ mode: 'readwrite' }).then((p) => {
+      if (p === 'granted') startLink(doc.link); else setStatus('Not allowed. Ink still saves in this browser.');
+    }).catch(() => setStatus('Could not reconnect to ' + doc.link.name));
+    return;
+  }
+  $('.name', dlg).textContent = boardPdfName();
+  dlg.classList.toggle('nofsa', !FSA);
+  $('[value="ok"]', dlg).textContent = FSA ? 'Choose file…' : 'Download it';
+  dlg.showModal();
+}
+dlg.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) { if (e.target === dlg) dlg.close(); return; }
+  dlg.close();
+  if (b.value !== 'ok' || !doc) return;
+  if (!FSA) { downloadWithInk(); return; }
+  // the save window must open straight from the tap
+  window.showSaveFilePicker({ id: 'overboard-pdf', suggestedName: boardPdfName(), types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] })
+    .then((h) => startLink(h))
+    .catch((err) => { if (!err || err.name !== 'AbortError') setStatus('Could not open the save window: ' + ((err && err.message) || err)); });
+});
+async function reconnectLink() {   // a file chosen on an earlier visit
+  if (!FSA || !doc) return;
+  const d = doc, h = await store.getLink(d.hash).catch(() => null);
+  if (!h || doc !== d) return;
+  d.link = h;
+  try { d.linkOn = (await h.queryPermission({ mode: 'readwrite' })) === 'granted'; } catch (e) { d.linkOn = false; }
+  refreshLink();
+  if (!d.linkOn) setStatus(D.active + ' · tap Resume saving into PDF to keep saving into ' + h.name);
+}
 
 /* ---------- opening a PDF ---------- */
 const errorEl = $('#ob-error');
@@ -123,7 +227,8 @@ async function openFile(file, handlePromise) {
   try {
     if (doc) await closeDoc(false);
     const buf = await file.arrayBuffer();
-    const hash = await store.hashBytes(buf);
+    const base = findBase(new Uint8Array(buf));   // a PDF OverBoard saved ink into: the original bytes come first
+    const hash = await store.hashBytes(new Uint8Array(buf, 0, base));
     const lib = await loadPdfjs();
     const task = lib.getDocument({ data: new Uint8Array(buf), cMapUrl: PDFJS_CMAPS_URL, cMapPacked: true, standardFontDataUrl: PDFJS_FONTS_URL, isEvalSupported: false });
     task.onPassword = (give, reason) => {
@@ -132,8 +237,11 @@ async function openFile(file, handlePromise) {
     };
     const pdf = await task.promise;
     const saved = validData(await store.loadInk(hash).catch(() => null));
-    D = saved || fresh();
-    doc = { hash, name: file.name, pages: pdf.numPages, file, pdf };
+    let inPdf = null;   // ink stored inside the PDF itself; the newest copy wins, a tie goes to the file
+    try { const txt = await readEmbeddedInk(pdf); if (txt) inPdf = store.parseSidecar(txt).data; } catch (e) { /* not ours */ }
+    const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
+    D = fromPdf ? inPdf : saved || fresh();
+    doc = { hash, base, name: file.name, pages: pdf.numPages, file, pdf, link: null, linkOn: false, info: null };
     store.rememberFile(hash, { name: file.name, pages: pdf.numPages }, file).catch(() => setStatus('PDF too big to keep for reopening; ink still saves.'));
     store.askPersistent();
     document.body.classList.remove('start');
@@ -145,7 +253,9 @@ async function openFile(file, handlePromise) {
     ink.setData(D);
     renderPeriods(); refresh();
     if (D.at > 1) viewer.goTo(D.at); else window.scrollTo(0, 0);
-    setStatus(D.active + ' · ' + (saved ? 'ink restored from this browser' : 'ready'));
+    setStatus(D.active + ' · ' + (fromPdf ? 'ink loaded from inside the PDF' : saved ? 'ink restored from this browser' : 'ready'));
+    if (fromPdf) store.saveInk(hash, D).catch(() => {});   // keep this browser's copy current too
+    refreshLink(); reconnectLink();
     loadOutline(pdf);
   } catch (e) {
     console.error(e);
@@ -159,7 +269,7 @@ async function openFile(file, handlePromise) {
 
 async function closeDoc(showStart = true) {
   if (!doc) return;
-  dirty = true; await writeNow();
+  dirty = true; await writeNow(); await writePdf();
   viewer.close();
   try { await doc.pdf.destroy(); } catch (e) { /* already gone */ }
   doc = null; D = null;
@@ -419,6 +529,7 @@ bar.addEventListener('click', (e) => {
     case 'next': jump(1); break;
     case 'export': exportPdf(b); break;
     case 'ink-save': saveInkFile(b); break;
+    case 'pdf-link': onLinkButton(b); return;
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': closeDoc(true); break;
     case 'side':
@@ -458,7 +569,7 @@ async function exportPdf(btn) {
   setStatus('Making the PDF…');
   try {
     const { exportAnnotatedPdf } = await import('./export.js');
-    const bytes = new Uint8Array(await doc.file.arrayBuffer());
+    const bytes = new Uint8Array(await doc.file.slice(0, doc.base).arrayBuffer());   // without the stored ink
     const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus('Making the PDF… ' + n + ' pages'));
     store.download(new Blob([out], { type: 'application/pdf' }), exportName());
     setStatus(D.active + ' · PDF downloaded');
@@ -487,7 +598,7 @@ async function importInk(file) {
     if (has && !confirm('Replace the ink on this PDF (all class periods) with the ink from "' + file.name + '"?')) return;
     D = data;
     ink.setData(D); renderPeriods(); refresh();
-    dirty = true; await writeNow();
+    markDirty(); await writeNow();
     setStatus('Ink loaded from ' + file.name);
   } catch (e) { setStatus(e.message || String(e)); }
 }

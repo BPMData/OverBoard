@@ -2,6 +2,8 @@
 
 **Smartboard ink that sticks to the page.**
 
+![Writing an answer, circling, highlighting and graphing on a PDF worksheet, then scrolling: the ink scrolls with the page](docs/media/overboard-demo.gif)
+
 OverBoard is a free writing layer for interactive whiteboards. Write on a worksheet with the board pen, scroll, and your ink scrolls with the page instead of floating on top of the screen. Wipe with your palm to erase. Highlight without covering the words. Save a PDF with the ink on it.
 
 It runs in the browser, needs no account, and nothing leaves your computer.
@@ -37,6 +39,7 @@ Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app
 - **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time.
 - **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class.
 - **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
+- **Save ink into PDF** (optional, off until you turn it on) keeps all periods' ink inside a PDF file you choose, by default a new `Name_board.pdf`. The pages aren't changed: the ink is added at the end of the file, so other apps show the plain PDF. Open that file in OverBoard on any computer and keep writing. In Chrome or Edge it then saves into the file automatically; tap the button again to stop. Other browsers get a one-time download.
 
 Word files: in Word, choose File → Save as PDF, then open the PDF.
 
