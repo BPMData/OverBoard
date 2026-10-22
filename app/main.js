@@ -9,6 +9,7 @@ import { Finder } from './find.js';
 import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
+import { setupOffline } from './offline.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
 const PERIODS = ['P1', 'P2', 'P3', 'P4'];
@@ -678,3 +679,4 @@ $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]
 
 /* ---------- start ---------- */
 refresh(); setMode('write'); renderRecent();
+setupOffline(openFile);

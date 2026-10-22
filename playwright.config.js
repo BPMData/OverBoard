@@ -12,6 +12,8 @@ module.exports = defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,
     acceptDownloads: true,
+    // the offline copy (app/sw.js) would answer requests before page.route sees them; tests/offline.spec.js turns it on
+    serviceWorkers: 'block',
     // set PW_CHROMIUM to use an already-installed Chromium instead of Playwright's download
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },

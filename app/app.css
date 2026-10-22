@@ -18,6 +18,9 @@ body:not(.start) #ob-start { display: none; }
 #ob-drop:hover, #ob-drop:focus, #ob-drop.over { background: #fffbe0; border-color: #e6b800; outline: none; }
 #ob-msg { background: #e8f5e9; color: #1b5e20; border-radius: 10px; padding: 10px 12px; margin: 14px 0 0; }
 #ob-error { background: #ffebee; color: #b71c1c; border-radius: 10px; padding: 10px 12px; margin: 14px 0 0; }
+#ob-install { display: flex; align-items: center; gap: 12px; margin: 14px 0 0; color: var(--mute); font-size: 14px; }
+#ob-install[hidden] { display: none; }
+#ob-install button { flex: none; min-height: 52px; padding: 0 20px; border: 0; border-radius: 12px; background: #111; color: #ffd400; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer; }
 #ob-recent h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 22px 0 8px; }
 #ob-recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 #ob-recent li { display: flex; gap: 8px; }
