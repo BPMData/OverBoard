@@ -202,4 +202,18 @@ function makeHlMenu(bar, S, onPick, onOpen){
   return { el: m, show: show, sync: sync };
 }
 
-export { seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+/* Keyboard history keys, the same in the PDF app and the overlay:
+   Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
+   is turned off, so a slip can't throw the page away; the browser's reload button still works.
+   Returns 'undo', 'redo', 'block' or null; the caller calls preventDefault for any non-null result. */
+function historyKey(e) {
+  if (e.key === 'F5') return 'block';
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return null;
+  var k = (e.key || '').toLowerCase();
+  if (k === 'z') return e.shiftKey ? 'redo' : 'undo';
+  if (k === 'y') return 'redo';
+  if (k === 'r') return e.shiftKey ? 'block' : 'redo';
+  return null;
+}
+
+export { historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

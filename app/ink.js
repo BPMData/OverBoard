@@ -20,13 +20,14 @@ export class Ink {
     this.cur = null; this.curP = null; this.live = null;
     this.active = null; this.drag = null; this.downAt = 0;
     this.lastCleared = null;       // { page, strokes } so Undo can bring back a cleared page
+    this.redos = [];               // what Undo took back, newest last: a stroke, or { cleared: page }
   }
 
   get strokes() { return this.D.periods[this.D.active]; }
 
   setData(D) {
     this.D = D;
-    this.lastCleared = null;
+    this.lastCleared = null; this.redos = [];
     this.reindex();
   }
 
@@ -184,7 +185,7 @@ export class Ink {
     this.strokes.push(s);
     if (!this.byPage.has(P.n)) this.byPage.set(P.n, []);
     this.byPage.get(P.n).push(s);
-    this.lastCleared = null;
+    this.lastCleared = null; this.redos = [];   // new ink starts a new history
     if (!this.v.want.has(P)) this.free(P);
     this.onChange();
   }
@@ -205,6 +206,7 @@ export class Ink {
       this.lastCleared = null;
       this.strokes.push(...strokes);
       this.byPage.set(page, strokes.slice());
+      this.redos.push({ cleared: page });
       this.refreshPage(page); this.onChange();
       return page;
     }
@@ -213,17 +215,32 @@ export class Ink {
     const list = this.byPage.get(s.page);
     list.pop();
     if (!list.length) this.byPage.delete(s.page);
+    this.redos.push(s);
     this.refreshPage(s.page); this.onChange();
     return s.page;
   }
 
-  clearPage(n) {
+  redo() {   // puts back what Undo took, in order; returns the page it changed
+    const r = this.redos.pop();
+    if (!r) return null;
+    if (r.cleared) { this.clearPage(r.cleared, true); return r.cleared; }
+    this.strokes.push(r);
+    if (!this.byPage.has(r.page)) this.byPage.set(r.page, []);
+    this.byPage.get(r.page).push(r);
+    this.lastCleared = null;
+    this.refreshPage(r.page); this.onChange();
+    return r.page;
+  }
+  canRedo() { return this.redos.length > 0; }
+
+  clearPage(n, keepRedo) {
     const list = this.pageList(n);
     if (!list.length) return false;
     const gone = new Set(list);
     this.D.periods[this.D.active] = this.strokes.filter((s) => !gone.has(s));
     this.byPage.delete(n);
     this.lastCleared = { page: n, strokes: list };
+    if (!keepRedo) this.redos = [];
     this.refreshPage(n); this.onChange();
     return true;
   }
@@ -231,7 +248,7 @@ export class Ink {
   switchTo(name) {
     if (!this.D.periods[name] || name === this.D.active) return false;
     this.D.active = name;
-    this.lastCleared = null;
+    this.lastCleared = null; this.redos = [];
     this.reindex(); this.onChange();
     return true;
   }

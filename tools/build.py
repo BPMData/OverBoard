@@ -8,6 +8,7 @@
    could mix old and new app files. The app's loader reads version.json fresh and loads every
    file at that version, so they always match;
 3. the offline list at the top of app/sw.js: every file in app/ (vendor/ included) and shared/,
+   plus overlay/ink_overlay.html (the app adds it to HTML worksheets),
    with the start of its SHA-256, and a version that changes when any of them (or sw.js) does.
    The service worker downloads that exact set before it switches versions.
 
@@ -72,6 +73,10 @@ def offline_files(out):
                     with open(p, 'rb') as f:
                         data = f.read()
                 files[rel + os.path.relpath(p, top).replace(os.sep, '/')] = hashlib.sha256(data).hexdigest()[:16]
+    # the app fetches the overlay to make HTML board copies (app/html.js)
+    overlay = build_overlay.OVERLAY
+    data = out[overlay].encode() if overlay in out else open(overlay, 'rb').read()
+    files['../overlay/ink_overlay.html'] = hashlib.sha256(data).hexdigest()[:16]
     return dict(sorted(files.items()))
 
 

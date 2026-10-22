@@ -145,7 +145,8 @@ test('reopening the app switches to a downloaded update before the app starts (p
       r.oldBefore = !(await css()).includes('/* v2 */');
       await open();   // the loader asks the new version to switch, then reloads
       r.newAfter = (await css()).includes('/* v2 */');
-      r.caches = await caches.keys();
+      // the old copy is deleted just after the switch (the activate step), so wait for it
+      r.caches = (await until(async () => { const k = await caches.keys(); return k.length === 1 && k; })) || await caches.keys();
       fetch('__report?r=' + encodeURIComponent(JSON.stringify(r)));
     })();
   </script>`);

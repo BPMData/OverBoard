@@ -22,6 +22,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Finger scrolls, pen writes**, with a toolbar switch if you lose the pen
 - **Highlighter** that sits behind the printed text, so words stay readable
 - **Cover**: tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them. The same menu sets **highlight strength** (10–100%)
+- **Undo and Redo** (↶ ↷ on the toolbar, or Ctrl/⌘+Z and Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z). Reloading from the keyboard is turned off, so a slip can't throw away the page
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page
@@ -35,14 +36,14 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
-- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo.
+- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo and redo.
 - **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
 - **Clear page** clears the page you're looking at (Undo brings it back), so a textbook's other pages are safe.
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
 - **Text and links work like a normal PDF reader** in **Scroll** mode: drag across text to select and copy it (scanned PDFs too, if they were OCR'd), tap a link in a contents page to jump there, and web links open in a new tab. In **Write** mode the pen, palm and finger work exactly as before; the text never gets in the way.
 - **Find text** (File ▸ Find text…, or Ctrl/⌘+F) searches every page of the PDF, not just the ones on screen. Tap a result to jump to it.
-- **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time.
+- **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time. If the page reloads, the PDF reopens where you were, with every stroke.
 - **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class. The original text and links stay in it, so it can still be searched and copied.
 - **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
 - **Save ink into PDF** (optional, off until you turn it on) keeps all periods' ink inside a PDF file you choose, by default a new `Name_board.pdf`. The pages aren't changed: the ink is added at the end of the file, so other apps show the plain PDF. Open that file in OverBoard on any computer and keep writing. In Chrome or Edge it then saves into the file automatically; tap the button again to stop. Other browsers get a one-time download.
@@ -83,7 +84,8 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 ## For contributors
 
 - `app/` is the PDF app: plain ES modules, served as-is (open `http://localhost:8000/app/` after `python3 -m http.server`).
-- `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay.
+- **The PDF app and the HTML overlay always have the same features.** A toolbar button, shortcut or behavior added to one goes into the other in the same pull request (bump the overlay's version in its first line).
+- `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, keyboard shortcuts, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay.
 - **After editing anything in `app/` or `shared/`, run `python3 tools/build.py`.** It copies the shared code into the paste-in overlay (which must stay one self-contained file) and the demo page, and updates the app's version stamp (`app/version.json`), so browsers never mix old and new files after an update. `--check` fails if you forgot.
 - **Offline copy.** `app/sw.js` (a service worker) caches every file in `app/` and `shared/`. `tools/build.py` writes the file list at its top, with each file's SHA-256, so it can't go out of date (`--check` catches it). A new version is only used once every file has downloaded and matches; it switches in one step and then the old copy is deleted. The manifest is `app/manifest.json`; icons are drawn by `tools/make_icons.py`.
 - **Libraries** (PDF.js, pdf-lib) live in `app/vendor/`, so the app works behind school web filters that block CDNs. Versions are pinned in `app/libs.js`; after changing one, run `python3 tools/vendor_libs.py` (downloads from npm and verifies checksums).
