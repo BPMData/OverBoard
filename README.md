@@ -29,6 +29,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **The PDF's text stays text**: select and copy it, follow its links, and search the whole book (great with OCR'd scans). Exports keep it.
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
 - **Hide the toolbar** down to a small button when you want the whole screen
+- **Install the PDF app** in Chrome or Edge: it opens from the Dock or Start menu and works with no internet
 
 ## Use it on a PDF
 
@@ -47,6 +48,14 @@ Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app
 - **Save ink into PDF** (optional, off until you turn it on) keeps all periods' ink inside a PDF file you choose, by default a new `Name_board.pdf`. The pages aren't changed: the ink is added at the end of the file, so other apps show the plain PDF. Open that file in OverBoard on any computer and keep writing. In Chrome or Edge it then saves into the file automatically; tap the button again to stop. Other browsers get a one-time download.
 
 Word files: in Word, choose File → Save as PDF, then open the PDF.
+
+### Install it (works offline)
+
+After you've opened the app once, it keeps a complete copy of itself in the browser, so it opens, opens PDFs, takes ink and exports with no internet (a dropped Wi-Fi in class doesn't matter).
+
+To install it on a Mac with Chrome: open the [app](https://bpmdata.github.io/OverBoard/app/) and click **Install app** on the start screen (or the install icon at the right end of the address bar). OverBoard PDF then opens in its own window and lives in Launchpad and `~/Applications/Chrome Apps`; drag it to the Dock to keep it there. To open a PDF from Finder, right-click it ▸ **Open With** ▸ **OverBoard PDF** (Chrome asks once whether to allow it). Edge on Windows works the same way. Uninstall from the app window's ⋮ menu.
+
+Updates install themselves: a new version downloads in the background in full, then switches the next time you open OverBoard (if another OverBoard window or tab is open, after you close them all). Your ink and the PDFs under **Open again** are kept.
 
 Everything the app needs, including the PDF reader ([PDF.js](https://mozilla.github.io/pdf.js/)) and [pdf-lib](https://pdf-lib.js.org/) for Export PDF, comes from this site (bpmdata.github.io), so it works behind school web filters that block other sites.
 
@@ -76,8 +85,9 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 - `app/` is the PDF app: plain ES modules, served as-is (open `http://localhost:8000/app/` after `python3 -m http.server`).
 - `shared/ink-core.js` (drawing, smoothing, pen/palm/finger rules, toolbar helpers) and `shared/toolbar.css` are used by both the PDF app and the overlay.
 - **After editing anything in `app/` or `shared/`, run `python3 tools/build.py`.** It copies the shared code into the paste-in overlay (which must stay one self-contained file) and the demo page, and updates the app's version stamp (`app/version.json`), so browsers never mix old and new files after an update. `--check` fails if you forgot.
+- **Offline copy.** `app/sw.js` (a service worker) caches every file in `app/` and `shared/`. `tools/build.py` writes the file list at its top, with each file's SHA-256, so it can't go out of date (`--check` catches it). A new version is only used once every file has downloaded and matches; it switches in one step and then the old copy is deleted. The manifest is `app/manifest.json`; icons are drawn by `tools/make_icons.py`.
 - **Libraries** (PDF.js, pdf-lib) live in `app/vendor/`, so the app works behind school web filters that block CDNs. Versions are pinned in `app/libs.js`; after changing one, run `python3 tools/vendor_libs.py` (downloads from npm and verifies checksums).
-- **Tests** run in a real browser (Playwright): pen, palm, finger, highlighter, zoom alignment, text selection and links, search, saving, ink files, Export PDF (and that it keeps the PDF's text), Save ink into PDF, HTML board copies and the overlay.
+- **Tests** run in a real browser (Playwright): pen, palm, finger, highlighter, zoom alignment, text selection and links, search, saving, ink files, Export PDF (and that it keeps the PDF's text), Save ink into PDF, HTML board copies, the overlay, and offline use and updates.
 
   ```bash
   npm install
@@ -104,7 +114,7 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 No accounts, no uploads; your ink stays on your machine.
 
 - OverBoard has no server. Ink, and PDFs you open in the app, are stored in your browser, and inside your own file if you choose.
-- What does get downloaded: the web pages and the two open-source libraries the PDF app uses ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)), all from GitHub Pages (bpmdata.github.io). Your PDFs, worksheets and ink are never sent anywhere. (The board-probe diagnostic page also loads one script from cdnjs.)
+- What does get downloaded: the web pages (kept in the browser for offline use) and the two open-source libraries the PDF app uses ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)), all from GitHub Pages (bpmdata.github.io). Your PDFs, worksheets and ink are never sent anywhere. (The board-probe diagnostic page also loads one script from cdnjs.)
 - The optional desktop installer is a Python script that runs on your computer and only edits the files you pick.
 
 ## Contributing

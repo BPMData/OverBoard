@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="c95b9a20bf27">
+<meta name="ob-version" content="f5236ac56504">
+<meta name="theme-color" content="#1f1f1f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="../shared/toolbar.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -22,6 +26,8 @@
     </label>
     <p id="ob-error" role="alert" hidden></p>
     <p id="ob-msg" role="status" hidden></p>
+    <p id="ob-install" hidden><button type="button">Install app</button>
+      <span>Opens in its own window like any app, and works without internet.</span></p>
     <section id="ob-recent" hidden>
       <h2>Open again</h2>
       <ul></ul>
@@ -116,6 +122,9 @@
 /* Load the app's files as one matching set, even in the minutes right after an update
    (GitHub Pages lets browsers reuse files for up to 10 minutes). version.json and the
    ob-version tag above are written by tools/build.py. */
+window.addEventListener('beforeinstallprompt', function (e) {   // "Install app" on the start screen (app/offline.js)
+  e.preventDefault(); window.__obInstall = e; document.dispatchEvent(new Event('ob-installable'));
+});
 (function () {
   var mine = document.querySelector('meta[name="ob-version"]').content;
   function start(info) {
@@ -135,13 +144,31 @@
     s.type = 'module'; s.src = 'main.js' + q;
     document.body.appendChild(s);
   }
-  fetch('version.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (info) {
-    if (info.v !== mine) {   // this page is an older copy than the files: reload it once to get the new one
-      var key = 'ob-reloaded-for';
-      try { if (sessionStorage.getItem(key) !== info.v) { sessionStorage.setItem(key, info.v); location.reload(); return; } } catch (e) {}
-    }
-    start(info);
-  }).catch(function () { start(null); });
+  function load() {
+    fetch('version.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (info) {
+      if (info.v !== mine) {   // this page is an older copy than the files: reload it once to get the new one
+        var key = 'ob-reloaded-for';
+        try { if (sessionStorage.getItem(key) !== info.v) { sessionStorage.setItem(key, info.v); location.reload(); return; } } catch (e) {}
+      }
+      start(info);
+    }).catch(function () { start(null); });
+  }
+  /* Offline copy (app/sw.js): a new version that finished downloading waits until it can switch in one
+     step. Ask it to switch now, while nothing is open yet; it says no if another OverBoard page is
+     open. On a switch, reload so every file comes from the new version. */
+  var sw = navigator.serviceWorker;
+  if (!sw || !sw.controller) return load();
+  var started = false;
+  function go() { if (!started) { started = true; load(); } }
+  sw.getRegistration().then(function (reg) {
+    if (!reg || !reg.waiting) return go();
+    // if the switch comes after the app started (it waited too long), reload only while no PDF is open
+    sw.addEventListener('controllerchange', function () { if (!started || document.body.classList.contains('start')) { started = true; location.reload(); } });
+    sw.addEventListener('message', function (e) { if (e.data === 'ob-wait') go(); });
+    sw.startMessages();
+    setTimeout(go, 8000);   // only if the new version never answers
+    reg.waiting.postMessage('ob-switch');
+  }, go);
 })();
 </script>
 </body>
