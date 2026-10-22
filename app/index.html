@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="f5236ac56504">
+<meta name="ob-version" content="6ab065068cff">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -75,7 +75,7 @@
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner">&minus;</button><div class="val"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker">+</button></div>
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
   <button data-act="erase">Eraser</button>
-  <button data-act="undo">Undo</button>
+  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
   <button data-act="clear" title="Clears the ink on the page you are looking at">Clear page</button>
   <button data-act="toc" title="Chapters of this PDF">Chapters</button>
   <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">Fit</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>

@@ -1,7 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
+import { historyKey, hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -66,7 +66,7 @@ const viewer = new Viewer(pagesEl, {
   show: (P) => ink.show(P), hide: (P) => ink.hide(P), resize: (P) => ink.resize(P), textReady: (P) => finder.showHit(P),
 });
 const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus);
-const ink = new Ink(viewer, T, () => markDirty());
+const ink = new Ink(viewer, T, () => { refreshRedo(); markDirty(); });
 ink.attach(pagesEl);
 window.__overboard = { viewer, ink, get doc() { return doc; }, get data() { return D; }, flush: () => writeNow() };   // for tests and the curious
 
@@ -91,10 +91,19 @@ async function writeNow() {
   if (!doc || !dirty) return;
   dirty = false;
   D.at = viewer.currentPage();
-  try { await store.saveInk(doc.hash, D); setStatus(D.active + ' · saved in this browser'); }
+  const hash = doc.hash;
+  try { await store.saveInk(hash, D); dropBackup(hash); setStatus(D.active + ' · saved in this browser'); }
   catch (e) { dirty = true; setStatus('Could not save in this browser (' + ((e && e.name) || e) + '). Use Save ink.'); }
 }
-window.addEventListener('pagehide', () => { if (doc) { dirty = true; writeNow(); writePdf(); } });
+/* A reload or a closed tab can cut off the IndexedDB write above, losing the last few seconds of ink.
+   So on the way out, also keep a copy in localStorage (written at once); opening the PDF again uses
+   whichever copy is newer. sessionStorage remembers the open PDF, so a reload reopens it. */
+const BACKUP = 'ob-unsaved:', OPEN_KEY = 'ob-open';
+function backupNow() { if (doc) { try { localStorage.setItem(BACKUP + doc.hash, JSON.stringify(D)); } catch (e) { /* full or blocked */ } } }
+function dropBackup(hash) { try { localStorage.removeItem(BACKUP + hash); } catch (e) { /* blocked */ } }
+function readBackup(hash) { try { return validData(JSON.parse(localStorage.getItem(BACKUP + hash))); } catch (e) { return null; } }
+function rememberOpen(hash) { try { if (hash) sessionStorage.setItem(OPEN_KEY, hash); else sessionStorage.removeItem(OPEN_KEY); } catch (e) { /* blocked */ } }
+window.addEventListener('pagehide', () => { if (doc) { D.at = viewer.currentPage(); backupNow(); dirty = true; writeNow(); writePdf(); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && doc) { dirty = true; writeNow(); writePdf(); } });
 window.addEventListener('beforeunload', (e) => { if (doc && pdfDirty && doc.linkOn) { writePdf(); e.preventDefault(); } });   // the PDF write takes a moment
 
@@ -246,7 +255,10 @@ async function openFile(file, handlePromise) {
       if (pw === null) task.destroy(); else give(pw);
     };
     const pdf = await task.promise;
-    const saved = validData(await store.loadInk(hash).catch(() => null));
+    let saved = validData(await store.loadInk(hash).catch(() => null));
+    const backup = readBackup(hash);   // ink from a reload that cut off the last save
+    const fromBackup = !!backup && (!saved || (backup.t || 0) > (saved.t || 0));
+    if (fromBackup) saved = backup;
     let inPdf = null;   // ink stored inside the PDF itself; the newest copy wins, a tie goes to the file
     try { const txt = await readEmbeddedInk(pdf); if (txt) inPdf = store.parseSidecar(txt).data; } catch (e) { /* not ours */ }
     const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
@@ -260,11 +272,12 @@ async function openFile(file, handlePromise) {
     pagesTotal.textContent = 'of ' + pdf.numPages;
     fitSpace();
     await viewer.open(pdf);
-    ink.setData(D);
+    ink.setData(D); refreshRedo();
     renderPeriods(); refresh();
     if (D.at > 1) viewer.goTo(D.at); else window.scrollTo(0, 0);
     setStatus(D.active + ' · ' + (fromPdf ? 'ink loaded from inside the PDF' : saved ? 'ink restored from this browser' : 'ready'));
-    if (fromPdf) store.saveInk(hash, D).catch(() => {});   // keep this browser's copy current too
+    if (fromPdf || fromBackup) store.saveInk(hash, D).then(() => dropBackup(hash), () => {});   // keep this browser's copy current too
+    rememberOpen(hash);
     refreshLink(); reconnectLink();
     loadOutline(pdf);
   } catch (e) {
@@ -279,6 +292,7 @@ async function openFile(file, handlePromise) {
 
 async function closeDoc(showStart = true) {
   if (!doc) return;
+  rememberOpen(null);   // first, so a reload while this finishes doesn't reopen it
   dirty = true; await writeNow(); await writePdf();
   viewer.close();
   try { await doc.pdf.destroy(); } catch (e) { /* already gone */ }
@@ -556,7 +570,7 @@ function onToolbarClick(e) {
       }
       break;
     case 'zoom-fit': viewer.setZoom('fit'); break;
-    case 'undo': { const n = ink.undo(); if (n && !isOnScreen(n)) viewer.goTo(n); break; }
+    case 'undo': case 'redo': historyStep(b.dataset.act); break;
     case 'clear': {
       const n = viewer.currentPage();
       if (!ink.pageList(n).length) { setStatus('Page ' + n + ' has no ink in ' + D.active); break; }
@@ -601,11 +615,18 @@ function openFind() {
 }
 document.addEventListener('keydown', (e) => {
   const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && doc && !typing) { ink.undo(); e.preventDefault(); }
+  const h = historyKey(e);   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
+  if (h && (h === 'block' || !typing)) { e.preventDefault(); if (h !== 'block' && doc) historyStep(h); }   // text boxes keep their own undo
   // the browser's own find only sees pages near the screen; ours searches the whole PDF
   if ((e.ctrlKey || e.metaKey) && e.key === 'f' && doc) { openFind(); e.preventDefault(); }
   if (e.key === 'Escape' && !findPanel.hidden) finder.close();
 });
+function historyStep(act) {   // Undo or Redo, then show the page it changed
+  const n = act === 'redo' ? ink.redo() : ink.undo();
+  if (n && !isOnScreen(n)) viewer.goTo(n);
+}
+const redoBtn = $('[data-act="redo"]', bar);
+function refreshRedo() { redoBtn.disabled = !ink.canRedo(); }
 function isOnScreen(n) {
   const r = viewer.pages[n - 1].el.getBoundingClientRect();
   return r.bottom > 0 && r.top < window.innerHeight;
@@ -670,7 +691,7 @@ async function importInk(file) {
     const has = Object.values(D.periods).some((l) => l.length);
     if (has && !confirm('Replace the ink on this PDF (all class periods) with the ink from "' + file.name + '"?')) return;
     D = data;
-    ink.setData(D); renderPeriods(); refresh();
+    ink.setData(D); refreshRedo(); renderPeriods(); refresh();
     markDirty(); await writeNow();
     setStatus('Ink loaded from ' + file.name);
   } catch (e) { setStatus(e.message || String(e)); }
@@ -680,3 +701,9 @@ $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]
 /* ---------- start ---------- */
 refresh(); setMode('write'); renderRecent();
 setupOffline(openFile);
+(async () => {   // reopen the PDF that was open before a reload
+  let hash = null;
+  try { hash = sessionStorage.getItem(OPEN_KEY); } catch (e) { /* blocked */ }
+  const rec = hash && await store.getFile(hash).catch(() => null);
+  if (rec && rec.blob && !doc) openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
+})();

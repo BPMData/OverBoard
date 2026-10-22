@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v16) =====
+<!-- ===== INK OVERLAY START (v17) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -48,6 +48,9 @@
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */
+#ink-undo{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#ink-bar #ink-undo button{padding:0;font-size:26px;line-height:1}
+#ink-bar #ink-undo button:disabled{opacity:.35;cursor:default}
 #ob-hl{grid-column:1 / 3;display:grid;grid-template-columns:1fr 44px;gap:6px}
 #ink-bar #ob-hl button[data-act="hl-menu"]{padding:0;font-size:20px}
 #ink-bar #ob-hl button[data-act="hl-menu"][aria-expanded="true"]{background:#fff;color:#000}
@@ -95,7 +98,7 @@
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner">&minus;</button><div class="val"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker">+</button></div>
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
   <button data-act="erase">Eraser</button>
-  <button data-act="undo">Undo</button>
+  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
   <button data-act="clear">Clear</button>
   <button data-act="print">Save PDF</button>
   <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
@@ -313,6 +316,20 @@
     document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !m.hidden) show(false); });
     return { el: m, show: show, sync: sync };
   }
+
+  /* Keyboard history keys, the same in the PDF app and the overlay:
+     Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
+     is turned off, so a slip can't throw the page away; the browser's reload button still works.
+     Returns 'undo', 'redo', 'block' or null; the caller calls preventDefault for any non-null result. */
+  function historyKey(e) {
+    if (e.key === 'F5') return 'block';
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return null;
+    var k = (e.key || '').toLowerCase();
+    if (k === 'z') return e.shiftKey ? 'redo' : 'undo';
+    if (k === 'y') return 'redo';
+    if (k === 'r') return e.shiftKey ? 'block' : 'redo';
+    return null;
+  }
   /* ===== END SHARED CORE ===== */
 
   /* ===== SETTINGS ===== */
@@ -340,7 +357,7 @@
   var dataEl = document.getElementById('ink-data');
   var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
   var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
-  var D, strokes, lastCleared = null, cur = null, active = null;
+  var D, strokes, lastCleared = null, redos = [], cur = null, active = null;   // redos: what Undo took back, newest last
   var penColor = '#111111';   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
   var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
@@ -483,17 +500,25 @@
     drawPieces(s, liveEndPieces(s, live));
     // the board sends a few-millisecond blip when you switch between hand and pen; drop it
     if (performance.now() - downAt < 15 && s.p.length <= 4) { redraw(); return; }
-    strokes.push(s); lastCleared = null; save();
+    strokes.push(s); lastCleared = null; redos = []; refreshRedo(); save();   // new ink starts a new history
   }
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
   function undo(){
-    if (strokes.length) { strokes.pop(); redraw(); save(); }
-    else if (lastCleared) { setStrokes(lastCleared); lastCleared = null; redraw(); save(); }
+    if (strokes.length) { redos.push(strokes.pop()); redraw(); save(); }
+    else if (lastCleared) { setStrokes(lastCleared); lastCleared = null; redos.push({ cleared: 1 }); redraw(); save(); }
+    refreshRedo();
   }
-  function clearAll(){ if (strokes.length) lastCleared = strokes; setStrokes([]); redraw(); save(); }
+  function redo(){   // puts back what Undo took, in order
+    var r = redos.pop();
+    if (!r) return;
+    if (r.cleared) clearAll(true); else { strokes.push(r); lastCleared = null; redraw(); save(); }
+    refreshRedo();
+  }
+  function refreshRedo(){ var b = bar.querySelector('[data-act="redo"]'); if (b) b.disabled = !redos.length; }
+  function clearAll(keepRedo){ if (strokes.length) lastCleared = strokes; setStrokes([]); if (keepRedo !== true) { redos = []; refreshRedo(); } redraw(); save(); }
 
   /* ---------- class periods ---------- */
   function renderPeriods(){
@@ -507,7 +532,7 @@
   }
   function switchTo(name){
     if (!D.periods[name] || name === D.active) return;
-    D.active = name; strokes = D.periods[name]; lastCleared = null;
+    D.active = name; strokes = D.periods[name]; lastCleared = null; redos = []; refreshRedo();
     redraw(); renderPeriods(); save();
   }
 
@@ -687,6 +712,7 @@
         if (e.detail === 0) STEPPERS[b.dataset.act][0](STEPPERS[b.dataset.act][1]);   // keyboard only; taps are handled on pointerdown
         break;
       case 'undo': undo(); break;
+      case 'redo': redo(); break;
       case 'clear': confirmTap(b, clearAll); break;
       case 'savefile':
         if (FSA && !fileHandle) explainPick(b, false); else saveAndShow(b, false);
@@ -717,7 +743,12 @@
     clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label;
     saveAndShow(bar.querySelector('[data-act="savefile"]'), forcePick);
   }
-  document.addEventListener('keydown', function(e){ if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undo(); e.preventDefault(); } });
+  document.addEventListener('keydown', function(e){
+    var h = historyKey(e), t = document.activeElement;   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
+    if (!h || (h !== 'block' && t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;   // text boxes keep their own undo
+    e.preventDefault();
+    if (h !== 'block') (h === 'undo' ? undo : redo)();
+  });
 
   /* ---------- print / Save PDF: redraw the current period's ink onto each page at print sharpness ---------- */
   function clearPrint(){ [].forEach.call(document.querySelectorAll('canvas.ink-print'), function(c){ c.remove(); }); }
