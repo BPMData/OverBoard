@@ -1,7 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { historyKey, hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
+import { makePopMenu, historyKey, hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -518,17 +518,14 @@ holdRepeat($('[data-act="zoom-out"]', bar), () => { if (viewer.zoom <= 0.2) retu
 picker.addEventListener('input', () => { T.customColor = picker.value; setLS('ink-custom', T.customColor); pickColor(T.customColor); });
 /* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
    anywhere else, or Escape. Lifting the pen or finger never closes them. */
-const fileMenu = $('#ob-filemenu'), fileBtn = $('[data-act="file"]', bar);
-const placeFileMenu = () => placeMenu(fileMenu, fileBtn, bar, false);
-function showFileMenu(open) {
-  fileMenu.hidden = !open;
-  fileBtn.setAttribute('aria-expanded', String(open));
-  if (open) { hlMenu.show(false); placeFileMenu(); }
+const fileMenu = $('#ob-filemenu'), clearMenu = makePopMenu($('#ob-clearmenu'), $('[data-act="clear"]', bar), bar, () => closeMenus('clear'));
+const file = makePopMenu(fileMenu, $('[data-act="file"]', bar), bar, () => closeMenus('file'));
+const placeFileMenu = file.place, showFileMenu = file.show;
+function closeMenus(except) {   // only one popout at a time
+  if (except !== 'file') file.show(false);
+  if (except !== 'clear') clearMenu.show(false);
+  if (except !== 'hl') hlMenu.show(false);
 }
-document.addEventListener('pointerdown', (e) => {   // a tap anywhere else closes it
-  if (!fileMenu.hidden && !fileMenu.contains(e.target) && !fileBtn.contains(e.target)) showFileMenu(false);
-}, true);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') showFileMenu(false); });
 // Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
 // A choice, or moving the slider, turns the highlighter on in that mode.
 const hlMenu = makeHlMenu(bar, T, () => {
@@ -536,12 +533,12 @@ const hlMenu = makeHlMenu(bar, T, () => {
   setLS('ink-hl-strength', T.hlStrength);
   if (T.covering) setLS('ink-cover-color', T.coverColor);
   T.hiliting = true; T.erasing = false; T.color = toolColor(); setMode('write'); refresh();
-}, () => showFileMenu(false));
-fileMenu.addEventListener('click', (e) => {
+}, () => closeMenus('hl'));
+for (const m of [fileMenu, clearMenu.el]) m.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   onToolbarClick(e);
   // keep it open while a two-tap confirm ("Sure?") is waiting, or after moving the toolbar
-  if (!b.classList.contains('warn') && b.dataset.act !== 'side') showFileMenu(false);
+  if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
   else if (b.dataset.act === 'side') placeFileMenu();
 });
 
@@ -571,12 +568,21 @@ function onToolbarClick(e) {
       break;
     case 'zoom-fit': viewer.setZoom('fit'); break;
     case 'undo': case 'redo': historyStep(b.dataset.act); break;
-    case 'clear': {
+    case 'clear':   // a one-page PDF just clears (tap twice); otherwise the menu asks: this page or all pages
+      if (doc.pages > 1) { clearMenu.show(clearMenu.el.hidden); return; }
+      if (!ink.count()) { setStatus(D.active + ' has no ink to clear'); break; }
+      confirmTap(b, () => { ink.clearPage(1); setStatus('Page cleared · Undo brings it back'); });
+      break;
+    case 'clear-page': {
       const n = viewer.currentPage();
-      if (!ink.pageList(n).length) { setStatus('Page ' + n + ' has no ink in ' + D.active); break; }
-      confirmTap(b, () => { ink.clearPage(n); setStatus('Page ' + n + ' cleared · Undo brings it back'); });
+      if (!ink.pageList(n).length) setStatus('Page ' + n + ' has no ink in ' + D.active);
+      else { ink.clearPage(n); setStatus('Page ' + n + ' cleared · Undo brings it back'); }
       break;
     }
+    case 'clear-all':
+      if (!ink.count()) { setStatus(D.active + ' has no ink to clear'); break; }
+      confirmTap(b, () => { ink.clearAll(); setStatus('All pages cleared in ' + D.active + ' · Undo brings them back'); clearMenu.show(false); showFileMenu(false); });
+      return;
     case 'toc': toggleToc(); break;
     case 'find': openFind(); break;
     case 'prev': jump(-1); break;
@@ -593,7 +599,7 @@ function onToolbarClick(e) {
       break;
     case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
-      showFileMenu(false); hlMenu.show(false);
+      closeMenus();
       bar.style.display = 'none';
       showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show');
       if (viewer.fit) { fitSpace(); viewer.layout(); }

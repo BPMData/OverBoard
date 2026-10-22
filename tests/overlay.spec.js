@@ -101,22 +101,24 @@ test('Cover: the ▾ menu works with pen and finger taps; covers are opaque on t
   expect(await rgba(page, 650, 500, 'ink-hl')).toEqual([253, 216, 53, 255]);
 });
 
+const savePdf = async (page) => { await page.click('[data-act="file"]'); await page.click('#ob-filemenu [data-act="print"]'); };   // Save PDF is in the File menu
+
 test('Save PDF with covers: the teacher is told the text can still be copied; covers print solid above the page', async ({ page }) => {
   await page.evaluate(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
   const box = await page.locator('.page').first().boundingBox(), y = box.y + 200, x0 = box.x + 100;
   await stroke(page, line(x0, y, x0 + 300, y));                  // pen: no notice
-  await page.click('[data-act="print"]');
+  await savePdf(page);
   expect(await page.evaluate(() => window.__printed)).toBe(1);
   await tapOn(page, '[data-act="hl-menu"]', 'pen');
   await tapOn(page, '#ob-hlmenu [data-cover="#5f5f5f"]', 'pen');
   await stroke(page, line(x0, y + 60, x0 + 300, y + 60));
   let msg = '';
   page.once('dialog', (d) => { msg = d.message(); d.dismiss(); });
-  await page.click('[data-act="print"]');
+  await savePdf(page);
   expect(msg).toContain('still in it');
   expect(await page.evaluate(() => window.__printed)).toBe(1);   // cancelled
   page.once('dialog', (d) => d.accept());
-  await page.click('[data-act="print"]');
+  await savePdf(page);
   expect(await page.evaluate(() => window.__printed)).toBe(2);
 
   await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
