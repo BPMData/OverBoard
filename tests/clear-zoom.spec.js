@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { test } = require('@playwright/test');
 const { expect, openApp, openPdf, strokes } = require('./support/app');
+const { openOverlay, savedInk } = require('./support/overlay');
 
 const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
 const menuOpen = (page, id) => page.locator('#' + id).isVisible();
@@ -75,7 +76,7 @@ test.describe('PDF app', () => {
 });
 
 test.describe('HTML overlay', () => {
-  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await page.goto('./'); });
+  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await openOverlay(page); });
   const stroke = (page, pts) => page.evaluate((pts) => new Promise(async (res) => {
     const c = document.getElementById('ink-canvas');
     const ev = (t, x, y) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y }));
@@ -84,7 +85,7 @@ test.describe('HTML overlay', () => {
     await new Promise((r) => setTimeout(r, 20));
     ev('pointerup', ...pts[pts.length - 1]); res();
   }), pts);
-  const ink = (page) => page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); const k = Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')); const d = JSON.parse(localStorage.getItem(k)); return d.periods[d.active]; });
+  const ink = async (page) => { const d = await savedInk(page); return d.periods[d.active]; };
   const pageBox = (page, i) => page.locator('.page').nth(i).boundingBox();
   const centerPage = (page, i) => page.evaluate((i) => { const p = document.querySelectorAll('.page')[i], r = p.getBoundingClientRect(); scrollBy(0, r.top + r.height / 2 - innerHeight / 2); }, i);
 
@@ -115,7 +116,7 @@ test.describe('HTML overlay', () => {
   test('a worksheet without pages: one Clear button (tap twice)', async ({ page }) => {
     const block = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'ink_overlay.html'), 'utf8');
     await page.route('**/nopages.html', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>No pages</title><body><p style="height:1500px">Notes</p>' + block + '</body>' }));
-    await page.goto('nopages.html');
+    await openOverlay(page, 'nopages.html');
     await stroke(page, line(500, 300, 800, 300));
     await expect(page.locator('[data-act="clear-page"]')).toBeHidden();
     const clear = page.locator('[data-act="clear-all"]');
@@ -192,7 +193,7 @@ test.describe('HTML overlay', () => {
 for (const where of ['PDF app', 'HTML overlay']) {
   test(`${where}: on a short screen the toolbar shrinks to fit, with every button and the zoom % readable`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 700 });
-    if (where === 'PDF app') { await openApp(page); await openPdf(page, 'book.pdf'); } else await page.goto('./');
+    if (where === 'PDF app') { await openApp(page); await openPdf(page, 'book.pdf'); } else await openOverlay(page);
     const check = () => page.evaluate(() => {
       const b = document.getElementById('ink-bar'), r = b.getBoundingClientRect(), z = b.querySelector('[data-act="zoom-fit"]');
       return { scrolls: b.scrollHeight > b.clientHeight + 1, top: r.top, bottom: r.bottom, label: z.textContent, cut: z.scrollWidth > z.clientWidth };
