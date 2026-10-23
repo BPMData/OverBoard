@@ -518,7 +518,7 @@
       ready = true;
       if (r.ok && lsCopy) {   // a localStorage copy: drop it if IndexedDB is already as new, else move the ink over
         if (got && (got.t || 0) >= (lsCopy.t || 0)) dropLS(got.t || 0);
-        else { dirty = true; writeLocal(true); }
+        else { dirty = true; writeLocal(true, false, true); }
       }
       lsCopy = null;
       return src;
@@ -530,7 +530,7 @@
     clearTimeout(saveTimer); saveTimer = setTimeout(function(){ writeLocal(false); }, SAVE_DELAY_MS);
   }
   function writeLS(){ try { localStorage.setItem(KEY, JSON.stringify(D)); return true; } catch(e){ return false; } }
-  function writeLocal(skipFile, closing){   // closing: the tab is being hidden or closed, so also keep a quick localStorage backup
+  function writeLocal(skipFile, closing, quiet){   // closing: the tab is being hidden or closed, so also keep a quick localStorage backup; quiet: leave the status line alone
     clearTimeout(saveTimer); saveTimer = null;
     if (!dirty || !ready) return;
     dirty = false;
@@ -539,7 +539,7 @@
       var ok = r.ok;
       if (ok) dropLS(t);
       else if (!backedUp) ok = writeLS();   // no IndexedDB: localStorage, as before v21
-      if (dirty) return;   // newer ink is waiting to be saved; that save sets the status
+      if (dirty || (quiet && ok)) return;   // newer ink is waiting to be saved (that save sets the status), or a quiet save worked
       setStatus(ok || backedUp ? D.active + ' · saved in browser' : 'Browser blocked storage. Use File ▸ Save ink into file.');
     });
     if (fileHandle && !skipFile) writeFile(false);
