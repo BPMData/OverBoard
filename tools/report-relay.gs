@@ -7,6 +7,9 @@
         settings) so checkForFixes() can tell them when the issue is closed as fixed.
    The person's email and comments are never put in the public issue, and never sent to Anthropic.
 
+   Limits, so a robot can't flood the issues or use this Gmail account to email strangers: 20 reports an hour, 40 a day,
+   25 thank-yous a day, and one thank-you per address a week (see MAX_PER_HOUR and the lines under it).
+
    checkForFixes() runs once a day (installDailyCheck() sets that up). For each saved address whose issue was closed
    as completed, Claude Haiku writes a short "here's what we changed" paragraph from the maintainers' own comments
    and the titles of the pull requests that fixed it; fixed text adds how to make sure OverBoard has the new version.
@@ -21,6 +24,10 @@
 
 var MAX_CHARS = 300000;    // a report is usually 20-60 KB; refuse anything far bigger
 var MAX_PER_HOUR = 20;     // more than this in one hour is a robot, not teachers
+var MAX_PER_DAY = 40;      // reports a day. Each one opens an issue and emails the reports inbox.
+var MAX_THANKS_PER_DAY = 25;   // thank-you emails a day. With MAX_PER_DAY this stays well under Gmail's ~100 emails a day,
+                               // so a flood of fake reports can't use up the emails real reports need.
+var THANK_AGAIN_DAYS = 7;  // one thank-you per email address a week, so the script can't be used to pester someone
 var ISSUE_LIMIT = 60000;   // GitHub allows 65,536 characters in an issue body
 var APP_URL = 'https://bpmdata.github.io/OverBoard/app/';
 var HAIKU = 'claude-haiku-5-5';
@@ -44,7 +51,9 @@ function doPost(e) {
     var email = String(priv.email || '').trim();
     if (EMAIL_RE.test(email) && hasTouches(r)) {
       var lang = MAIL[r.lang] ? r.lang : 'en';
-      try { thankYou(email, issue, lang); } catch (err) { Logger.log('thank-you failed: ' + err); }
+      if (mayThank(email)) {
+        try { thankYou(email, issue, lang); } catch (err) { Logger.log('thank-you failed: ' + err); }
+      } else Logger.log('no thank-you: this address was thanked this week, or the daily limit was reached');
       if (issue) props.setProperty('contact:' + issue.number, JSON.stringify({ email: email, board: board(r), lang: lang, at: Date.now() }));
     }
     return reply({ ok: true, issue: issue ? issue.number : null, url: issue ? issue.html_url : null });
@@ -64,16 +73,53 @@ function reply(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function underLimit() {
+function withLock(fn) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
-  try {
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+/* at most MAX_PER_HOUR reports an hour and MAX_PER_DAY a day */
+function underLimit() {
+  return withLock(function () {
     var cache = CacheService.getScriptCache(), key = 'sent-' + Math.floor(Date.now() / 3600000);
     var n = Number(cache.get(key) || 0);
     if (n >= MAX_PER_HOUR) return false;
+    if (!countToday('reports', MAX_PER_DAY)) return false;
     cache.put(key, String(n + 1), 3700);
     return true;
-  } finally { lock.releaseLock(); }
+  });
+}
+
+/* Daily counts live in Script properties as day:2026-10-23 = {"reports":3,"thanks":1} (the cache forgets after 6 hours).
+   Adds one and returns true, or returns false if today's count is already at max. Call it inside withLock. */
+function countToday(kind, max) {
+  var props = PropertiesService.getScriptProperties(), key = 'day:' + today(), c = {};
+  try { c = JSON.parse(props.getProperty(key) || '{}'); } catch (e) {}
+  if ((c[kind] || 0) >= max) return false;
+  c[kind] = (c[kind] || 0) + 1;
+  props.setProperty(key, JSON.stringify(c));
+  return true;
+}
+
+function today() { return Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd'); }
+
+/* One thank-you per address per THANK_AGAIN_DAYS, and at most MAX_THANKS_PER_DAY in all. The address is kept only
+   in a scrambled form (thanked:<hash> = when), and checkForFixes() deletes it after a week. */
+function mayThank(email) {
+  var key = 'thanked:' + emailHash(email);
+  return withLock(function () {
+    var props = PropertiesService.getScriptProperties();
+    if (Date.now() - Number(props.getProperty(key) || 0) < THANK_AGAIN_DAYS * 864e5) return false;
+    if (!countToday('thanks', MAX_THANKS_PER_DAY)) return false;
+    props.setProperty(key, String(Date.now()));
+    return true;
+  });
+}
+
+function emailHash(email) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, email.toLowerCase())
+    .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('').slice(0, 32);
 }
 
 /* ---------- plain words ---------- */
@@ -288,6 +334,11 @@ function checkForFixes() {
   var props = PropertiesService.getScriptProperties(), all = props.getProperties();
   var version = liveVersion();
   Object.keys(all).forEach(function (key) {
+    if (key.indexOf('day:') === 0) { if (key !== 'day:' + today()) props.deleteProperty(key); return; }   // old daily counts
+    if (key.indexOf('thanked:') === 0) {   // thanked more than a week ago: forget it
+      if (Date.now() - Number(all[key]) >= THANK_AGAIN_DAYS * 864e5) props.deleteProperty(key);
+      return;
+    }
     if (key.indexOf('contact:') !== 0) return;
     var n = key.slice(8), contact;
     try { contact = JSON.parse(all[key]); } catch (e) { props.deleteProperty(key); return; }

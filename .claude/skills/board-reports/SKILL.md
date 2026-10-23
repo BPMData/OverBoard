@@ -47,7 +47,7 @@ Per step (`finger`, `pen`, `palm`, `eraser`, `two`), `seen` holds what the brows
 | `outsidePad`, `buttonPresses` | touches outside the drawing area; what Next/Skip was pressed with (not the step's input) |
 | `skipped` / `visited` | the teacher said they don't have that tool / never reached the step |
 
-The **known-good reference** is the SMART Board on macOS (docs/ROADMAP.md, "Input"): pen tip → `pen`, `buttons: 1`;
+The **known-good reference** is the SMART Board on macOS (docs/ARCHITECTURE.md, "Input"): pen tip → `pen`, `buttons: 1`;
 palm/fist → `pen` with `buttons: 32`; finger → `mouse`; contact size always 1×1. `pointerKind()` is built on exactly
 that. A report fits one of these patterns:
 
