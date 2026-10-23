@@ -44,6 +44,7 @@ test('only pages near the screen keep images and text layers while scrolling the
 });
 
 test('mixed page sizes and rotation; export puts ink in the right place', async ({ page }, info) => {
+  await page.click('[data-color="#111111"]');      // black, so the check below can look for dark ink (the pen starts pink)
   await page.waitForFunction(() => __overboard.viewer.pages[12].sized);
   const sizes = await page.evaluate(() => [11, 12, 13].map((n) => { const P = __overboard.viewer.pages[n - 1]; return [Math.round(P.w), Math.round(P.h)]; }));
   expect(sizes).toEqual([[792, 612], [612, 792], [792, 612]]);   // landscape, portrait, rotated 90°

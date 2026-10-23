@@ -120,6 +120,7 @@ test('ink file (.overboard.json) round-trips into a fresh browser', async ({ pag
 });
 
 test('Export PDF draws the ink into the PDF, named for the period', async ({ page }, info) => {
+  await page.click('[data-color="#111111"]');      // black, so the check below can look for dark ink (the pen starts pink)
   await draw(page, 1, line(100, 190, 300, 190));   // y = 190: a blank strip between the printed text and its underline
   await page.click('[data-act="hilite"]');
   await draw(page, 1, line(80, 300, 400, 300));
