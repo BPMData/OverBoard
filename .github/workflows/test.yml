@@ -21,6 +21,20 @@ jobs:
 
       - name: Generated files are up to date (overlay, app version stamp)
         run: python3 tools/build.py --check
+      - name: Version number went up (vN in the first line of overlay/ink_overlay.html)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          git fetch --depth=1 origin "$BASE"
+          ver() { sed -n '1s/.*START (v\([0-9]*\)).*/\1/p'; }
+          old=$(git show FETCH_HEAD:overlay/ink_overlay.html | ver)
+          new=$(ver < overlay/ink_overlay.html)
+          echo "$BASE has v$old, this PR has v$new"
+          if [ -z "$new" ] || [ "$new" -le "${old:-0}" ]; then
+            echo "::error::Raise the version in the first line of overlay/ink_overlay.html above v$old, then run python3 tools/build.py"
+            exit 1
+          fi
       - name: Vendored libraries match app/libs.js
         run: python3 tools/vendor_libs.py --check
 
