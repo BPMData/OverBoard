@@ -194,7 +194,7 @@ dlg.addEventListener('click', (e) => {
   if (b.value !== 'ok' || !doc) return;
   if (!FSA) { downloadWithInk(); return; }
   // the save window must open straight from the tap
-  window.showSaveFilePicker({ id: 'overboard-pdf', suggestedName: boardPdfName(), types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] })
+  window.showSaveFilePicker({ suggestedName: boardPdfName(), ...(doc.origin ? { startIn: doc.origin } : { id: 'overboard-pdf' }), types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] })
     .then((h) => startLink(h))
     .catch((err) => { if (!err || err.name !== 'AbortError') setStatus('Could not open the save window: ' + ((err && err.message) || err)); });
 });
@@ -280,6 +280,7 @@ async function openFile(file, handlePromise) {
     setStatus(D.active + ' · ' + (fromPdf ? 'ink loaded from inside the PDF' : saved ? 'ink restored from this browser' : 'ready'));
     if (fromPdf || fromBackup) store.saveInk(hash, D).then(() => dropBackup(hash), () => {});   // keep this browser's copy current too
     rememberOpen(hash);
+    if (handlePromise) handlePromise.then((h) => { if (h && h.kind === 'file' && doc && doc.hash === hash) doc.origin = h; }, () => {});   // its folder, for save windows
     refreshLink(); reconnectLink();
     loadOutline(pdf);
   } catch (e) {
@@ -310,7 +311,16 @@ async function closeDoc(showStart = true) {
 
 $('#ob-file').addEventListener('change', (e) => { openFile(e.target.files[0]); e.target.value = ''; });
 const dropZone = $('#ob-drop');
-dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#ob-file').click(); } });
+dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseFile(); } });
+/* Chrome/Edge: choose with showOpenFilePicker, which gives a handle to the file, so save windows can start in
+   its folder (Save ink into PDF, an HTML board copy). Other browsers use the plain file input. */
+function chooseFile() {
+  if (!window.showOpenFilePicker) { $('#ob-file').click(); return; }
+  window.showOpenFilePicker({ id: 'overboard-open', types: [{ description: 'PDF or HTML worksheet', accept: { 'application/pdf': ['.pdf'], 'text/html': ['.html', '.htm'] } }] })
+    .then(async ([h]) => openFile(await h.getFile(), Promise.resolve(h)))
+    .catch((err) => { if (!err || err.name !== 'AbortError') $('#ob-file').click(); });
+}
+dropZone.addEventListener('click', (e) => { if (window.showOpenFilePicker && e.target !== $('#ob-file')) { e.preventDefault(); chooseFile(); } });
 
 // drop a PDF (or an .overboard.json ink file) anywhere
 const cover = $('#ob-dropcover');

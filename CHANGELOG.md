@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Save windows open next to the original** (Chrome/Edge): the HTML board copy and Save ink into PDF now start in the folder of the file you dropped, chose by tapping the drop box, or opened from Finder, instead of the last folder used. Tapping the drop box now uses Chrome's own file chooser, which tells OverBoard where the file is.
 - **The pen starts Barbie pink** (PDF app and HTML overlay v20), for high visibility on the board. Tap any color to change it; `PEN_COLOR` at the top of `app/main.js` and of the overlay sets the starting color.
 - **PDF text is selectable and links work** (in Scroll mode): copy text, follow contents-page links, open web links. Write mode is unchanged. Exports keep the original text.
 - **Find text** searches the whole PDF (File ▸ Find text…, or Ctrl/⌘+F).

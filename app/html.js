@@ -58,8 +58,9 @@ export async function saveBoardCopy(text, name, startIn) {
   const blob = new Blob([text], { type: 'text/html' });
   if (window.showSaveFilePicker) {
     try {
+      // start in the original's folder when we know it; otherwise the folder used last time
       const h = await window.showSaveFilePicker({
-        id: 'overboard-html', suggestedName: name, ...(startIn ? { startIn } : {}),
+        suggestedName: name, ...(startIn ? { startIn } : { id: 'overboard-html' }),
         types: [{ description: 'Board copy (.html)', accept: { 'text/html': ['.html', '.htm'] } }],
       });
       const w = await h.createWritable();

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { test } = require('@playwright/test');
-const { expect, fixture, openApp, openPdf, download } = require('./support/app');
+const { expect, fixture, openApp, openPdf, download, fileMenu } = require('./support/app');
 
 const ROOT = path.join(__dirname, '..');
 const overlay = () => fs.readFileSync(path.join(ROOT, 'overlay', 'ink_overlay.html'), 'utf8').trim();
@@ -70,4 +70,45 @@ test('Chrome: saves through the save window with a suggested name', async ({ bro
   await expect(page.locator('#ob-msg')).toContainText('saved as Old_v13_board.html');
   expect(await page.evaluate(() => window.__pickOpts.suggestedName)).toBe('Old_v13_board.html');
   expect(await page.evaluate(async () => (await window.__files['Old_v13_board.html'].text()).includes('INK OVERLAY START'))).toBe(true);
+});
+
+/* Save windows start in the original file's folder when the browser says where it is (a drop, or a tap that
+   uses Chrome's file chooser); otherwise in the folder used last time (the picker's id). */
+async function chooseWithChrome(page, file, type) {
+  const b64 = fs.readFileSync(fixture(file)).toString('base64');
+  await page.evaluate(([name, b64, type]) => {
+    window.showOpenFilePicker = async (o) => {
+      window.__openOpts = o;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      return [{ kind: 'file', name, getFile: async () => new File([bytes], name, { type }) }];
+    };
+  }, [file, b64, type]);
+  await page.click('#ob-drop');
+}
+
+test('a board copy made from a chosen file: the save window starts in its folder', async ({ page }) => {
+  await openApp(page, { fakeFs: true });
+  await chooseWithChrome(page, 'Old_v13.html', 'text/html');
+  await expect(page.locator('#ob-msg')).toContainText('saved as Old_v13_board.html');
+  const o = await page.evaluate(() => ({ start: window.__pickOpts.startIn && window.__pickOpts.startIn.name, id: window.__pickOpts.id }));
+  expect(o).toEqual({ start: 'Old_v13.html', id: undefined });
+});
+
+test('without the original file, the save window starts in the folder used last time', async ({ page }) => {
+  await openApp(page, { fakeFs: true });
+  await page.setInputFiles('#ob-file', fixture('Old_v13.html'));   // a plain file input says nothing about the folder
+  await expect(page.locator('#ob-msg')).toContainText('saved as');
+  const o = await page.evaluate(() => ({ start: window.__pickOpts.startIn, id: window.__pickOpts.id }));
+  expect(o).toEqual({ start: undefined, id: 'overboard-html' });
+});
+
+test('Save ink into PDF starts in the PDF\'s own folder', async ({ page }) => {
+  await openApp(page, { fakeFs: true });
+  await chooseWithChrome(page, 'worksheet.pdf', 'application/pdf');
+  await page.waitForFunction(() => window.__overboard.doc && window.__overboard.viewer.stats().images >= 1);
+  await fileMenu(page, 'pdf-link');
+  await page.click('#ob-embed [value="ok"]');
+  await page.waitForFunction(() => window.__pickOpts);
+  const o = await page.evaluate(() => ({ start: window.__pickOpts.startIn && window.__pickOpts.startIn.name, id: window.__pickOpts.id, name: window.__pickOpts.suggestedName }));
+  expect(o).toEqual({ start: 'worksheet.pdf', id: undefined, name: 'worksheet_board.pdf' });
 });
