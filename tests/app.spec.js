@@ -46,12 +46,12 @@ test('highlighter keeps its own color, separate from the pen', async ({ page }) 
   expect(s.h).toBe(1);
   expect(s.c).toBe('#feec9a');   // yellow mixed halfway to white
   expect((await px(page, 200, 300, 'hl'))[3]).toBeGreaterThan(200);
-  await page.click('[data-color="#d32f2f"]');
+  await page.click('[data-color="#e0218a"]');                     // pink: on the highlighter's swatches too
   await page.click('[data-act="hilite"]');
   expect(await on()).toBe('#1565c0');
   await page.click('[data-act="hilite"]');
-  expect(await on()).toBe('#d32f2f');
-  expect(await page.evaluate(() => localStorage.getItem('ink-hl-color'))).toBe('#d32f2f');
+  expect(await on()).toBe('#e0218a');
+  expect(await page.evaluate(() => localStorage.getItem('ink-hl-color'))).toBe('#e0218a');
 });
 
 test('palm erases under the hand only, at screen size', async ({ page }) => {

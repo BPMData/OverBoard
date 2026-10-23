@@ -90,10 +90,10 @@ test('a cover is opaque, drawn above the text, and removed by palm, eraser or Un
   expect(await strokes(page)).toHaveLength(0);
 
   // picking a palette color while covering changes the cover's color only; the pen keeps blue
-  await pickCover(page, 'mouse', '#5f5f5f');
-  await page.click('[data-color="#d32f2f"]');
+  await pickCover(page, 'mouse', '#a6a6a6');
+  await page.click('[data-color="#ffffff"]');
   await draw(page, ANSWER);
-  expect(await last(page)).toMatchObject({ o: 1, c: '#d32f2f' });
+  expect(await last(page)).toMatchObject({ o: 1, c: '#ffffff' });
   await hl(page).click();
   expect(await page.evaluate(() => document.querySelector('#ink-bar [data-color].on')?.dataset.color)).toBe('#1565c0');
 });

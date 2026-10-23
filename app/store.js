@@ -44,6 +44,11 @@ export async function hashBytes(buf) {
 export const loadInk = (hash) => run('ink', 'readonly', (s) => s.get(hash));
 export const saveInk = (hash, data) => run('ink', 'readwrite', (s) => s.put(data, hash));
 
+// Small extras kept in the same place, under keys that are never a PDF's hash (the timer's own sound: 'ob-timer-sound')
+export const loadExtra = (key) => run('ink', 'readonly', (s) => s.get(key));
+export const saveExtra = (key, val) => run('ink', 'readwrite', (s) => s.put(val, key));
+export const dropExtra = (key) => run('ink', 'readwrite', (s) => { s.delete(key); });
+
 export async function rememberFile(hash, info, blob) {
   const rec = { hash, name: info.name, size: blob.size, pages: info.pages, opened: Date.now(), blob };
   await run('files', 'readwrite', (s) => s.put(rec, hash));

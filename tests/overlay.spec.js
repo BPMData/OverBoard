@@ -109,7 +109,7 @@ test('Save PDF with covers: the teacher is told the text can still be copied; co
   await savePdf(page);
   expect(await page.evaluate(() => window.__printed)).toBe(1);
   await tapOn(page, '[data-act="hl-menu"]', 'pen');
-  await tapOn(page, '#ob-hlmenu [data-cover="#5f5f5f"]', 'pen');
+  await tapOn(page, '#ob-hlmenu [data-cover="#a6a6a6"]', 'pen');
   await stroke(page, line(x0, y + 60, x0 + 300, y + 60));
   let msg = '';
   page.once('dialog', (d) => { msg = d.message(); d.dismiss(); });
@@ -123,7 +123,7 @@ test('Save PDF with covers: the teacher is told the text can still be copied; co
   await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
   const layers = await page.evaluate(() => [...document.querySelectorAll('.page')[0].querySelectorAll('canvas.ink-print')].map((c) => c.style.mixBlendMode));
   expect(layers).toEqual(['']);                                  // no highlights: one layer, covers on it
-  expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([95, 95, 95, 255]);
+  expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([166, 166, 166, 255]);   // light gray
   await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
 });
 

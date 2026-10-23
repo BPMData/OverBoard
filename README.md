@@ -34,6 +34,8 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **The PDF's text stays text**: select and copy it, follow its links, and search the whole book (great with OCR'd scans). Exports keep it.
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
 - **Hide the toolbar** down to a small button when you want the whole screen
+- **⏱ Timer**: big buttons to set it (1–15 minutes, or − / + and hold to go faster), a big countdown you can drag aside or shrink, and a chime at zero (or your own .wav / .mp3 in Settings ▸ Timer sound)
+- **Colors follow the tool**: pen colors for the pen, highlighter colors (yellow first) for the highlighter, cover colors for covers, plus the color picker
 - **Install the PDF app** in Chrome or Edge: it opens from the Dock or Start menu and works with no internet
 
 ## Use it on a PDF
@@ -41,7 +43,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
 - **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods, undo and redo, Clear page / Clear all, zoom and Settings & help ▸.
-- **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
+- **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, light gray, white, or any color with the color picker). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
 - **Clear page** clears the page you're looking at; **Clear all** clears every page (tap twice). A PDF with a chapter list has **Chapters** in that row instead, and **Clear ▸** opens the same two choices beside it. Both clear only the current class period, and Undo brings it back. A one-page PDF just has **Clear** (tap twice).
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.

@@ -59,6 +59,7 @@
 #ob-hlmenu button.on{border-color:#ffd400}
 #ob-hlmenu .sw{grid-row:1 / 3;width:28px;height:28px;border-radius:6px;box-shadow:0 0 0 2px #fff}
 #ob-hlmenu .sw.hl{background:linear-gradient(transparent 30%,#fff176 30%,#fff176 75%,transparent 75%),repeating-linear-gradient(90deg,#ddd 0 3px,#fff 3px 6px)}
+#ob-hlmenu .sw.pick{background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336)}
 #ob-hlmenu .strength{display:grid;gap:2px;margin:0;padding:4px 6px 8px;color:#fff;font:700 13px Inter,system-ui,sans-serif}
 #ob-hlmenu .strength b{color:#ffd400}
 #ob-hl-strength{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:0;padding:0;border:0;background:transparent;cursor:pointer;touch-action:none}
@@ -93,8 +94,8 @@
 #ob-settings input{min-width:0;height:44px;box-sizing:border-box;padding:0 10px;border:2px solid #555;border-radius:10px;background:#fff;color:#000;font:600 16px Inter,system-ui,sans-serif;user-select:text;-webkit-user-select:text}
 #ob-settings input:focus{outline:none;border-color:#ffd400;box-shadow:0 0 0 2px #ffd400}
 #ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
-#ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
-#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings :is(.ob-err,.ob-snd-err){margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
+#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #ob-settings .ob-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 /* Settings & help ▸ (data-act="file"): two short lines in a half-width cell */
 #ink-bar button[data-act="file"]{font-size:13px;line-height:1.15;padding:2px}
@@ -103,3 +104,45 @@
 #ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}
 #ob-settings .ob-tools .ob-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;box-shadow:0 0 0 1px #fff}
 #ob-settings .ob-reset{width:100%;margin-top:10px}
+/* ⏱ Timer (makeTimer in ink-core.js): the setup box in the middle of the screen, then the countdown that floats over the page */
+#ink-bar button[data-act="timer"]{font-variant-numeric:tabular-nums}
+#ob-timerset{position:fixed;inset:0;z-index:102;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
+#ob-timerset[hidden]{display:none}
+#ob-timerset .ob-box{width:min(460px,94vw);max-height:94vh;overflow-y:auto;box-sizing:border-box;padding:16px 18px 18px;background:#1f1f1f;color:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+#ob-timerset .ob-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ob-timerset .ob-head strong{font-size:22px}
+#ob-timerset button{min-height:64px;margin:0;border:3px solid transparent;border-radius:14px;background:#3a3a3a;color:#fff;font:700 20px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 8px;touch-action:manipulation}
+#ob-timerset button.on{border-color:#ffd400}
+#ob-timerset button:disabled{opacity:.35;cursor:default}
+#ob-timerset .ob-head button{min-height:48px;font-size:15px}
+#ob-timerset .ob-tm-pick{display:grid;grid-template-columns:96px 1fr 96px;gap:10px;align-items:center;margin:14px 0}
+#ob-timerset .ob-tm-pick button{min-height:96px;font-size:48px;line-height:1;padding:0}
+#ob-timerset .ob-tm-val{text-align:center;font:800 64px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+#ob-timerset .ob-tm-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#ob-timerset .ob-tm-start{width:100%;margin-top:14px;min-height:84px;font-size:28px;background:#ffd400;color:#000}
+#ob-timer{position:fixed;top:24px;left:24px;z-index:99;width:min(480px,94vw);display:grid;gap:10px;padding:12px 14px 14px;box-sizing:border-box;background:rgba(24,24,24,.94);color:#fff;border-radius:20px;box-shadow:0 6px 28px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+#ob-timer[hidden]{display:none}
+#ob-timer .ob-tm-face{cursor:grab;text-align:center;line-height:1}
+#ob-timer .ob-tm-face b{display:block;font:800 150px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+#ob-timer .ob-tm-msg{display:none;margin-bottom:6px;font:800 36px/1.1 Inter,system-ui,sans-serif}
+#ob-timer.up .ob-tm-msg{display:block}
+#ob-timer.soon .ob-tm-face b{color:#ffd400}
+#ob-timer.paused .ob-tm-face b{opacity:.55}
+#ob-timer.up{animation:ob-tm-flash 1s steps(1) infinite}
+@keyframes ob-tm-flash{0%{background:#c62828}50%{background:#1f1f1f}}
+@media (prefers-reduced-motion:reduce){#ob-timer.up{animation:none;background:#c62828}}
+#ob-timer .ob-tm-btns{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px}
+#ob-timer button{min-width:0;min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 18px Inter,system-ui,sans-serif;cursor:pointer;padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation}
+#ob-timer button[data-tm="pause"]{background:#ffd400;color:#000}
+#ob-timer button[data-tm="reset"],#ob-timer button[data-tm="close"],#ob-timer button[data-tm="small"]{font-size:26px;line-height:1}
+#ob-timer button.warn{background:#c62828;color:#fff;font-size:15px}
+#ob-timer button:disabled{opacity:.35;cursor:default}
+#ob-timer.small{width:auto;padding:6px 14px}
+#ob-timer.small .ob-tm-btns,#ob-timer.small .ob-tm-msg{display:none}
+#ob-timer.small .ob-tm-face b{font-size:44px}
+/* Settings ▸ Timer sound */
+#ob-settings .ob-tm-now{margin:0 0 8px;font-size:14px}
+#ob-settings .ob-tm-sbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#ob-settings .ob-tm-chime{width:100%;margin-top:8px}
+#ob-settings .ob-tm-chime[hidden]{display:none}
+@media print{#ob-timer,#ob-timerset{display:none!important}}
