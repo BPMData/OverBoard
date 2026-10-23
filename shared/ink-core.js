@@ -124,9 +124,9 @@ function holdRepeat(b, step){
 }
 
 /* first tap arms ("Sure?"), second tap within 3s does it */
-function confirmTap(btn, fn){
+function confirmTap(btn, fn, sure){
   if (!btn.classList.contains('warn')) {
-    btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = 'Sure?';
+    btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = sure || 'Sure?';
     btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 3000);
     return;
   }
@@ -166,15 +166,16 @@ function placeMenu(menu, btn, bar, alignTop){
    Returns { el, show(open), sync() }. */
 function makeHlMenu(bar, S, onPick, onOpen){
   var btn = bar.querySelector('[data-act="hl-menu"]');
-  var covers = [['#111111', 'Cover: black', 'hides answers'], ['#5f5f5f', 'Cover: dark gray', ''], ['#a6a6a6', 'Cover: light gray', '']];
+  var covers = [['#111111', 'Cover: black', 'hides answers', 'cover_black'], ['#5f5f5f', 'Cover: dark gray', '', 'cover_dark'], ['#a6a6a6', 'Cover: light gray', '', 'cover_light']];
   var m = document.createElement('div');
-  m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.hidden = true;
-  var html = '<button data-mode="hl"><span class="sw hl"></span>Highlight<small>see-through</small></button>' +
-    '<label class="strength"><span>Highlight strength <b id="ob-hl-pct"></b></span>' +
-    '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength (percent)"></label>';
+  m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.setAttribute('data-ta', 'highlighter'); m.hidden = true;
+  // data-t / data-ta: words translated by obTranslate (shared/strings.js)
+  var html = '<button data-mode="hl"><span class="sw hl"></span><span data-t="highlight">Highlight</span><small data-t="see_through">see-through</small></button>' +
+    '<label class="strength"><span><span data-t="hl_strength">Highlight strength</span> <b id="ob-hl-pct"></b></span>' +
+    '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength" data-ta="hl_strength"></label>';
   for (var i = 0; i < covers.length; i++)
     html += '<button data-mode="cover" data-cover="' + covers[i][0] + '"><span class="sw" style="background:' + covers[i][0] + '"></span>' +
-      covers[i][1] + (covers[i][2] ? '<small>' + covers[i][2] + '</small>' : '') + '</button>';
+      '<span data-t="' + covers[i][3] + '">' + covers[i][1] + '</span>' + (covers[i][2] ? '<small data-t="hides_answers">' + covers[i][2] + '</small>' : '') + '</button>';
   m.innerHTML = html;
   document.body.appendChild(m);
   var slider = m.querySelector('input'), pct = m.querySelector('b');
@@ -219,11 +220,25 @@ function makePopMenu(menu, btn, bar, onOpen){
   return { el: menu, show: show, place: place };
 }
 
+/* A word that is too wide for its button (longer languages: "Desplazar", "Défiler") gets smaller text,
+   down to 10px, instead of stretching the toolbar. Call after the words or the layout change. */
+function fitLabels(root){
+  var bs = root.querySelectorAll('button');
+  for (var i = 0; i < bs.length; i++) {
+    var b = bs[i];
+    b.style.fontSize = '';
+    if (!b.offsetParent || !b.textContent.trim()) continue;
+    var px = parseFloat(getComputedStyle(b).fontSize);
+    while (b.scrollWidth > b.clientWidth + 0.5 && px > 10) { px -= 1; b.style.fontSize = px + 'px'; }
+  }
+}
+
 /* Shrink the toolbar (and its popouts) to fit a short window, such as a laptop screen, instead of making it
    scroll. base is the zoom that shows them at normal size: 1, or 1/Z in the overlay while the page is zoomed.
    Call it after the window, the zoom or the toolbar's contents change. Returns the scale used (1 = full size). */
 function fitTools(bar, popouts, base){
   var els = [bar].concat(popouts.filter(Boolean)), s = 1;
+  fitLabels(bar);
   els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
   bar.style.maxHeight = 'none';
   if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
@@ -291,8 +306,8 @@ function remapPeriods(periods, active, names){
 /* The Class period row on the toolbar: one button per period when they fit (up to 4 short names), otherwise
    one wide "P5 ▾" button that opens a list beside the toolbar. Period buttons carry data-period, so the
    toolbar's own click handler switches; buttons in the list call onPick(name). onOpen() closes other popouts.
-   Returns { el, render(names, active), show(open) }. */
-function makePeriodPicker(bar, row, onPick, onOpen){
+   t (optional) is the translator from shared/strings.js. Returns { el, render(names, active), show(open) }. */
+function makePeriodPicker(bar, row, onPick, onOpen, t){
   var m = document.createElement('div'), toggle = null;
   m.id = 'ob-permenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Class period'); m.hidden = true;
   document.body.appendChild(m);
@@ -321,7 +336,7 @@ function makePeriodPicker(bar, row, onPick, onOpen){
     toggle = document.createElement('button');
     toggle.className = 'sm'; toggle.dataset.act = 'period-menu';
     toggle.setAttribute('aria-haspopup', 'true'); toggle.setAttribute('aria-expanded', String(!m.hidden));
-    toggle.textContent = active + ' ▾'; toggle.title = 'Class period: ' + active + ' (tap to change)';
+    toggle.textContent = active + ' ▾'; toggle.title = t ? t('period_menu_tip', { p: active }) : 'Class period: ' + active + ' (tap to change)';
     row.appendChild(toggle);
     for (i = 0; i < names.length; i++) m.appendChild(periodBtn(names[i], names[i] === active));
   }
@@ -340,34 +355,45 @@ function makePeriodPicker(bar, row, onPick, onOpen){
    O = { defaults: ['P1', …], colors: [[hex, name], …], pen: the pen color before one is picked here,
          periods(): the open document's period names (or null),
          applyPeriods(names): use them on the open document; return false if the teacher said no,
-         tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen() }
+         tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen(),
+         langs: [[code, name], …] and setLang(code) for the Language buttons, t(): the current translator }
+   colors may carry a third item, the strings.js key for the color's name.
    Returns { el, show(open) }. */
 function makeSettings(O){
   var el = document.createElement('div');
   el.id = 'ob-settings'; el.hidden = true;
-  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Settings');
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Settings'); el.setAttribute('data-ta', 'settings');
+  var tr = function(){ return O.t ? O.t() : function(k, v){ return k; }; };   // the current translator (the language can change while open)
   var styles = periodStyles(), html = '';
-  for (var i = 0; i < styles.length; i++) html += '<button data-style="' + styles[i][0] + '">' + styles[i][1] + '</button>';
+  for (var i = 0; i < styles.length; i++) html += '<button data-style="' + styles[i][0] + '" dir="auto">' + styles[i][1] + '</button>';   // dir=auto: reads right in Arabic too
   var pens = '';
-  for (i = 0; i < O.colors.length; i++) pens += '<button data-pen="' + O.colors[i][0] + '" style="background:' + O.colors[i][0] + '" aria-label="' + O.colors[i][1] + '" title="' + O.colors[i][1] + '"></button>';
+  for (i = 0; i < O.colors.length; i++) {
+    var ck = O.colors[i][2] ? ' data-ta="' + O.colors[i][2] + '" data-tt="' + O.colors[i][2] + '"' : '';
+    pens += '<button data-pen="' + O.colors[i][0] + '" style="background:' + O.colors[i][0] + '" aria-label="' + O.colors[i][1] + '" title="' + O.colors[i][1] + '"' + ck + '></button>';
+  }
+  var langs = '', L = O.langs || [];
+  for (i = 0; i < L.length; i++) langs += '<button data-lang="' + L[i][0] + '" lang="' + L[i][0] + '">' + L[i][1] + '</button>';
   el.innerHTML = '<div class="ob-box">' +
-    '<div class="ob-head"><strong>Settings</strong><button data-s="done">Done</button></div>' +
-    '<h3>Class periods</h3>' +
-    '<div class="ob-count"><button data-s="fewer" aria-label="Fewer periods">&minus;</button><span><b></b></span><button data-s="more" aria-label="More periods">+</button></div>' +
+    '<div class="ob-head"><strong data-t="settings">Settings</strong><button data-s="done" data-t="done">Done</button></div>' +
+    (langs ? '<h3><span aria-hidden="true">🌐 </span><span data-t="language">Language</span></h3><div class="ob-langs">' + langs + '</div>' +
+      '<p class="ob-hint" data-t="lang_hint"></p>' : '') +
+    '<h3 data-t="class_periods">Class periods</h3>' +
+    '<div class="ob-count"><button data-s="fewer" aria-label="Fewer periods" data-ta="fewer_periods" data-tt="fewer_periods">&minus;</button><span><b></b></span><button data-s="more" aria-label="More periods" data-ta="more_periods" data-tt="more_periods">+</button></div>' +
     '<div class="ob-styles">' + html + '</div>' +
     '<div class="ob-names"></div>' +
-    '<p class="ob-hint">Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.</p>' +
+    '<p class="ob-hint" data-t="names_hint">Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.</p>' +
     '<p class="ob-err" role="alert" hidden></p>' +
-    '<h3>Pen color at start</h3><div class="ob-pens">' + pens + '</div>' +
-    '<h3>Toolbar settings</h3><p class="ob-tools"></p>' +
-    '<p class="ob-hint">The toolbar remembers these when you change them.</p>' +
-    '<button data-s="reset" class="ob-reset">Reset tools to defaults</button>' +
+    '<h3 data-t="pen_at_start">Pen color at start</h3><div class="ob-pens">' + pens + '</div>' +
+    '<h3 data-t="toolbar_settings">Toolbar settings</h3><p class="ob-tools"></p>' +
+    '<p class="ob-hint" data-t="remembers_hint">The toolbar remembers these when you change them.</p>' +
+    '<button data-s="reset" class="ob-reset" data-t="reset_tools">Reset tools to defaults</button>' +
     '</div>';
   document.body.appendChild(el);
   var namesEl = el.querySelector('.ob-names'), err = el.querySelector('.ob-err');
   var names = [], touched = false;
   function draw(){
-    el.querySelector('.ob-count b').textContent = names.length + (names.length === 1 ? ' period' : ' periods');
+    var t = tr();
+    el.querySelector('.ob-count b').textContent = O.t ? t(names.length === 1 ? 'n_period' : 'n_periods', { n: names.length }) : names.length + (names.length === 1 ? ' period' : ' periods');
     el.querySelector('[data-s="fewer"]').disabled = names.length <= 1;
     el.querySelector('[data-s="more"]').disabled = names.length >= 12;
     var bs = el.querySelectorAll('[data-style]');
@@ -375,8 +401,8 @@ function makeSettings(O){
     namesEl.textContent = '';
     for (i = 0; i < names.length; i++) {
       var f = document.createElement('input');
-      f.type = 'text'; f.value = names[i]; f.maxLength = 20; f.dataset.i = i;
-      f.setAttribute('aria-label', 'Name of period ' + (i + 1)); f.setAttribute('enterkeyhint', 'done');
+      f.type = 'text'; f.value = names[i]; f.maxLength = 20; f.dataset.i = i; f.dir = 'auto';
+      f.setAttribute('aria-label', O.t ? t('period_name_n', { n: i + 1 }) : 'Name of period ' + (i + 1)); f.setAttribute('enterkeyhint', 'done');
       f.autocomplete = 'off'; f.spellcheck = false;
       namesEl.appendChild(f);
     }
@@ -384,7 +410,13 @@ function makeSettings(O){
   function drawTools(){
     var t = O.tools(), pen = startPen(O.pen), ps = el.querySelectorAll('[data-pen]');
     for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('on', ps[i].dataset.pen === pen);
-    el.querySelector('.ob-tools').innerHTML = 'Finger ' + (t.finger ? 'scrolls' : 'draws') + ' · Pen size ' + t.width +
+    var w = tr(), esc = function(x){ return String(x).replace(/[&<]/g, function(c){ return c === '&' ? '&amp;' : '&lt;'; }); };
+    var ls = el.querySelectorAll('[data-lang]');
+    for (i = 0; i < ls.length; i++) ls[i].classList.toggle('on', ls[i].dataset.lang === w.lang);
+    el.querySelector('.ob-tools').innerHTML = O.t ?
+      esc(w(t.finger ? 'finger_scrolls' : 'finger_draws')) + ' · ' + esc(w('pen_size')) + ' ' + t.width + ' · ' + esc(w('smoothing')) + ' ' + (t.smooth || esc(w('off'))) +
+        ' · ' + esc(w('highlighter')) + ' <span class="ob-sw" style="background:' + t.hlColor + '"></span> ' + t.hlStrength + '%' :
+      'Finger ' + (t.finger ? 'scrolls' : 'draws') + ' · Pen size ' + t.width +
       ' · Smoothing ' + (t.smooth || 'off') + ' · Highlighter <span class="ob-sw" style="background:' + t.hlColor + '"></span> ' + t.hlStrength + '%';
   }
   function show(open){
@@ -399,7 +431,7 @@ function makeSettings(O){
   function done(){
     if (touched) {
       var clean = cleanPeriods(names);
-      if (!clean) { err.textContent = 'Each period needs a name, and no two can be the same.'; err.hidden = false; return; }
+      if (!clean) { err.textContent = O.t ? tr()('name_err') : 'Each period needs a name, and no two can be the same.'; err.hidden = false; return; }
       if (O.applyPeriods(clean) === false) return;
       try { localStorage.setItem('ob-periods', JSON.stringify(clean)); } catch(e){}
     }
@@ -420,6 +452,10 @@ function makeSettings(O){
       else { var k = names.length + 1; while (names.indexOf('P' + k) >= 0) k++; change(names.concat('P' + k)); }
     }
     else if (b.dataset.style) change(periodPreset(b.dataset.style, names.length));
+    else if (b.dataset.lang) {   // language: the caller saves it and re-translates everything, this box included
+      if (O.setLang) O.setLang(b.dataset.lang);
+      draw(); drawTools();
+    }
     else if (b.dataset.pen) {
       try { localStorage.setItem('ob-pen-color', b.dataset.pen); } catch(e2){}
       O.setPen(b.dataset.pen); drawTools();
@@ -428,7 +464,7 @@ function makeSettings(O){
       ['ink-width', 'ink-hl-width', 'ink-hl-color', 'ink-custom', 'ink-hl-mode', 'ink-hl-strength', 'ink-cover-color', 'ink-smooth', 'ink-finger', 'ob-pen-color']
         .forEach(function(k){ try { localStorage.removeItem(k); } catch(e3){} });
       O.resetTools(); drawTools();
-    });
+    }, O.t ? tr()('sure') : 'Sure?');
   });
   namesEl.addEventListener('input', function(e){
     var i = +e.target.dataset.i; names = names.slice(); names[i] = e.target.value; touched = true; err.hidden = true;
@@ -454,4 +490,4 @@ function historyKey(e) {
   return null;
 }
 
-export { periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

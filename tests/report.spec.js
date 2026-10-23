@@ -148,7 +148,7 @@ test('PDF app: File ▸ Board not working? and the start screen link open the re
   const [popup] = await Promise.all([page.waitForEvent('popup'), fileMenu(page, 'report')]);
   await popup.waitForLoadState();
   expect(popup.url()).toMatch(/\/app\/report\/\?from=app$/);
-  await expect(popup.locator('h1')).toHaveText('Is OverBoard not working on your board?');
+  await expect(popup.locator('[data-screen="welcome"] h1')).toHaveText('Is OverBoard not working on your board?');
   await expect(page.locator('#ob-filemenu')).toBeHidden();
 });
 

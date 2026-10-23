@@ -74,6 +74,12 @@ Added after v2:
   - **Sending:** POST as `text/plain` (no CORS preflight) to `RELAY_URL`, a Google Apps Script web app (`tools/report-relay.gs`, setup in `docs/REPORTS.md`) running as overboard.reporting@gmail.com. It opens an issue labeled `board-report` (summary table plus the JSON, trimmed to fit GitHub's 65,536-character limit) with a fine-grained token kept in Script properties, and emails the full report as an attachment with Reply-To set to the teacher's address. `private` (email, comments) is removed before the issue. Honeypot field `website`; at most 20 reports an hour. With no `RELAY_URL`, or on any failure, the page offers Download / Copy and the email address.
   - **Brand logos:** set `logo: true` in `BRANDS` once `app/report/brands/<id>.svg` exists.
 
+- **Languages and tooltips** (`shared/strings.js`, v24). One table, inlined into the overlay by `tools/build_overlay.py` like `ink-core.js` and imported by the app. Each key is `[en, es, zh, tl, vi, fr, pt, ar]` (order of `obLangs()`); `{name}` placeholders; a missing entry falls back to English.
+  - `obLang()`: `localStorage['ob-lang']` (Settings ▸ Language, or the app's start-screen 🌐 list), else the first of `navigator.languages` we have (`fil` → Tagalog), else English. Shared by the app and the overlay on the same site.
+  - HTML is marked `data-t` (text), `data-th` (HTML), `data-tt` (title), `data-ta` (aria-label), `data-tp` (placeholder); `obTranslate(root, tr)` fills them and sets `lang` (and `dir="rtl"` for Arabic on the menus, Settings and status line; the toolbar's layout doesn't flip). JS uses `tr('key', vars)`; `setLang()` swaps `tr` and re-translates in place. Shared widgets get the translator as a parameter (`makeSettings` `O.t`, `makePeriodPicker`'s 5th argument, `confirmTap`'s 3rd).
+  - Fitting: the toolbar's columns are `minmax(0,1fr)` and `fitLabels()` (called by `fitTools`) shrinks a button's text, 1px at a time down to 10px, until its word fits. `setStatus` re-fits the toolbar when the status line changes height. `tests/i18n.spec.js` checks every language at 1920×950 and that every translation keeps the English placeholders.
+  - "File ▸" became **Settings & help ▸** in both apps (`data-act="file"` unchanged).
+
 Left for later from v2:
 
 - Export all periods at once (one PDF per period, or layers).
@@ -81,6 +87,7 @@ Left for later from v2:
 
 ## Later
 
+- **Translate the Board not working? page** (`app/report/`) with the same table, and get native speakers to check the machine translations (Tagalog and Arabic first).
 - **Splitter tool**: split a PDF by its outline (chapters) or every N pages, with pdf-lib, entirely in the browser.
 - **Generic touch mode** for non-SMART boards (Windows touch screens report `pointerType: "touch"` with real contact sizes, so palm detection can use `width`/`height`). Ask contributors for probe logs.
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."

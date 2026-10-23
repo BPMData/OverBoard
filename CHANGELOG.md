@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **8 languages** (v24, PDF app and HTML overlay): English, Español, 中文, Tagalog, Tiếng Việt, Français, Português (Brasil) and العربية, under **Settings… ▸ 🌐 Language** (and a 🌐 list on the PDF app's start screen). Buttons, tooltips, menus, Settings and status messages all change at once, without reloading. OverBoard starts in the browser's language when it has it. Arabic menus and Settings read right to left. A word too long for its button gets slightly smaller text, so every language fits a 1080p board.
+- **File ▸ is now Settings & help ▸** (both apps), since it holds Settings, Language and Board not working? as well as saving.
+- **Tooltips on every toolbar control**, including the pen-size dot, the smoothing squiggle, the class period label and the status line.
+- **The toolbar re-fits when the status line changes length**, so a long message (like "ink restored from this browser") no longer makes it scroll on a 1080p board.
 - **Board not working?** (v24; PDF app File menu and start screen, HTML overlay File menu). A big-text, step-by-step check for any teacher: draw two lines with a finger, two with the pen, wipe with your hand, rub out with the board's eraser, drag two fingers. Each step records whatever the board actually sends, even when it's not what the step asked for (that's what needs fixing). Then pick the board's brand, tick what goes wrong, and press **Send**. Reports open a GitHub issue and email OverBoard's reports inbox; the teacher's email and comments stay private. If the school network blocks sending, the teacher can download the report and email it.
 - **File ▸ Settings…** (PDF app and HTML overlay v23), for teachers at other schools:
   - **Class periods:** 1–12 periods with any names. Tap a style (*P1, P2…*, *Period 1, 2…*, *Block A, B…*, *A1… B1…* for A/B days) or type your own. New worksheets and PDFs start with this list, and **Done** uses it on the one you have open. Renaming keeps the ink; removing a period that has ink asks first.

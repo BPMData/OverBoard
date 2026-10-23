@@ -7,7 +7,7 @@
 <meta name="description" content="A two-minute check that tells the OverBoard team how your board talks to the browser, so they can fix it.">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="icon" href="../icons/icon-192.png">
-<!-- "Board not working?" (app start screen, File ▸ in the PDF app and the HTML overlay).
+<!-- "Board not working?" (app start screen, Settings & help ▸ in the PDF app and the HTML overlay).
      Walks a teacher through a few touches, one step per screen, and records whatever the browser reports,
      right or wrong: that is the point. Nothing is sent until Send on the last screen.
      Sending goes to a small Google Apps Script (tools/report-relay.gs, setup in docs/REPORTS.md) that emails
@@ -179,7 +179,7 @@ import { pointerKind } from '../../shared/ink-core.js';
 
 /* Where reports go. Fill these in after deploying tools/report-relay.gs (see docs/REPORTS.md).
    With no RELAY_URL, Send goes straight to the download-and-email fallback. */
-const RELAY_URL = '';
+const RELAY_URL = 'https://script.google.com/macros/s/AKfycbzhWbjDvn6ynHOQLAMRFKPb2VoGBVez8HjZ_X27ce_iciRorJCo8wUc8fOzyjD0fGRc/exec';
 const REPORT_EMAIL = 'overboard.reporting@gmail.com';
 const relay = () => window.__obReportRelay !== undefined ? window.__obReportRelay : RELAY_URL;   // tests point this elsewhere
 

@@ -1,5 +1,5 @@
 /* OverBoard toolbar styles, shared by the PDF app (linked) and the paste-in overlay (inlined by tools/build_overlay.py). */
-#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
+#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
 #ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
@@ -95,6 +95,9 @@
 #ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
 #ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
 #ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings .ob-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* Settings & help ▸ (data-act="file"): two short lines in a half-width cell */
+#ink-bar button[data-act="file"]{font-size:13px;line-height:1.15;padding:2px}
 #ob-settings .ob-pens button{min-height:40px;padding:0}
 #ob-settings .ob-pens button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
 #ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}

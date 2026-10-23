@@ -1,5 +1,5 @@
 {
-  "v": "70b7353030b7",
+  "v": "ff99de348036",
   "js": [
     "embed.js",
     "export.js",
@@ -12,7 +12,8 @@
     "store.js",
     "textlayer.js",
     "viewer.js",
-    "../shared/ink-core.js"
+    "../shared/ink-core.js",
+    "../shared/strings.js"
   ],
   "css": [
     "../shared/toolbar.css",

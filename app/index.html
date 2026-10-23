@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="70b7353030b7">
+<meta name="ob-version" content="ff99de348036">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -18,114 +18,115 @@
 <main id="ob-start">
   <div class="card">
     <h1>OverBoard <span>PDF</span></h1>
-    <p class="lead">Write on any PDF on your smartboard: a worksheet or a whole textbook.</p>
+    <p class="lead" data-t="start_lead">Write on any PDF on your smartboard: a worksheet or a whole textbook.</p>
     <label id="ob-drop" tabindex="0">
       <input type="file" id="ob-file" accept="application/pdf,.pdf,text/html,.html,.htm" hidden>
-      <strong>Drop a PDF here</strong>
-      <span>or an HTML worksheet, or tap to choose a file</span>
+      <strong data-t="drop_title">Drop a PDF here</strong>
+      <span data-t="drop_sub">or an HTML worksheet, or tap to choose a file</span>
     </label>
     <p id="ob-error" role="alert" hidden></p>
     <p id="ob-msg" role="status" hidden></p>
-    <p id="ob-install" hidden><button type="button">Install app</button>
-      <span>Opens in its own window like any app, and works without internet.</span></p>
+    <p id="ob-install" hidden><button type="button" data-t="install_app">Install app</button>
+      <span data-t="install_note">Opens in its own window like any app, and works without internet.</span></p>
     <section id="ob-recent" hidden>
-      <h2>Open again</h2>
+      <h2 data-t="open_again">Open again</h2>
       <ul></ul>
     </section>
-    <p class="note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
+    <p class="note"><span data-th="start_note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
       Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here.
-      Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.
-      <br><a href="../">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard">About OverBoard</a> · <a href="report/?from=start" target="_blank">Board not working?</a> · <span id="ob-release" title="OverBoard version">v24</span></p>
+      Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.</span>
+      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v24</span></p>
+    <p class="note ob-langpick"><label><span aria-hidden="true">🌐</span> <select id="ob-lang" aria-label="Language" data-ta="language" data-tt="language" title="Language"></select></label></p>
   </div>
 </main>
 
 <div id="ob-pages" aria-label="PDF pages"></div>
 
-<nav id="ob-toc" aria-label="Chapters" hidden>
-  <div class="head"><strong>Chapters</strong><button data-act="toc-close" aria-label="Close chapters">&times;</button></div>
+<nav id="ob-toc" aria-label="Chapters" data-ta="chapters" hidden>
+  <div class="head"><strong data-t="chapters">Chapters</strong><button data-act="toc-close" aria-label="Close chapters" data-ta="close">&times;</button></div>
   <ul></ul>
 </nav>
 
-<nav id="ob-find" aria-label="Find text" hidden>
-  <div class="head"><strong>Find text</strong><button data-act="find-close" aria-label="Close find">&times;</button></div>
-  <form><input type="search" id="ob-find-q" placeholder="Word or phrase" aria-label="Find text" enterkeyhint="search" autocomplete="off"><button type="submit">Find</button></form>
+<nav id="ob-find" aria-label="Find text" data-ta="find_title" hidden>
+  <div class="head"><strong data-t="find_title">Find text</strong><button data-act="find-close" aria-label="Close find" data-ta="close">&times;</button></div>
+  <form><input type="search" id="ob-find-q" placeholder="Word or phrase" data-tp="find_placeholder" aria-label="Find text" data-ta="find_title" enterkeyhint="search" autocomplete="off"><button type="submit" data-t="find_btn">Find</button></form>
   <p class="msg" role="status"></p>
   <ul></ul>
 </nav>
 
 <div id="ink-bar" role="toolbar" aria-label="Writing tools" hidden>
-  <button data-act="write" class="on">Write</button>
-  <button data-act="scroll">Scroll</button>
-  <div id="ob-pagebox" class="wide"><button data-act="prev" aria-label="Previous page" title="Previous page">&#9650;</button><label><input id="ob-page" type="text" inputmode="numeric" aria-label="Page number" value="1"><span id="ob-pages-total">of 1</span></label><button data-act="next" aria-label="Next page" title="Next page">&#9660;</button></div>
-  <button data-act="finger" class="sm wide">Finger: scrolls</button>
-  <div class="lbl">Class period</div>
+  <button data-act="write" class="on" data-t="write" data-tt="write_tip" title="Write: the pen writes and your palm erases">Write</button>
+  <button data-act="scroll" data-t="scroll" data-tt="scroll_tip" title="Scroll: drag to move around the page; nothing is written">Scroll</button>
+  <div id="ob-pagebox" class="wide"><button data-act="prev" aria-label="Previous page" title="Previous page" data-ta="prev_tip" data-tt="prev_tip">&#9650;</button><label><input id="ob-page" type="text" inputmode="numeric" aria-label="Page number" data-ta="page_number" data-tt="page_number" title="Page number" value="1"><span id="ob-pages-total">of 1</span></label><button data-act="next" aria-label="Next page" title="Next page" data-ta="next_tip" data-tt="next_tip">&#9660;</button></div>
+  <button data-act="finger" class="sm wide" data-tt="finger_tip" title="What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.">Finger: scrolls</button>
+  <div class="lbl" data-t="class_period" data-tt="period_tip" title="Each class period gets its own ink on the same page">Class period</div>
   <div id="ink-periods"></div>
-  <div id="ob-hl"><button data-act="hilite" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" title="Highlight or cover (black out answers)">&#9662;</button></div>
+  <div id="ob-hl"><button data-act="hilite" data-tt="hilite_tip" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" data-ta="hlmenu_tip" data-tt="hlmenu_tip" title="Highlight strength, or cover (black out answers)">&#9662;</button></div>
   <div id="ink-colors">
-    <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
-    <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue"></button>
-    <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red"></button>
-    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green"></button>
-    <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink"></button>
-    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange"></button>
-    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow"></button>
-    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple"></button>
-    <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
+    <button data-color="#111111" style="background:#111" aria-label="Black" title="Black" data-ta="black" data-tt="black"></button>
+    <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue" data-ta="blue" data-tt="blue"></button>
+    <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red" data-ta="red" data-tt="red"></button>
+    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green" data-ta="green" data-tt="green"></button>
+    <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink" data-ta="pink" data-tt="pink"></button>
+    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange" data-ta="orange" data-tt="orange"></button>
+    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow" data-ta="yellow" data-tt="yellow"></button>
+    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple" data-ta="purple" data-tt="purple"></button>
+    <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color" data-ta="custom_color" data-tt="custom_color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
   </div>
-  <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner">&minus;</button><div class="val"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker">+</button></div>
-  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
-  <button data-act="erase">Eraser</button>
-  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
-  <button data-act="toc" title="Chapters of this PDF">Chapters</button>
-  <button data-act="clear" aria-haspopup="true" aria-expanded="false" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
-  <button data-act="clear-page" title="Clear the ink on the page you are looking at (Undo brings it back)" hidden>Clear page</button>
-  <button data-act="clear-all" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)" hidden>Clear all</button>
-  <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">Fit</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>
-  <button data-act="file" aria-haspopup="true" aria-expanded="false" title="Export PDF, ink files, open another PDF">File &#9656;</button>
-  <button data-act="hide">Hide</button>
-  <div id="ink-status">Ready</div>
+  <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
+  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines that trail a little behind the pen. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
+  <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
+  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
+  <button data-act="toc" data-t="chapters" data-tt="chapters_tip" title="Chapters of this PDF">Chapters</button>
+  <button data-act="clear" aria-haspopup="true" aria-expanded="false" data-tt="clear_menu_tip" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
+  <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)" hidden>Clear page</button>
+  <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)" hidden>Clear all</button>
+  <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out" data-ta="zoom_out" data-tt="zoom_out">&minus;</button><button data-act="zoom-fit" class="sm" data-tt="zoom_tip" title="Page zoom. Tap to fit the page to the screen.">Fit</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in" data-ta="zoom_in" data-tt="zoom_in">+</button></div>
+  <button data-act="file" aria-haspopup="true" aria-expanded="false" data-t="menu" data-tt="menu_tip_app" title="Export PDF, ink files, open another PDF, settings, language and help">Settings &amp; help &#9656;</button>
+  <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the ✎ button brings it back)">Hide</button>
+  <div id="ink-status" data-tt="status_tip" title="What OverBoard did last">Ready</div>
   <input type="file" id="ob-inkfile" accept=".json,application/json" hidden>
 </div>
-<div id="ob-filemenu" role="menu" aria-label="File" hidden>
-  <button data-act="export" class="wide" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
-  <button data-act="find" class="wide" title="Search the text of the whole PDF (Ctrl+F)">Find text…</button>
-  <button data-act="ink-save" title="Download the ink (all periods) as a small .overboard.json file">Save ink</button>
-  <button data-act="ink-load" title="Load ink from an .overboard.json file">Load ink</button>
+<div id="ob-filemenu" role="menu" aria-label="Settings and help" data-ta="menu_name" hidden>
+  <button data-act="export" class="wide" data-t="export_pdf" data-tt="export_pdf_tip" title="Download this PDF with the current period's ink drawn into it">Export PDF</button>
+  <button data-act="find" class="wide" data-t="find_text" data-tt="find_text_tip" title="Search the text of the whole PDF (Ctrl+F)">Find text…</button>
+  <button data-act="ink-save" data-t="save_ink" data-tt="save_ink_tip" title="Download the ink (all periods) as a small .overboard.json file">Save ink</button>
+  <button data-act="ink-load" data-t="load_ink" data-tt="load_ink_tip" title="Load ink from an .overboard.json file">Load ink</button>
   <button data-act="pdf-link" class="sm wide" title="Keep the ink inside a PDF file (you choose the file)">Save ink into PDF…</button>
-  <button data-act="close" class="sm wide" title="Close this PDF and pick another (ink is saved)">Open another PDF</button>
-  <button data-act="settings" class="sm wide" title="Class periods, the pen color at start, and resetting the tools">Settings…</button>
-  <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
-  <button data-act="report" class="sm wide" title="Board acting up? A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
+  <button data-act="close" class="sm wide" data-t="open_another" data-tt="open_another_tip" title="Close this PDF and pick another (ink is saved)">Open another PDF</button>
+  <button data-act="settings" class="sm wide" data-t="settings_btn" data-tt="settings_tip" title="Language, class periods, the pen color at start, and resetting the tools">Settings…</button>
+  <button data-act="side" class="sm wide" data-t="move_toolbar" data-tt="move_toolbar_tip" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
+  <button data-act="report" class="sm wide" data-t="board_help" data-tt="board_help_tip" title="A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
 </div>
 <div id="ob-clearmenu" role="menu" aria-label="Clear ink" hidden>
-  <button data-act="clear-page" class="wide" title="Clear the ink on the page you are looking at">This page</button>
-  <button data-act="clear-all" class="wide" title="Clear the ink on every page (tap twice)">All pages</button>
-  <p>This class period only. Undo brings it back.</p>
+  <button data-act="clear-page" class="wide" data-t="this_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at">This page</button>
+  <button data-act="clear-all" class="wide" data-tt="clear_all_tip" title="Clear the ink on every page (tap twice)">All pages</button>
+  <p data-t="clear_note">This class period only. Undo brings it back.</p>
 </div>
-<button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
+<button id="ink-show" aria-label="Show writing tools" title="Show writing tools" data-ta="show_tip" data-tt="show_tip">&#9998;</button>
 <dialog id="ob-embed" aria-labelledby="ob-embed-h">
-  <h2 id="ob-embed-h">Keep the ink inside a PDF file?</h2>
+  <h2 id="ob-embed-h" data-t="embed_h">Keep the ink inside a PDF file?</h2>
   <ul>
-    <li>OverBoard saves a PDF on this computer with <b>all class periods' ink</b> stored inside it.</li>
-    <li><b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.</li>
-    <li>Open that file in OverBoard on any computer and the ink comes back, ready to keep writing.</li>
-    <li class="fsa">While this is on, every change is saved into that file a few seconds after you stop writing. Tap the same button to turn it off.</li>
-    <li class="fsa">We suggest a new file, <b class="name">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.</li>
-    <li class="nofsa">This browser can't keep saving into a file, so you get a one-time download, <b class="name">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.</li>
+    <li data-th="embed_1">OverBoard saves a PDF on this computer with <b>all class periods' ink</b> stored inside it.</li>
+    <li data-th="embed_2"><b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.</li>
+    <li data-t="embed_3">Open that file in OverBoard on any computer and the ink comes back, ready to keep writing.</li>
+    <li class="fsa" data-t="embed_4">While this is on, every change is saved into that file a few seconds after you stop writing. Tap the same button to turn it off.</li>
+    <li class="fsa" data-th="embed_5">We suggest a new file, <b class="name">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.</li>
+    <li class="nofsa" data-th="embed_6">This browser can't keep saving into a file, so you get a one-time download, <b class="name">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.</li>
   </ul>
-  <p class="off">Leave it off and nothing changes: ink still saves in this browser.</p>
-  <div class="row"><button value="cancel">Cancel</button><button value="ok" class="go">Choose file…</button></div>
+  <p class="off" data-t="embed_off">Leave it off and nothing changes: ink still saves in this browser.</p>
+  <div class="row"><button value="cancel" data-t="cancel">Cancel</button><button value="ok" class="go">Choose file…</button></div>
 </dialog>
 <dialog id="ob-coverwarn" aria-labelledby="ob-coverwarn-h">
-  <h2 id="ob-coverwarn-h">Covered answers can still be copied from this PDF</h2>
+  <h2 id="ob-coverwarn-h" data-t="cw_h">Covered answers can still be copied from this PDF</h2>
   <ul>
-    <li>The covers look the same in the PDF: answers are hidden on screen and on paper.</li>
-    <li><b>But the text under a cover is still in the file.</b> Anyone with the PDF can select, copy or search it.</li>
-    <li>To hand out a copy with the answers truly gone, print it on paper, or remove the answers from the original document before making the PDF.</li>
+    <li data-t="cw_1">The covers look the same in the PDF: answers are hidden on screen and on paper.</li>
+    <li data-th="cw_2"><b>But the text under a cover is still in the file.</b> Anyone with the PDF can select, copy or search it.</li>
+    <li data-t="cw_3">To hand out a copy with the answers truly gone, print it on paper, or remove the answers from the original document before making the PDF.</li>
   </ul>
-  <div class="row"><button value="cancel">Cancel</button><button value="ok" class="go">Export anyway</button></div>
+  <div class="row"><button value="cancel" data-t="cancel">Cancel</button><button value="ok" class="go" data-t="export_anyway">Export anyway</button></div>
 </dialog>
-<div id="ob-dropcover" hidden><div>Drop to open</div></div>
+<div id="ob-dropcover" hidden><div data-t="drop_to_open">Drop to open</div></div>
 
 <script>
 /* Load the app's files as one matching set, even in the minutes right after an update

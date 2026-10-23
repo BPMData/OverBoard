@@ -73,7 +73,7 @@
 #ink-hl{z-index:49;pointer-events:none;mix-blend-mode:multiply}
 #ink-canvas.scroll-mode{pointer-events:none}
 /* ===== SHARED TOOLBAR CSS: generated from shared/toolbar.css by tools/build_overlay.py; edit that file ===== */
-#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
+#ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
 #ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
@@ -169,6 +169,9 @@
 #ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
 #ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
 #ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings .ob-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* Settings & help ▸ (data-act="file"): two short lines in a half-width cell */
+#ink-bar button[data-act="file"]{font-size:13px;line-height:1.15;padding:2px}
 #ob-settings .ob-pens button{min-height:40px;padding:0}
 #ob-settings .ob-pens button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
 #ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}
@@ -180,45 +183,45 @@
 <canvas id="ink-hl"></canvas>
 <canvas id="ink-canvas"></canvas>
 <div id="ink-bar" role="toolbar" aria-label="Writing tools">
-  <button data-act="write" class="on">Write</button>
-  <button data-act="scroll">Scroll</button>
-  <button data-act="prev">&#9650; Page</button>
-  <button data-act="next">&#9660; Page</button>
-  <button data-act="finger" class="sm wide">Finger: scrolls</button>
-  <div class="lbl">Class period</div>
+  <button data-act="write" class="on" data-t="write" data-tt="write_tip" title="Write: the pen writes and your palm erases">Write</button>
+  <button data-act="scroll" data-t="scroll" data-tt="scroll_tip" title="Scroll: drag to move around the page; nothing is written">Scroll</button>
+  <button data-act="prev" data-t="prev_page" data-tt="prev_tip" title="Previous page">&#9650; Page</button>
+  <button data-act="next" data-t="next_page" data-tt="next_tip" title="Next page">&#9660; Page</button>
+  <button data-act="finger" class="sm wide" data-tt="finger_tip" title="What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.">Finger: scrolls</button>
+  <div class="lbl" data-t="class_period" data-tt="period_tip" title="Each class period gets its own ink on the same page">Class period</div>
   <div id="ink-periods"></div>
-  <div id="ob-hl"><button data-act="hilite" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" title="Highlight strength, or cover (black out answers)">&#9662;</button></div>
+  <div id="ob-hl"><button data-act="hilite" data-tt="hilite_tip" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" data-ta="hlmenu_tip" data-tt="hlmenu_tip" title="Highlight strength, or cover (black out answers)">&#9662;</button></div>
   <div id="ink-colors">
-    <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
-    <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue"></button>
-    <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red"></button>
-    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green"></button>
-    <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink"></button>
-    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange"></button>
-    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow"></button>
-    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple"></button>
-    <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
+    <button data-color="#111111" style="background:#111" aria-label="Black" title="Black" data-ta="black" data-tt="black"></button>
+    <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue" data-ta="blue" data-tt="blue"></button>
+    <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red" data-ta="red" data-tt="red"></button>
+    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green" data-ta="green" data-tt="green"></button>
+    <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink" data-ta="pink" data-tt="pink"></button>
+    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange" data-ta="orange" data-tt="orange"></button>
+    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow" data-ta="yellow" data-tt="yellow"></button>
+    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple" data-ta="purple" data-tt="purple"></button>
+    <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color" data-ta="custom_color" data-tt="custom_color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
   </div>
-  <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner">&minus;</button><div class="val"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker">+</button></div>
-  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
-  <button data-act="erase">Eraser</button>
-  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
-  <button data-act="clear-page" title="Clear the ink on the page in the middle of the screen (Undo brings it back)">Clear page</button>
-  <button data-act="clear-all" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)">Clear all</button>
-  <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>
-  <button data-act="file" aria-haspopup="true" aria-expanded="false" title="Save PDF, save ink into the file, clear all ink, move the toolbar">File &#9656;</button>
-  <button data-act="hide">Hide</button>
-  <div id="ink-status">Ink saves automatically</div>
+  <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
+  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines that trail a little behind the pen. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
+  <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
+  <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
+  <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)">Clear page</button>
+  <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)">Clear all</button>
+  <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out" data-ta="zoom_out" data-tt="zoom_out">&minus;</button><button data-act="zoom-fit" class="sm" data-tt="zoom_tip" title="Page zoom. Tap to fit the page to the screen.">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in" data-ta="zoom_in" data-tt="zoom_in">+</button></div>
+  <button data-act="file" aria-haspopup="true" aria-expanded="false" data-t="menu" data-tt="menu_tip" title="Save PDF, save ink into the file, settings, language and help">Settings &amp; help &#9656;</button>
+  <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the ✎ button brings it back)">Hide</button>
+  <div id="ink-status" data-tt="status_tip" title="What OverBoard did last">Ink saves automatically</div>
 </div>
-<div id="ob-filemenu" role="menu" aria-label="File" hidden>
-  <button data-act="print" class="wide" title="Save or print a PDF of the worksheet with the current period's ink">Save PDF</button>
-  <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
-  <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
-  <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
-  <button data-act="settings" class="sm wide" title="Class periods, the pen color at start, and resetting the tools">Settings…</button>
-  <button data-act="report" class="sm wide" title="Board acting up? A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
+<div id="ob-filemenu" role="menu" aria-label="Settings and help" data-ta="menu_name" hidden>
+  <button data-act="print" class="wide" data-t="save_pdf" data-tt="save_pdf_tip" title="Save or print a PDF of the worksheet with the current period's ink">Save PDF</button>
+  <button data-act="savefile" class="sm wide" data-t="save_into_file" data-tt="save_into_file_tip" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
+  <button data-act="pickfile" class="sm wide" data-t="change_file" data-tt="change_file_tip" title="Choose which .html file the ink saves into">Change linked file</button>
+  <button data-act="side" class="sm wide" data-t="move_toolbar" data-tt="move_toolbar_tip" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
+  <button data-act="settings" class="sm wide" data-t="settings_btn" data-tt="settings_tip" title="Language, class periods, the pen color at start, and resetting the tools">Settings…</button>
+  <button data-act="report" class="sm wide" data-t="board_help" data-tt="board_help_tip" title="A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
 </div>
-<button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
+<button id="ink-show" aria-label="Show writing tools" title="Show writing tools" data-ta="show_tip" data-tt="show_tip">&#9998;</button>
 <script id="ink-script">
 (function(){
   if (window.__inkLoaded) return; window.__inkLoaded = true;
@@ -350,9 +353,9 @@
   }
 
   /* first tap arms ("Sure?"), second tap within 3s does it */
-  function confirmTap(btn, fn){
+  function confirmTap(btn, fn, sure){
     if (!btn.classList.contains('warn')) {
-      btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = 'Sure?';
+      btn._label = btn.textContent; btn.classList.add('warn'); btn.textContent = sure || 'Sure?';
       btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 3000);
       return;
     }
@@ -392,15 +395,16 @@
      Returns { el, show(open), sync() }. */
   function makeHlMenu(bar, S, onPick, onOpen){
     var btn = bar.querySelector('[data-act="hl-menu"]');
-    var covers = [['#111111', 'Cover: black', 'hides answers'], ['#5f5f5f', 'Cover: dark gray', ''], ['#a6a6a6', 'Cover: light gray', '']];
+    var covers = [['#111111', 'Cover: black', 'hides answers', 'cover_black'], ['#5f5f5f', 'Cover: dark gray', '', 'cover_dark'], ['#a6a6a6', 'Cover: light gray', '', 'cover_light']];
     var m = document.createElement('div');
-    m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.hidden = true;
-    var html = '<button data-mode="hl"><span class="sw hl"></span>Highlight<small>see-through</small></button>' +
-      '<label class="strength"><span>Highlight strength <b id="ob-hl-pct"></b></span>' +
-      '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength (percent)"></label>';
+    m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.setAttribute('data-ta', 'highlighter'); m.hidden = true;
+    // data-t / data-ta: words translated by obTranslate (shared/strings.js)
+    var html = '<button data-mode="hl"><span class="sw hl"></span><span data-t="highlight">Highlight</span><small data-t="see_through">see-through</small></button>' +
+      '<label class="strength"><span><span data-t="hl_strength">Highlight strength</span> <b id="ob-hl-pct"></b></span>' +
+      '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength" data-ta="hl_strength"></label>';
     for (var i = 0; i < covers.length; i++)
       html += '<button data-mode="cover" data-cover="' + covers[i][0] + '"><span class="sw" style="background:' + covers[i][0] + '"></span>' +
-        covers[i][1] + (covers[i][2] ? '<small>' + covers[i][2] + '</small>' : '') + '</button>';
+        '<span data-t="' + covers[i][3] + '">' + covers[i][1] + '</span>' + (covers[i][2] ? '<small data-t="hides_answers">' + covers[i][2] + '</small>' : '') + '</button>';
     m.innerHTML = html;
     document.body.appendChild(m);
     var slider = m.querySelector('input'), pct = m.querySelector('b');
@@ -445,11 +449,25 @@
     return { el: menu, show: show, place: place };
   }
 
+  /* A word that is too wide for its button (longer languages: "Desplazar", "Défiler") gets smaller text,
+     down to 10px, instead of stretching the toolbar. Call after the words or the layout change. */
+  function fitLabels(root){
+    var bs = root.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++) {
+      var b = bs[i];
+      b.style.fontSize = '';
+      if (!b.offsetParent || !b.textContent.trim()) continue;
+      var px = parseFloat(getComputedStyle(b).fontSize);
+      while (b.scrollWidth > b.clientWidth + 0.5 && px > 10) { px -= 1; b.style.fontSize = px + 'px'; }
+    }
+  }
+
   /* Shrink the toolbar (and its popouts) to fit a short window, such as a laptop screen, instead of making it
      scroll. base is the zoom that shows them at normal size: 1, or 1/Z in the overlay while the page is zoomed.
      Call it after the window, the zoom or the toolbar's contents change. Returns the scale used (1 = full size). */
   function fitTools(bar, popouts, base){
     var els = [bar].concat(popouts.filter(Boolean)), s = 1;
+    fitLabels(bar);
     els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
     bar.style.maxHeight = 'none';
     if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
@@ -517,8 +535,8 @@
   /* The Class period row on the toolbar: one button per period when they fit (up to 4 short names), otherwise
      one wide "P5 ▾" button that opens a list beside the toolbar. Period buttons carry data-period, so the
      toolbar's own click handler switches; buttons in the list call onPick(name). onOpen() closes other popouts.
-     Returns { el, render(names, active), show(open) }. */
-  function makePeriodPicker(bar, row, onPick, onOpen){
+     t (optional) is the translator from shared/strings.js. Returns { el, render(names, active), show(open) }. */
+  function makePeriodPicker(bar, row, onPick, onOpen, t){
     var m = document.createElement('div'), toggle = null;
     m.id = 'ob-permenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Class period'); m.hidden = true;
     document.body.appendChild(m);
@@ -547,7 +565,7 @@
       toggle = document.createElement('button');
       toggle.className = 'sm'; toggle.dataset.act = 'period-menu';
       toggle.setAttribute('aria-haspopup', 'true'); toggle.setAttribute('aria-expanded', String(!m.hidden));
-      toggle.textContent = active + ' ▾'; toggle.title = 'Class period: ' + active + ' (tap to change)';
+      toggle.textContent = active + ' ▾'; toggle.title = t ? t('period_menu_tip', { p: active }) : 'Class period: ' + active + ' (tap to change)';
       row.appendChild(toggle);
       for (i = 0; i < names.length; i++) m.appendChild(periodBtn(names[i], names[i] === active));
     }
@@ -566,34 +584,45 @@
      O = { defaults: ['P1', …], colors: [[hex, name], …], pen: the pen color before one is picked here,
            periods(): the open document's period names (or null),
            applyPeriods(names): use them on the open document; return false if the teacher said no,
-           tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen() }
+           tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen(),
+           langs: [[code, name], …] and setLang(code) for the Language buttons, t(): the current translator }
+     colors may carry a third item, the strings.js key for the color's name.
      Returns { el, show(open) }. */
   function makeSettings(O){
     var el = document.createElement('div');
     el.id = 'ob-settings'; el.hidden = true;
-    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Settings');
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Settings'); el.setAttribute('data-ta', 'settings');
+    var tr = function(){ return O.t ? O.t() : function(k, v){ return k; }; };   // the current translator (the language can change while open)
     var styles = periodStyles(), html = '';
-    for (var i = 0; i < styles.length; i++) html += '<button data-style="' + styles[i][0] + '">' + styles[i][1] + '</button>';
+    for (var i = 0; i < styles.length; i++) html += '<button data-style="' + styles[i][0] + '" dir="auto">' + styles[i][1] + '</button>';   // dir=auto: reads right in Arabic too
     var pens = '';
-    for (i = 0; i < O.colors.length; i++) pens += '<button data-pen="' + O.colors[i][0] + '" style="background:' + O.colors[i][0] + '" aria-label="' + O.colors[i][1] + '" title="' + O.colors[i][1] + '"></button>';
+    for (i = 0; i < O.colors.length; i++) {
+      var ck = O.colors[i][2] ? ' data-ta="' + O.colors[i][2] + '" data-tt="' + O.colors[i][2] + '"' : '';
+      pens += '<button data-pen="' + O.colors[i][0] + '" style="background:' + O.colors[i][0] + '" aria-label="' + O.colors[i][1] + '" title="' + O.colors[i][1] + '"' + ck + '></button>';
+    }
+    var langs = '', L = O.langs || [];
+    for (i = 0; i < L.length; i++) langs += '<button data-lang="' + L[i][0] + '" lang="' + L[i][0] + '">' + L[i][1] + '</button>';
     el.innerHTML = '<div class="ob-box">' +
-      '<div class="ob-head"><strong>Settings</strong><button data-s="done">Done</button></div>' +
-      '<h3>Class periods</h3>' +
-      '<div class="ob-count"><button data-s="fewer" aria-label="Fewer periods">&minus;</button><span><b></b></span><button data-s="more" aria-label="More periods">+</button></div>' +
+      '<div class="ob-head"><strong data-t="settings">Settings</strong><button data-s="done" data-t="done">Done</button></div>' +
+      (langs ? '<h3><span aria-hidden="true">🌐 </span><span data-t="language">Language</span></h3><div class="ob-langs">' + langs + '</div>' +
+        '<p class="ob-hint" data-t="lang_hint"></p>' : '') +
+      '<h3 data-t="class_periods">Class periods</h3>' +
+      '<div class="ob-count"><button data-s="fewer" aria-label="Fewer periods" data-ta="fewer_periods" data-tt="fewer_periods">&minus;</button><span><b></b></span><button data-s="more" aria-label="More periods" data-ta="more_periods" data-tt="more_periods">+</button></div>' +
       '<div class="ob-styles">' + html + '</div>' +
       '<div class="ob-names"></div>' +
-      '<p class="ob-hint">Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.</p>' +
+      '<p class="ob-hint" data-t="names_hint">Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.</p>' +
       '<p class="ob-err" role="alert" hidden></p>' +
-      '<h3>Pen color at start</h3><div class="ob-pens">' + pens + '</div>' +
-      '<h3>Toolbar settings</h3><p class="ob-tools"></p>' +
-      '<p class="ob-hint">The toolbar remembers these when you change them.</p>' +
-      '<button data-s="reset" class="ob-reset">Reset tools to defaults</button>' +
+      '<h3 data-t="pen_at_start">Pen color at start</h3><div class="ob-pens">' + pens + '</div>' +
+      '<h3 data-t="toolbar_settings">Toolbar settings</h3><p class="ob-tools"></p>' +
+      '<p class="ob-hint" data-t="remembers_hint">The toolbar remembers these when you change them.</p>' +
+      '<button data-s="reset" class="ob-reset" data-t="reset_tools">Reset tools to defaults</button>' +
       '</div>';
     document.body.appendChild(el);
     var namesEl = el.querySelector('.ob-names'), err = el.querySelector('.ob-err');
     var names = [], touched = false;
     function draw(){
-      el.querySelector('.ob-count b').textContent = names.length + (names.length === 1 ? ' period' : ' periods');
+      var t = tr();
+      el.querySelector('.ob-count b').textContent = O.t ? t(names.length === 1 ? 'n_period' : 'n_periods', { n: names.length }) : names.length + (names.length === 1 ? ' period' : ' periods');
       el.querySelector('[data-s="fewer"]').disabled = names.length <= 1;
       el.querySelector('[data-s="more"]').disabled = names.length >= 12;
       var bs = el.querySelectorAll('[data-style]');
@@ -601,8 +630,8 @@
       namesEl.textContent = '';
       for (i = 0; i < names.length; i++) {
         var f = document.createElement('input');
-        f.type = 'text'; f.value = names[i]; f.maxLength = 20; f.dataset.i = i;
-        f.setAttribute('aria-label', 'Name of period ' + (i + 1)); f.setAttribute('enterkeyhint', 'done');
+        f.type = 'text'; f.value = names[i]; f.maxLength = 20; f.dataset.i = i; f.dir = 'auto';
+        f.setAttribute('aria-label', O.t ? t('period_name_n', { n: i + 1 }) : 'Name of period ' + (i + 1)); f.setAttribute('enterkeyhint', 'done');
         f.autocomplete = 'off'; f.spellcheck = false;
         namesEl.appendChild(f);
       }
@@ -610,7 +639,13 @@
     function drawTools(){
       var t = O.tools(), pen = startPen(O.pen), ps = el.querySelectorAll('[data-pen]');
       for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('on', ps[i].dataset.pen === pen);
-      el.querySelector('.ob-tools').innerHTML = 'Finger ' + (t.finger ? 'scrolls' : 'draws') + ' · Pen size ' + t.width +
+      var w = tr(), esc = function(x){ return String(x).replace(/[&<]/g, function(c){ return c === '&' ? '&amp;' : '&lt;'; }); };
+      var ls = el.querySelectorAll('[data-lang]');
+      for (i = 0; i < ls.length; i++) ls[i].classList.toggle('on', ls[i].dataset.lang === w.lang);
+      el.querySelector('.ob-tools').innerHTML = O.t ?
+        esc(w(t.finger ? 'finger_scrolls' : 'finger_draws')) + ' · ' + esc(w('pen_size')) + ' ' + t.width + ' · ' + esc(w('smoothing')) + ' ' + (t.smooth || esc(w('off'))) +
+          ' · ' + esc(w('highlighter')) + ' <span class="ob-sw" style="background:' + t.hlColor + '"></span> ' + t.hlStrength + '%' :
+        'Finger ' + (t.finger ? 'scrolls' : 'draws') + ' · Pen size ' + t.width +
         ' · Smoothing ' + (t.smooth || 'off') + ' · Highlighter <span class="ob-sw" style="background:' + t.hlColor + '"></span> ' + t.hlStrength + '%';
     }
     function show(open){
@@ -625,7 +660,7 @@
     function done(){
       if (touched) {
         var clean = cleanPeriods(names);
-        if (!clean) { err.textContent = 'Each period needs a name, and no two can be the same.'; err.hidden = false; return; }
+        if (!clean) { err.textContent = O.t ? tr()('name_err') : 'Each period needs a name, and no two can be the same.'; err.hidden = false; return; }
         if (O.applyPeriods(clean) === false) return;
         try { localStorage.setItem('ob-periods', JSON.stringify(clean)); } catch(e){}
       }
@@ -646,6 +681,10 @@
         else { var k = names.length + 1; while (names.indexOf('P' + k) >= 0) k++; change(names.concat('P' + k)); }
       }
       else if (b.dataset.style) change(periodPreset(b.dataset.style, names.length));
+      else if (b.dataset.lang) {   // language: the caller saves it and re-translates everything, this box included
+        if (O.setLang) O.setLang(b.dataset.lang);
+        draw(); drawTools();
+      }
       else if (b.dataset.pen) {
         try { localStorage.setItem('ob-pen-color', b.dataset.pen); } catch(e2){}
         O.setPen(b.dataset.pen); drawTools();
@@ -654,7 +693,7 @@
         ['ink-width', 'ink-hl-width', 'ink-hl-color', 'ink-custom', 'ink-hl-mode', 'ink-hl-strength', 'ink-cover-color', 'ink-smooth', 'ink-finger', 'ob-pen-color']
           .forEach(function(k){ try { localStorage.removeItem(k); } catch(e3){} });
         O.resetTools(); drawTools();
-      });
+      }, O.t ? tr()('sure') : 'Sure?');
     });
     namesEl.addEventListener('input', function(e){
       var i = +e.target.dataset.i; names = names.slice(); names[i] = e.target.value; touched = true; err.hidden = true;
@@ -680,6 +719,313 @@
     return null;
   }
   /* ===== END SHARED CORE ===== */
+  /* ===== SHARED STRINGS: generated from shared/strings.js by tools/build_overlay.py; edit that file ===== */
+  /* OverBoard's words in every language: the toolbar, its menus, Settings, the status line and the PDF app's screens.
+     Used two ways, like ink-core.js: imported by the PDF app, and inlined into the overlay by tools/build_overlay.py.
+     So: plain ES5 function declarations only, no imports, no top-level state. The export line is stripped when inlined.
+
+     Each entry is [English, Español, 中文, Tagalog, Tiếng Việt, Français, Português (Brasil), العربية], in the order of
+     obLangs(). {name} marks a value filled in at run time. A missing translation falls back to English.
+     To add a language: add it to obLangs() and add one more item to every entry.
+     In the HTML, data-t="key" sets an element's text, data-th its HTML, data-tt its tooltip (title),
+     data-ta its aria-label and data-tp its placeholder (obTranslate). */
+
+  function obLangs(){
+    return [["en", "English"], ["es", "Español"], ["zh", "中文"], ["tl", "Tagalog"], ["vi", "Tiếng Việt"], ["fr", "Français"], ["pt", "Português (Brasil)"], ["ar", "العربية"]];
+  }
+
+  /* the language picked in Settings, else the browser's own language if we have it, else English */
+  function obLang(){
+    var codes = obLangs().map(function(l){ return l[0]; }), saved = null;
+    try { saved = localStorage.getItem('ob-lang'); } catch(e){}
+    if (saved && codes.indexOf(saved) >= 0) return saved;
+    var want = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+    for (var i = 0; i < want.length; i++) {
+      var base = String(want[i]).toLowerCase().split('-')[0];
+      if (base === 'fil') base = 'tl';
+      if (codes.indexOf(base) >= 0) return base;
+    }
+    return 'en';
+  }
+
+  /* t('key', { p: 'P1' }) in the given language */
+  function obT(lang){
+    var all = obStrings(), ix = Math.max(0, obLangs().map(function(l){ return l[0]; }).indexOf(lang));
+    function t(key, vars){
+      var row = all[key], s = row ? (row[ix] || row[0]) : key;
+      return vars ? s.replace(/\{(\w+)\}/g, function(m, k){ return vars[k] === undefined ? m : vars[k]; }) : s;
+    }
+    t.lang = lang;
+    return t;
+  }
+
+  /* put t's words into everything under root marked with data-t / data-th / data-tt / data-ta / data-tp,
+     and set lang (and right-to-left for Arabic) on OverBoard's own boxes */
+  function obTranslate(root, t){
+    var marks = [['t', 'textContent'], ['th', 'innerHTML'], ['tt', 'title'], ['ta', 'aria-label'], ['tp', 'placeholder']];
+    for (var i = 0; i < marks.length; i++) {
+      var els = [].slice.call(root.querySelectorAll('[data-' + marks[i][0] + ']'));
+      if (root.hasAttribute && root.hasAttribute('data-' + marks[i][0])) els.unshift(root);
+      for (var j = 0; j < els.length; j++) {
+        var v = t(els[j].getAttribute('data-' + marks[i][0]));
+        if (marks[i][1] === 'aria-label') els[j].setAttribute('aria-label', v);
+        else els[j][marks[i][1]] = v;
+      }
+    }
+    var tag = { zh: 'zh-CN', pt: 'pt-BR', tl: 'fil' }[t.lang] || t.lang;
+    var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
+    for (i = 0; i < boxes.length; i++) {
+      var b = document.getElementById(boxes[i]); if (!b) continue;
+      b.setAttribute('lang', tag);
+      // text reads right to left in Arabic; the toolbar's own layout stays put so buttons don't jump around
+      if (boxes[i] !== 'ink-bar' && boxes[i] !== 'ink-show') { if (t.lang === 'ar') b.setAttribute('dir', 'rtl'); else b.removeAttribute('dir'); }
+    }
+    var st = document.getElementById('ink-status');
+    if (st) { if (t.lang === 'ar') st.setAttribute('dir', 'rtl'); else st.removeAttribute('dir'); }
+  }
+
+  function obStrings(){
+    return {
+      "write": ["Write", "Escribir", "书写", "Sumulat", "Viết", "Écrire", "Escrever", "كتابة"],
+      "write_tip": ["Write: the pen writes and your palm erases", "Escribir: el lápiz escribe y la palma borra", "书写：用笔写字，用手掌擦除", "Sumulat: sumusulat ang pen at nagbubura ang palad mo", "Viết: bút để viết, lòng bàn tay để xóa", "Écrire : le stylet écrit et la paume efface", "Escrever: a caneta escreve e a palma da mão apaga", "كتابة: القلم يكتب وراحة اليد تمسح"],
+      "scroll": ["Scroll", "Desplazar", "滚动", "Mag-scroll", "Cuộn", "Défiler", "Rolar", "تمرير"],
+      "scroll_tip": ["Scroll: drag to move around the page; nothing is written", "Desplazar: arrastra para moverte por la página; no se escribe nada", "滚动：拖动以浏览页面，不会写字", "Mag-scroll: i-drag para gumalaw sa pahina; walang maisusulat", "Cuộn: kéo để di chuyển trên trang; không viết gì", "Défiler : faites glisser pour parcourir la page, sans écrire", "Rolar: arraste para se mover pela página; nada é escrito", "تمرير: اسحب للتنقل في الصفحة دون كتابة"],
+      "prev_page": ["▲ Page", "▲ Página", "▲ 上一页", "▲ Pahina", "▲ Trang", "▲ Page", "▲ Página", "▲ صفحة"],
+      "next_page": ["▼ Page", "▼ Página", "▼ 下一页", "▼ Pahina", "▼ Trang", "▼ Page", "▼ Página", "▼ صفحة"],
+      "prev_tip": ["Previous page", "Página anterior", "上一页", "Nakaraang pahina", "Trang trước", "Page précédente", "Página anterior", "الصفحة السابقة"],
+      "next_tip": ["Next page", "Página siguiente", "下一页", "Susunod na pahina", "Trang sau", "Page suivante", "Próxima página", "الصفحة التالية"],
+      "page_number": ["Page number", "Número de página", "页码", "Numero ng pahina", "Số trang", "Numéro de page", "Número da página", "رقم الصفحة"],
+      "of_n": ["of {n}", "de {n}", "/ {n}", "sa {n}", "/ {n}", "sur {n}", "de {n}", "من {n}"],
+      "finger_scrolls": ["Finger: scrolls", "Dedo: desplaza", "手指：滚动", "Daliri: scroll", "Ngón tay: cuộn", "Doigt : défile", "Dedo: rola", "الإصبع: تمرير"],
+      "finger_draws": ["Finger: draws", "Dedo: dibuja", "手指：书写", "Daliri: guhit", "Ngón tay: vẽ", "Doigt : dessine", "Dedo: desenha", "الإصبع: رسم"],
+      "finger_tip": ["What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.", "Lo que hace tu dedo en modo Escribir: desplazar la página o dibujar como el lápiz. Toca para cambiar.", "书写模式下手指的作用：滚动页面或像笔一样书写。点按切换。", "Ang ginagawa ng daliri mo sa Sumulat: mag-scroll ng pahina o gumuhit tulad ng pen. I-tap para palitan.", "Ngón tay làm gì ở chế độ Viết: cuộn trang hoặc vẽ như bút. Chạm để đổi.", "Ce que fait votre doigt en mode Écrire : faire défiler la page ou dessiner comme le stylet. Touchez pour changer.", "O que o dedo faz no modo Escrever: rolar a página ou desenhar como a caneta. Toque para trocar.", "ما يفعله إصبعك في وضع الكتابة: تمرير الصفحة أو الرسم مثل القلم. اضغط للتبديل."],
+      "class_period": ["Class period", "Período de clase", "班级", "Klase", "Lớp học", "Classe", "Turma", "الحصة الدراسية"],
+      "period_tip": ["Each class period gets its own ink on the same page", "Cada clase tiene su propia tinta en la misma página", "每个班级在同一页面上有各自的笔迹", "May sariling tinta ang bawat klase sa iisang pahina", "Mỗi lớp có nét mực riêng trên cùng một trang", "Chaque classe a sa propre encre sur la même page", "Cada turma tem sua própria tinta na mesma página", "لكل حصة حبرها الخاص على نفس الصفحة"],
+      "period_menu_tip": ["Class period: {p} (tap to change)", "Clase: {p} (toca para cambiar)", "班级：{p}（点按更改）", "Klase: {p} (i-tap para palitan)", "Lớp: {p} (chạm để đổi)", "Classe : {p} (touchez pour changer)", "Turma: {p} (toque para trocar)", "الحصة: {p} (اضغط للتغيير)"],
+      "highlighter": ["Highlighter", "Resaltador", "荧光笔", "Highlighter", "Bút dạ quang", "Surligneur", "Marca-texto", "قلم تمييز"],
+      "cover": ["Cover", "Tapar", "遮盖", "Takip", "Che", "Cacher", "Cobrir", "تغطية"],
+      "hilite_tip": ["Highlighter on / off", "Activar o desactivar el resaltador", "打开/关闭荧光笔", "I-on / i-off ang highlighter", "Bật / tắt bút dạ quang", "Activer / désactiver le surligneur", "Ligar / desligar o marca-texto", "تشغيل / إيقاف قلم التمييز"],
+      "hlmenu_tip": ["Highlight strength, or cover (black out answers)", "Intensidad del resaltado, o tapar (ocultar respuestas)", "荧光笔深浅，或遮盖（挡住答案）", "Tingkad ng highlight, o takpan (itago ang mga sagot)", "Độ đậm của bút dạ quang, hoặc che (giấu đáp án)", "Intensité du surlignage, ou cacher (masquer les réponses)", "Intensidade do destaque, ou cobrir (esconder respostas)", "قوة التمييز، أو التغطية (إخفاء الإجابات)"],
+      "black": ["Black", "Negro", "黑色", "Itim", "Đen", "Noir", "Preto", "أسود"],
+      "blue": ["Blue", "Azul", "蓝色", "Asul", "Xanh dương", "Bleu", "Azul", "أزرق"],
+      "red": ["Red", "Rojo", "红色", "Pula", "Đỏ", "Rouge", "Vermelho", "أحمر"],
+      "green": ["Green", "Verde", "绿色", "Berde", "Xanh lá", "Vert", "Verde", "أخضر"],
+      "pink": ["Barbie pink", "Rosa Barbie", "芭比粉", "Barbie pink", "Hồng Barbie", "Rose Barbie", "Rosa Barbie", "وردي باربي"],
+      "orange": ["Sunset orange", "Naranja atardecer", "夕阳橙", "Kahel", "Cam hoàng hôn", "Orange coucher de soleil", "Laranja pôr do sol", "برتقالي الغروب"],
+      "yellow": ["Yellow", "Amarillo", "黄色", "Dilaw", "Vàng", "Jaune", "Amarelo", "أصفر"],
+      "purple": ["Purple", "Morado", "紫色", "Lila", "Tím", "Violet", "Roxo", "بنفسجي"],
+      "custom_color": ["Pick any color", "Elegir cualquier color", "选择任意颜色", "Pumili ng kahit anong kulay", "Chọn màu bất kỳ", "Choisir une couleur", "Escolher qualquer cor", "اختر أي لون"],
+      "thinner": ["Thinner", "Más fino", "更细", "Mas manipis", "Mảnh hơn", "Plus fin", "Mais fino", "أرفع"],
+      "thicker": ["Thicker", "Más grueso", "更粗", "Mas makapal", "Dày hơn", "Plus épais", "Mais grosso", "أعرض"],
+      "size_tip": ["Pen size: the dot shows how thick your lines are", "Grosor del lápiz: el punto muestra el grosor de tus líneas", "笔的粗细：圆点显示线条的粗细", "Laki ng pen: ipinapakita ng tuldok kung gaano kakapal ang linya mo", "Cỡ bút: chấm tròn cho thấy nét vẽ dày bao nhiêu", "Taille du stylet : le point montre l'épaisseur de vos traits", "Espessura da caneta: o ponto mostra a grossura das linhas", "حجم القلم: تُظهر النقطة سُمك خطوطك"],
+      "rougher": ["Less smoothing", "Menos suavizado", "减少平滑", "Bawasan ang pagpapakinis", "Bớt làm mượt", "Moins de lissage", "Menos suavização", "تنعيم أقل"],
+      "smoother": ["More smoothing", "Más suavizado", "增加平滑", "Dagdagan ang pagpapakinis", "Làm mượt hơn", "Plus de lissage", "Mais suavização", "تنعيم أكثر"],
+      "smooth_tip": ["Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines that trail a little behind the pen. Off = no smoothing.", "El suavizado corrige las líneas temblorosas. Con números más altos, las líneas salen más suaves y redondas, pero van un poco detrás del lápiz. No = sin suavizado.", "平滑可以让抖动的线条变得平整。数字越大，线条越平滑圆润，但会稍微落后于笔尖。关 = 不平滑。", "Pinapakinis nito ang nanginginig na linya. Mas mataas na numero, mas makinis at bilog ang linya pero medyo nahuhuli sa pen. Off = walang pagpapakinis.", "Làm mượt giúp nét run trở nên đều. Số càng cao, nét càng mượt và tròn nhưng hơi chậm theo bút. Tắt = không làm mượt.", "Le lissage régularise les traits tremblants. Plus le nombre est élevé, plus les traits sont lisses et arrondis, mais ils suivent le stylet avec un léger retard. Non = pas de lissage.", "A suavização deixa as linhas tremidas mais regulares. Números maiores deixam as linhas mais suaves e arredondadas, mas elas ficam um pouco atrás da caneta. Não = sem suavização.", "التنعيم يجعل الخطوط المرتجفة أكثر انتظامًا. كلما زاد الرقم كانت الخطوط أنعم وأكثر استدارة لكنها تتأخر قليلًا عن القلم. لا = بدون تنعيم."],
+      "off": ["Off", "No", "关", "Off", "Tắt", "Non", "Não", "لا"],
+      "eraser": ["Eraser", "Borrador", "橡皮擦", "Pambura", "Tẩy", "Gomme", "Borracha", "ممحاة"],
+      "eraser_tip": ["Eraser: the pen erases (your palm always erases)", "Borrador: el lápiz borra (la palma siempre borra)", "橡皮擦：用笔擦除（手掌随时都能擦除）", "Pambura: nagbubura ang pen (laging nagbubura ang palad mo)", "Tẩy: bút sẽ xóa (lòng bàn tay luôn xóa được)", "Gomme : le stylet efface (la paume efface toujours)", "Borracha: a caneta apaga (a palma da mão sempre apaga)", "الممحاة: القلم يمسح (راحة اليد تمسح دائمًا)"],
+      "undo": ["Undo", "Deshacer", "撤销", "I-undo", "Hoàn tác", "Annuler", "Desfazer", "تراجع"],
+      "redo": ["Redo", "Rehacer", "重做", "I-redo", "Làm lại", "Rétablir", "Refazer", "إعادة"],
+      "undo_tip": ["Undo (Ctrl+Z)", "Deshacer (Ctrl+Z)", "撤销 (Ctrl+Z)", "I-undo (Ctrl+Z)", "Hoàn tác (Ctrl+Z)", "Annuler (Ctrl+Z)", "Desfazer (Ctrl+Z)", "تراجع (Ctrl+Z)"],
+      "redo_tip": ["Redo (Ctrl+Y or Ctrl+R)", "Rehacer (Ctrl+Y o Ctrl+R)", "重做 (Ctrl+Y 或 Ctrl+R)", "I-redo (Ctrl+Y o Ctrl+R)", "Làm lại (Ctrl+Y hoặc Ctrl+R)", "Rétablir (Ctrl+Y ou Ctrl+R)", "Refazer (Ctrl+Y ou Ctrl+R)", "إعادة (Ctrl+Y أو Ctrl+R)"],
+      "clear_page": ["Clear page", "Borrar página", "清除本页", "Burahin: pahina", "Xóa trang", "Effacer la page", "Limpar página", "مسح الصفحة"],
+      "clear_all": ["Clear all", "Borrar todo", "全部清除", "Burahin: lahat", "Xóa hết", "Tout effacer", "Limpar tudo", "مسح الكل"],
+      "clear": ["Clear", "Borrar", "清除", "Burahin", "Xóa", "Effacer", "Limpar", "مسح"],
+      "clear_page_tip": ["Clear the ink on the page you are looking at (Undo brings it back)", "Borra la tinta de la página que estás viendo (Deshacer la recupera)", "清除当前页面上的笔迹（撤销可恢复）", "Burahin ang tinta sa pahinang tinitingnan mo (maibabalik ng Undo)", "Xóa nét mực trên trang đang xem (Hoàn tác để lấy lại)", "Efface l'encre de la page affichée (Annuler la fait revenir)", "Limpa a tinta da página que você está vendo (Desfazer traz de volta)", "امسح الحبر من الصفحة التي تراها (التراجع يعيده)"],
+      "clear_all_tip": ["Clear the ink on every page, in this class period (tap twice; Undo brings it back)", "Borra la tinta de todas las páginas en esta clase (toca dos veces; Deshacer la recupera)", "清除本班级所有页面的笔迹（点两次；撤销可恢复）", "Burahin ang tinta sa lahat ng pahina sa klaseng ito (i-tap nang dalawang beses; maibabalik ng Undo)", "Xóa nét mực trên mọi trang của lớp này (chạm hai lần; Hoàn tác để lấy lại)", "Efface l'encre de toutes les pages pour cette classe (touchez deux fois ; Annuler la fait revenir)", "Limpa a tinta de todas as páginas desta turma (toque duas vezes; Desfazer traz de volta)", "امسح الحبر من كل الصفحات في هذه الحصة (اضغط مرتين؛ التراجع يعيده)"],
+      "clear_menu_tip": ["Clear the ink on this page, or on every page", "Borrar la tinta de esta página o de todas", "清除本页或所有页面的笔迹", "Burahin ang tinta sa pahinang ito o sa lahat", "Xóa nét mực trên trang này hoặc mọi trang", "Effacer l'encre de cette page ou de toutes", "Limpar a tinta desta página ou de todas", "امسح الحبر من هذه الصفحة أو من كل الصفحات"],
+      "this_page": ["This page", "Esta página", "本页", "Pahinang ito", "Trang này", "Cette page", "Esta página", "هذه الصفحة"],
+      "all_pages": ["All pages", "Todas las páginas", "所有页面", "Lahat ng pahina", "Mọi trang", "Toutes les pages", "Todas as páginas", "كل الصفحات"],
+      "clear_note": ["This class period only. Undo brings it back.", "Solo esta clase. Deshacer la recupera.", "仅限本班级。撤销可恢复。", "Sa klaseng ito lang. Maibabalik ng Undo.", "Chỉ lớp này. Hoàn tác để lấy lại.", "Cette classe seulement. Annuler la fait revenir.", "Só esta turma. Desfazer traz de volta.", "هذه الحصة فقط. التراجع يعيده."],
+      "chapters": ["Chapters", "Capítulos", "章节", "Kabanata", "Chương", "Chapitres", "Capítulos", "الفصول"],
+      "chapters_tip": ["Chapters of this PDF", "Capítulos de este PDF", "此 PDF 的章节", "Mga kabanata ng PDF na ito", "Các chương của PDF này", "Chapitres de ce PDF", "Capítulos deste PDF", "فصول ملف PDF هذا"],
+      "zoom_out": ["Zoom out", "Alejar", "缩小", "Paliitin", "Thu nhỏ", "Zoom arrière", "Diminuir zoom", "تصغير"],
+      "zoom_in": ["Zoom in", "Acercar", "放大", "Palakihin", "Phóng to", "Zoom avant", "Aumentar zoom", "تكبير"],
+      "fit": ["Fit", "Ajustar", "适合", "Sakto", "Vừa", "Ajuster", "Ajustar", "ملاءمة"],
+      "fit_tip": ["Fit the page to the screen", "Ajustar la página a la pantalla", "使页面适合屏幕", "Isakto ang pahina sa screen", "Vừa trang với màn hình", "Ajuster la page à l'écran", "Ajustar a página à tela", "ملاءمة الصفحة للشاشة"],
+      "zoom_tip": ["Page zoom. Tap to fit the page to the screen.", "Zoom de la página. Toca para ajustarla a la pantalla.", "页面缩放。点按使页面适合屏幕。", "Zoom ng pahina. I-tap para isakto sa screen.", "Thu phóng trang. Chạm để vừa màn hình.", "Zoom de la page. Touchez pour l'ajuster à l'écran.", "Zoom da página. Toque para ajustar à tela.", "تكبير الصفحة. اضغط لملاءمتها للشاشة."],
+      "menu": ["Settings & help ▸", "Ajustes y ayuda ▸", "设置与帮助 ▸", "Settings at tulong ▸", "Cài đặt & trợ giúp ▸", "Réglages et aide ▸", "Ajustes e ajuda ▸", "الإعدادات والمساعدة ▸"],
+      "menu_name": ["Settings & help", "Ajustes y ayuda", "设置与帮助", "Settings at tulong", "Cài đặt & trợ giúp", "Réglages et aide", "Ajustes e ajuda", "الإعدادات والمساعدة"],
+      "menu_tip": ["Save PDF, save ink into the file, settings, language and help", "Guardar PDF, guardar la tinta en el archivo, ajustes, idioma y ayuda", "保存 PDF、把笔迹保存到文件、设置、语言和帮助", "I-save ang PDF, i-save ang tinta sa file, settings, wika, at tulong", "Lưu PDF, lưu nét mực vào tệp, cài đặt, ngôn ngữ và trợ giúp", "Enregistrer le PDF, enregistrer l'encre dans le fichier, réglages, langue et aide", "Salvar PDF, salvar a tinta no arquivo, ajustes, idioma e ajuda", "حفظ PDF، حفظ الحبر في الملف، الإعدادات، اللغة والمساعدة"],
+      "menu_tip_app": ["Export PDF, ink files, open another PDF, settings, language and help", "Exportar PDF, archivos de tinta, abrir otro PDF, ajustes, idioma y ayuda", "导出 PDF、笔迹文件、打开其他 PDF、设置、语言和帮助", "I-export ang PDF, mga ink file, magbukas ng ibang PDF, settings, wika, at tulong", "Xuất PDF, tệp nét mực, mở PDF khác, cài đặt, ngôn ngữ và trợ giúp", "Exporter le PDF, fichiers d'encre, ouvrir un autre PDF, réglages, langue et aide", "Exportar PDF, arquivos de tinta, abrir outro PDF, ajustes, idioma e ajuda", "تصدير PDF، ملفات الحبر، فتح ملف PDF آخر، الإعدادات، اللغة والمساعدة"],
+      "hide": ["Hide", "Ocultar", "隐藏", "Itago", "Ẩn", "Masquer", "Ocultar", "إخفاء"],
+      "hide_tip": ["Hide the toolbar (the ✎ button brings it back)", "Ocultar la barra (el botón ✎ la trae de vuelta)", "隐藏工具栏（点 ✎ 按钮可恢复）", "Itago ang toolbar (ibabalik ito ng ✎)", "Ẩn thanh công cụ (nút ✎ để hiện lại)", "Masquer la barre d'outils (le bouton ✎ la fait revenir)", "Ocultar a barra (o botão ✎ traz de volta)", "إخفاء شريط الأدوات (زر ✎ يعيده)"],
+      "show_tip": ["Show writing tools", "Mostrar herramientas", "显示书写工具", "Ipakita ang mga pansulat", "Hiện công cụ viết", "Afficher les outils", "Mostrar ferramentas", "إظهار أدوات الكتابة"],
+      "status_tip": ["What OverBoard did last", "Lo último que hizo OverBoard", "OverBoard 最近的操作", "Huling ginawa ng OverBoard", "Việc OverBoard vừa làm", "La dernière action d'OverBoard", "A última coisa que o OverBoard fez", "آخر ما فعله OverBoard"],
+      "sure": ["Sure?", "¿Seguro?", "确定？", "Sigurado?", "Chắc chưa?", "Sûr ?", "Certeza?", "متأكد؟"],
+      "save_pdf": ["Save PDF", "Guardar PDF", "保存 PDF", "I-save ang PDF", "Lưu PDF", "Enregistrer en PDF", "Salvar PDF", "حفظ PDF"],
+      "save_pdf_tip": ["Save or print a PDF of the worksheet with the current period's ink", "Guardar o imprimir un PDF de la hoja con la tinta de esta clase", "保存或打印带有本班级笔迹的练习页 PDF", "I-save o i-print ang PDF ng worksheet kasama ang tinta ng klaseng ito", "Lưu hoặc in PDF của trang bài tập kèm nét mực của lớp này", "Enregistrer ou imprimer un PDF de la feuille avec l'encre de cette classe", "Salvar ou imprimir um PDF da folha com a tinta desta turma", "حفظ أو طباعة ملف PDF لورقة العمل مع حبر هذه الحصة"],
+      "save_into_file": ["Save ink into file", "Guardar tinta en el archivo", "把笔迹保存到文件", "I-save ang tinta sa file", "Lưu nét mực vào tệp", "Enregistrer l'encre dans le fichier", "Salvar tinta no arquivo", "حفظ الحبر في الملف"],
+      "save_into_file_tip": ["Ink already saves in this browser. This also saves it inside the .html file.", "La tinta ya se guarda en este navegador. Esto también la guarda dentro del archivo .html.", "笔迹已经保存在此浏览器中。这会同时把它保存到 .html 文件里。", "Nase-save na ang tinta sa browser na ito. Sine-save din nito ang tinta sa loob ng .html file.", "Nét mực đã được lưu trong trình duyệt này. Lệnh này lưu thêm vào trong tệp .html.", "L'encre est déjà enregistrée dans ce navigateur. Ceci l'enregistre aussi dans le fichier .html.", "A tinta já é salva neste navegador. Isto também a salva dentro do arquivo .html.", "الحبر محفوظ بالفعل في هذا المتصفح. هذا يحفظه أيضًا داخل ملف ‎.html."],
+      "change_file": ["Change linked file", "Cambiar archivo vinculado", "更改关联文件", "Palitan ang naka-link na file", "Đổi tệp liên kết", "Changer de fichier lié", "Trocar arquivo vinculado", "تغيير الملف المرتبط"],
+      "change_file_tip": ["Choose which .html file the ink saves into", "Elegir en qué archivo .html se guarda la tinta", "选择笔迹保存到哪个 .html 文件", "Piliin kung saang .html file ise-save ang tinta", "Chọn tệp .html để lưu nét mực", "Choisir le fichier .html où l'encre est enregistrée", "Escolher em qual arquivo .html a tinta é salva", "اختر ملف ‎.html الذي يُحفظ فيه الحبر"],
+      "move_toolbar": ["◀ Move toolbar ▶", "◀ Mover barra ▶", "◀ 移动工具栏 ▶", "◀ Ilipat ang toolbar ▶", "◀ Dời thanh công cụ ▶", "◀ Déplacer la barre ▶", "◀ Mover barra ▶", "◀ نقل الشريط ▶"],
+      "move_toolbar_tip": ["Move the toolbar to the other side of the screen", "Mover la barra al otro lado de la pantalla", "把工具栏移到屏幕另一侧", "Ilipat ang toolbar sa kabilang gilid ng screen", "Dời thanh công cụ sang phía bên kia màn hình", "Déplacer la barre de l'autre côté de l'écran", "Mover a barra para o outro lado da tela", "انقل شريط الأدوات إلى الجانب الآخر من الشاشة"],
+      "settings_btn": ["Settings…", "Ajustes…", "设置…", "Settings…", "Cài đặt…", "Réglages…", "Ajustes…", "الإعدادات…"],
+      "settings_tip": ["Language, class periods, the pen color at start, and resetting the tools", "Idioma, clases, color inicial del lápiz y restablecer herramientas", "语言、班级、开始时的笔颜色，以及重置工具", "Wika, mga klase, kulay ng pen sa simula, at pag-reset ng mga tool", "Ngôn ngữ, các lớp, màu bút lúc đầu và đặt lại công cụ", "Langue, classes, couleur du stylet au départ et réinitialisation des outils", "Idioma, turmas, cor inicial da caneta e redefinir ferramentas", "اللغة، الحصص، لون القلم عند البدء، وإعادة ضبط الأدوات"],
+      "board_help": ["Board not working?", "¿La pizarra no funciona?", "白板不能用？", "Ayaw gumana ng board?", "Bảng không hoạt động?", "Le tableau ne marche pas ?", "A lousa não funciona?", "السبورة لا تعمل؟"],
+      "board_help_tip": ["A two-minute check that tells the OverBoard maker what to fix", "Una prueba de dos minutos que le dice al creador de OverBoard qué arreglar", "两分钟的检查，告诉 OverBoard 作者需要修复什么", "Dalawang-minutong pagsusuri na nagsasabi sa gumawa ng OverBoard kung ano ang aayusin", "Kiểm tra hai phút giúp người làm OverBoard biết cần sửa gì", "Un test de deux minutes qui indique au créateur d'OverBoard quoi corriger", "Um teste de dois minutos que diz ao criador do OverBoard o que consertar", "فحص لمدة دقيقتين يخبر صانع OverBoard بما يجب إصلاحه"],
+      "export_pdf": ["Export PDF", "Exportar PDF", "导出 PDF", "I-export ang PDF", "Xuất PDF", "Exporter en PDF", "Exportar PDF", "تصدير PDF"],
+      "export_pdf_tip": ["Download this PDF with the current period's ink drawn into it", "Descargar este PDF con la tinta de esta clase", "下载带有本班级笔迹的此 PDF", "I-download ang PDF na ito kasama ang tinta ng klaseng ito", "Tải PDF này kèm nét mực của lớp này", "Télécharger ce PDF avec l'encre de cette classe", "Baixar este PDF com a tinta desta turma", "تنزيل ملف PDF هذا مع حبر هذه الحصة"],
+      "find_text": ["Find text…", "Buscar texto…", "查找文字…", "Maghanap ng teksto…", "Tìm chữ…", "Rechercher…", "Localizar texto…", "بحث عن نص…"],
+      "find_text_tip": ["Search the text of the whole PDF (Ctrl+F)", "Buscar en el texto de todo el PDF (Ctrl+F)", "在整个 PDF 中搜索文字 (Ctrl+F)", "Hanapin sa teksto ng buong PDF (Ctrl+F)", "Tìm trong chữ của cả PDF (Ctrl+F)", "Rechercher dans le texte de tout le PDF (Ctrl+F)", "Procurar no texto do PDF inteiro (Ctrl+F)", "ابحث في نص ملف PDF بالكامل (Ctrl+F)"],
+      "save_ink": ["Save ink", "Guardar tinta", "保存笔迹", "I-save ang tinta", "Lưu nét mực", "Enregistrer l'encre", "Salvar tinta", "حفظ الحبر"],
+      "save_ink_tip": ["Download the ink (all periods) as a small .overboard.json file", "Descargar la tinta (todas las clases) como un pequeño archivo .overboard.json", "把笔迹（所有班级）下载为一个小的 .overboard.json 文件", "I-download ang tinta (lahat ng klase) bilang maliit na .overboard.json file", "Tải nét mực (mọi lớp) thành tệp .overboard.json nhỏ", "Télécharger l'encre (toutes les classes) dans un petit fichier .overboard.json", "Baixar a tinta (todas as turmas) como um pequeno arquivo .overboard.json", "تنزيل الحبر (كل الحصص) كملف ‎.overboard.json صغير"],
+      "load_ink": ["Load ink", "Cargar tinta", "载入笔迹", "I-load ang tinta", "Mở nét mực", "Charger l'encre", "Carregar tinta", "تحميل الحبر"],
+      "load_ink_tip": ["Load ink from an .overboard.json file", "Cargar tinta desde un archivo .overboard.json", "从 .overboard.json 文件载入笔迹", "I-load ang tinta mula sa .overboard.json file", "Mở nét mực từ tệp .overboard.json", "Charger l'encre depuis un fichier .overboard.json", "Carregar tinta de um arquivo .overboard.json", "حمّل الحبر من ملف ‎.overboard.json"],
+      "save_into_pdf": ["Save ink into PDF…", "Guardar tinta en el PDF…", "把笔迹保存到 PDF…", "I-save ang tinta sa PDF…", "Lưu nét mực vào PDF…", "Enregistrer l'encre dans le PDF…", "Salvar tinta no PDF…", "حفظ الحبر داخل PDF…"],
+      "saving_into_pdf": ["Saving into PDF ✓", "Guardando en el PDF ✓", "正在保存到 PDF ✓", "Sine-save sa PDF ✓", "Đang lưu vào PDF ✓", "Enregistrement dans le PDF ✓", "Salvando no PDF ✓", "يُحفظ داخل PDF ✓"],
+      "resume_saving": ["Resume saving into PDF", "Seguir guardando en el PDF", "继续保存到 PDF", "Ituloy ang pag-save sa PDF", "Tiếp tục lưu vào PDF", "Reprendre l'enregistrement dans le PDF", "Voltar a salvar no PDF", "استئناف الحفظ داخل PDF"],
+      "download_pdf_ink": ["Download PDF + ink…", "Descargar PDF + tinta…", "下载 PDF + 笔迹…", "I-download ang PDF + tinta…", "Tải PDF + nét mực…", "Télécharger PDF + encre…", "Baixar PDF + tinta…", "تنزيل PDF + الحبر…"],
+      "save_into_pdf_tip": ["Keep the ink inside a PDF file (you choose the file)", "Guardar la tinta dentro de un archivo PDF (tú eliges el archivo)", "把笔迹保存在 PDF 文件内（由你选择文件）", "Itago ang tinta sa loob ng PDF file (ikaw ang pipili ng file)", "Giữ nét mực bên trong tệp PDF (bạn chọn tệp)", "Garder l'encre dans un fichier PDF (vous choisissez le fichier)", "Guardar a tinta dentro de um arquivo PDF (você escolhe o arquivo)", "احتفظ بالحبر داخل ملف PDF (أنت تختار الملف)"],
+      "saving_into_tip": ["Ink is saved inside {f}. Tap to turn this off.", "La tinta se guarda dentro de {f}. Toca para desactivarlo.", "笔迹保存在 {f} 中。点按可关闭。", "Nase-save ang tinta sa loob ng {f}. I-tap para i-off.", "Nét mực được lưu trong {f}. Chạm để tắt.", "L'encre est enregistrée dans {f}. Touchez pour arrêter.", "A tinta é salva dentro de {f}. Toque para desligar.", "يُحفظ الحبر داخل {f}. اضغط لإيقاف ذلك."],
+      "resume_tip": ["Tap to allow saving into {f} again", "Toca para permitir guardar otra vez en {f}", "点按以再次允许保存到 {f}", "I-tap para payagan ulit ang pag-save sa {f}", "Chạm để cho phép lưu vào {f} lần nữa", "Touchez pour autoriser à nouveau l'enregistrement dans {f}", "Toque para permitir salvar em {f} de novo", "اضغط للسماح بالحفظ في {f} مرة أخرى"],
+      "open_another": ["Open another PDF", "Abrir otro PDF", "打开其他 PDF", "Magbukas ng ibang PDF", "Mở PDF khác", "Ouvrir un autre PDF", "Abrir outro PDF", "فتح ملف PDF آخر"],
+      "open_another_tip": ["Close this PDF and pick another (ink is saved)", "Cerrar este PDF y elegir otro (la tinta queda guardada)", "关闭此 PDF 并选择另一个（笔迹已保存）", "Isara ang PDF na ito at pumili ng iba (naka-save ang tinta)", "Đóng PDF này và chọn PDF khác (nét mực đã được lưu)", "Fermer ce PDF et en choisir un autre (l'encre est enregistrée)", "Fechar este PDF e escolher outro (a tinta fica salva)", "أغلق ملف PDF هذا واختر آخر (الحبر محفوظ)"],
+      "highlight": ["Highlight", "Resaltar", "高亮", "Highlight", "Tô sáng", "Surligner", "Destacar", "تمييز"],
+      "see_through": ["see-through", "transparente", "透明", "see-through", "trong suốt", "transparent", "transparente", "شفاف"],
+      "hl_strength": ["Highlight strength", "Intensidad del resaltado", "高亮深浅", "Tingkad ng highlight", "Độ đậm tô sáng", "Intensité du surlignage", "Intensidade do destaque", "قوة التمييز"],
+      "cover_black": ["Cover: black", "Tapar: negro", "遮盖：黑色", "Takip: itim", "Che: đen", "Cacher : noir", "Cobrir: preto", "تغطية: أسود"],
+      "hides_answers": ["hides answers", "oculta respuestas", "挡住答案", "itinatago ang sagot", "giấu đáp án", "masque les réponses", "esconde respostas", "يخفي الإجابات"],
+      "cover_dark": ["Cover: dark gray", "Tapar: gris oscuro", "遮盖：深灰", "Takip: madilim na abo", "Che: xám đậm", "Cacher : gris foncé", "Cobrir: cinza escuro", "تغطية: رمادي داكن"],
+      "cover_light": ["Cover: light gray", "Tapar: gris claro", "遮盖：浅灰", "Takip: mapusyaw na abo", "Che: xám nhạt", "Cacher : gris clair", "Cobrir: cinza claro", "تغطية: رمادي فاتح"],
+      "settings": ["Settings", "Ajustes", "设置", "Settings", "Cài đặt", "Réglages", "Ajustes", "الإعدادات"],
+      "done": ["Done", "Listo", "完成", "Tapos", "Xong", "OK", "Pronto", "تم"],
+      "language": ["Language", "Idioma", "语言", "Wika", "Ngôn ngữ", "Langue", "Idioma", "اللغة"],
+      "lang_hint": ["Changes OverBoard's buttons and messages, not your worksheet.", "Cambia los botones y mensajes de OverBoard, no tu hoja de trabajo.", "只更改 OverBoard 的按钮和提示，不会改变你的练习页。", "Pinapalitan ang mga button at mensahe ng OverBoard, hindi ang worksheet mo.", "Đổi nút và thông báo của OverBoard, không đổi bài tập của bạn.", "Change les boutons et les messages d'OverBoard, pas votre document.", "Muda os botões e mensagens do OverBoard, não a sua folha.", "يغيّر أزرار ورسائل OverBoard، وليس ورقة العمل."],
+      "class_periods": ["Class periods", "Clases", "班级", "Mga klase", "Các lớp", "Classes", "Turmas", "الحصص"],
+      "fewer_periods": ["Fewer periods", "Menos clases", "减少班级", "Bawasan ang klase", "Bớt lớp", "Moins de classes", "Menos turmas", "حصص أقل"],
+      "more_periods": ["More periods", "Más clases", "增加班级", "Dagdagan ang klase", "Thêm lớp", "Plus de classes", "Mais turmas", "حصص أكثر"],
+      "n_period": ["{n} period", "{n} clase", "{n} 个班级", "{n} klase", "{n} lớp", "{n} classe", "{n} turma", "{n} حصة"],
+      "n_periods": ["{n} periods", "{n} clases", "{n} 个班级", "{n} klase", "{n} lớp", "{n} classes", "{n} turmas", "{n} حصص"],
+      "names_hint": ["Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.", "Toca un nombre para escribir el tuyo. Cambiar el nombre conserva la tinta. Las hojas y PDF nuevos empiezan con estos, y Listo los aplica también a este.", "点按名称即可输入自己的名称。改名会保留笔迹。新的练习页和 PDF 都会使用这些名称，点“完成”后当前这个也会使用。", "I-tap ang pangalan para mag-type ng sarili mo. Nananatili ang tinta kapag pinalitan ang pangalan. Ito ang gagamitin ng mga bagong worksheet at PDF, at gagamitin din dito kapag pinindot ang Tapos.", "Chạm vào tên để tự nhập. Đổi tên vẫn giữ nét mực. Bài tập và PDF mới sẽ dùng các tên này, và Xong sẽ áp dụng cho bài đang mở.", "Touchez un nom pour écrire le vôtre. Renommer garde l'encre. Les nouveaux documents et PDF commencent avec ces noms, et OK les applique aussi à celui-ci.", "Toque num nome para digitar o seu. Renomear mantém a tinta. Folhas e PDFs novos começam com estes nomes, e Pronto também os aplica a este.", "اضغط على اسم لكتابة اسمك الخاص. إعادة التسمية تحتفظ بالحبر. أوراق العمل وملفات PDF الجديدة تبدأ بهذه الأسماء، وزر تم يطبقها على هذا الملف أيضًا."],
+      "name_err": ["Each period needs a name, and no two can be the same.", "Cada clase necesita un nombre, y no puede haber dos iguales.", "每个班级都需要名称，且不能重复。", "Kailangan ng pangalan ang bawat klase, at walang dalawang magkapareho.", "Mỗi lớp cần một tên, và không được trùng nhau.", "Chaque classe a besoin d'un nom, et deux noms ne peuvent pas être identiques.", "Cada turma precisa de um nome, e não pode haver dois iguais.", "كل حصة تحتاج إلى اسم، ولا يمكن أن يتكرر اسم."],
+      "period_name_n": ["Name of period {n}", "Nombre de la clase {n}", "第 {n} 个班级的名称", "Pangalan ng klase {n}", "Tên lớp {n}", "Nom de la classe {n}", "Nome da turma {n}", "اسم الحصة {n}"],
+      "pen_at_start": ["Pen color at start", "Color del lápiz al empezar", "开始时的笔颜色", "Kulay ng pen sa simula", "Màu bút lúc bắt đầu", "Couleur du stylet au départ", "Cor da caneta ao iniciar", "لون القلم عند البدء"],
+      "toolbar_settings": ["Toolbar settings", "Ajustes de la barra", "工具栏设置", "Settings ng toolbar", "Cài đặt thanh công cụ", "Réglages de la barre", "Ajustes da barra", "إعدادات شريط الأدوات"],
+      "pen_size": ["Pen size", "Grosor", "笔粗细", "Laki ng pen", "Cỡ bút", "Taille", "Espessura", "حجم القلم"],
+      "smoothing": ["Smoothing", "Suavizado", "平滑", "Pagpapakinis", "Làm mượt", "Lissage", "Suavização", "التنعيم"],
+      "remembers_hint": ["The toolbar remembers these when you change them.", "La barra recuerda estos ajustes cuando los cambias.", "更改后工具栏会记住这些设置。", "Tinatandaan ng toolbar ang mga ito kapag binago mo.", "Thanh công cụ sẽ nhớ khi bạn thay đổi.", "La barre d'outils s'en souvient quand vous les changez.", "A barra lembra destes ajustes quando você os muda.", "يتذكر شريط الأدوات هذه الإعدادات عند تغييرها."],
+      "reset_tools": ["Reset tools to defaults", "Restablecer herramientas", "将工具恢复默认", "Ibalik sa default ang mga tool", "Đặt lại công cụ về mặc định", "Réinitialiser les outils", "Restaurar ferramentas padrão", "إعادة الأدوات إلى الوضع الافتراضي"],
+      "ink_saves_auto": ["Ink saves automatically", "La tinta se guarda sola", "笔迹会自动保存", "Kusang nase-save ang tinta", "Nét mực tự động được lưu", "L'encre s'enregistre toute seule", "A tinta é salva automaticamente", "يُحفظ الحبر تلقائيًا"],
+      "ready": ["Ready", "Listo", "就绪", "Handa na", "Sẵn sàng", "Prêt", "Pronto", "جاهز"],
+      "st_ready": ["{p} · ready", "{p} · listo", "{p} · 就绪", "{p} · handa na", "{p} · sẵn sàng", "{p} · prêt", "{p} · pronto", "{p} · جاهز"],
+      "st_saving": ["{p} · saving…", "{p} · guardando…", "{p} · 正在保存…", "{p} · sine-save…", "{p} · đang lưu…", "{p} · enregistrement…", "{p} · salvando…", "{p} · جارٍ الحفظ…"],
+      "st_saved_browser": ["{p} · saved in browser", "{p} · guardado en el navegador", "{p} · 已保存在浏览器", "{p} · naka-save sa browser", "{p} · đã lưu trong trình duyệt", "{p} · enregistré dans le navigateur", "{p} · salvo no navegador", "{p} · حُفظ في المتصفح"],
+      "st_saved_this_browser": ["{p} · saved in this browser", "{p} · guardado en este navegador", "{p} · 已保存在此浏览器", "{p} · naka-save sa browser na ito", "{p} · đã lưu trong trình duyệt này", "{p} · enregistré dans ce navigateur", "{p} · salvo neste navegador", "{p} · حُفظ في هذا المتصفح"],
+      "st_storage_blocked": ["Browser blocked storage. Use Save ink into file.", "El navegador bloqueó el guardado. Usa Guardar tinta en el archivo.", "浏览器阻止了存储。请使用“把笔迹保存到文件”。", "Hinarangan ng browser ang pag-save. Gamitin ang I-save ang tinta sa file.", "Trình duyệt chặn lưu trữ. Hãy dùng Lưu nét mực vào tệp.", "Le navigateur bloque l'enregistrement. Utilisez Enregistrer l'encre dans le fichier.", "O navegador bloqueou o armazenamento. Use Salvar tinta no arquivo.", "منع المتصفح الحفظ. استخدم «حفظ الحبر في الملف»."],
+      "st_no_ink_clear": ["{p} has no ink to clear", "{p} no tiene tinta que borrar", "{p} 没有可清除的笔迹", "Walang tintang mabubura sa {p}", "{p} không có nét mực để xóa", "{p} n'a pas d'encre à effacer", "{p} não tem tinta para limpar", "لا يوجد حبر لمسحه في {p}"],
+      "st_all_cleared": ["All pages cleared in {p} · Undo brings it back", "Se borraron todas las páginas en {p} · Deshacer lo recupera", "{p} 的所有页面已清除 · 撤销可恢复", "Nabura ang lahat ng pahina sa {p} · Maibabalik ng Undo", "Đã xóa mọi trang ở {p} · Hoàn tác để lấy lại", "Toutes les pages effacées pour {p} · Annuler les fait revenir", "Todas as páginas limpas em {p} · Desfazer traz de volta", "مُسحت كل الصفحات في {p} · التراجع يعيدها"],
+      "st_cleared": ["Cleared {p} · Undo brings it back", "{p} borrado · Deshacer lo recupera", "已清除 {p} · 撤销可恢复", "Nabura ang {p} · Maibabalik ng Undo", "Đã xóa {p} · Hoàn tác để lấy lại", "{p} effacé · Annuler le fait revenir", "{p} limpo · Desfazer traz de volta", "مُسح {p} · التراجع يعيده"],
+      "st_page_no_ink": ["Page {n} has no ink in {p}", "La página {n} no tiene tinta en {p}", "第 {n} 页在 {p} 中没有笔迹", "Walang tinta ang pahina {n} sa {p}", "Trang {n} không có nét mực ở {p}", "La page {n} n'a pas d'encre pour {p}", "A página {n} não tem tinta em {p}", "الصفحة {n} ليس فيها حبر في {p}"],
+      "st_page_cleared": ["Page {n} cleared · Undo brings it back", "Página {n} borrada · Deshacer la recupera", "第 {n} 页已清除 · 撤销可恢复", "Nabura ang pahina {n} · Maibabalik ng Undo", "Đã xóa trang {n} · Hoàn tác để lấy lại", "Page {n} effacée · Annuler la fait revenir", "Página {n} limpa · Desfazer traz de volta", "مُسحت الصفحة {n} · التراجع يعيدها"],
+      "st_periods_changed": ["{p} · class periods changed", "{p} · clases cambiadas", "{p} · 班级已更改", "{p} · binago ang mga klase", "{p} · đã đổi các lớp", "{p} · classes modifiées", "{p} · turmas alteradas", "{p} · تم تغيير الحصص"],
+      "saved_flash": ["Saved!", "¡Guardado!", "已保存！", "Na-save!", "Đã lưu!", "Enregistré !", "Salvo!", "تم الحفظ!"],
+      "not_saved": ["Not saved!", "¡No se guardó!", "未保存！", "Hindi na-save!", "Chưa lưu!", "Non enregistré !", "Não salvo!", "لم يُحفظ!"],
+      "confirm_other_file": ["This page is \"{a}\" but you picked \"{b}\". Save ink into the picked file?", "Esta página es \"{a}\" pero elegiste \"{b}\". ¿Guardar la tinta en el archivo elegido?", "此页面是“{a}”，但你选择了“{b}”。要把笔迹保存到所选文件吗？", "Ang pahinang ito ay \"{a}\" pero \"{b}\" ang pinili mo. I-save ang tinta sa napiling file?", "Trang này là \"{a}\" nhưng bạn đã chọn \"{b}\". Lưu nét mực vào tệp đã chọn?", "Cette page est « {a} » mais vous avez choisi « {b} ». Enregistrer l'encre dans le fichier choisi ?", "Esta página é \"{a}\", mas você escolheu \"{b}\". Salvar a tinta no arquivo escolhido?", "هذه الصفحة هي \"{a}\" لكنك اخترت \"{b}\". هل تحفظ الحبر في الملف المختار؟"],
+      "st_no_ink_block": ["That file has no ink block. Paste the overlay snippet into it first.", "Ese archivo no tiene bloque de tinta. Primero pega en él el código de OverBoard.", "该文件没有笔迹区块。请先把 OverBoard 代码粘贴进去。", "Walang ink block ang file na iyan. I-paste muna roon ang OverBoard snippet.", "Tệp đó không có khối nét mực. Hãy dán đoạn mã OverBoard vào trước.", "Ce fichier n'a pas de bloc d'encre. Collez-y d'abord le code d'OverBoard.", "Esse arquivo não tem bloco de tinta. Cole o código do OverBoard nele primeiro.", "هذا الملف لا يحتوي على كتلة الحبر. الصق شيفرة OverBoard فيه أولًا."],
+      "st_tap_allow": ["{p} · tap Save ink into file to allow writing", "{p} · toca Guardar tinta en el archivo para permitir escribir", "{p} · 点按“把笔迹保存到文件”以允许写入", "{p} · i-tap ang I-save ang tinta sa file para payagang magsulat", "{p} · chạm Lưu nét mực vào tệp để cho phép ghi", "{p} · touchez Enregistrer l'encre dans le fichier pour autoriser l'écriture", "{p} · toque em Salvar tinta no arquivo para permitir gravar", "{p} · اضغط «حفظ الحبر في الملف» للسماح بالكتابة"],
+      "st_linked_no_block": ["Linked file has no ink block", "El archivo vinculado no tiene bloque de tinta", "关联文件没有笔迹区块", "Walang ink block ang naka-link na file", "Tệp liên kết không có khối nét mực", "Le fichier lié n'a pas de bloc d'encre", "O arquivo vinculado não tem bloco de tinta", "الملف المرتبط لا يحتوي على كتلة الحبر"],
+      "st_saved_to": ["{p} · saved to {f} {t}", "{p} · guardado en {f} {t}", "{p} · 已保存到 {f} {t}", "{p} · na-save sa {f} {t}", "{p} · đã lưu vào {f} {t}", "{p} · enregistré dans {f} {t}", "{p} · salvo em {f} {t}", "{p} · حُفظ في {f} {t}"],
+      "st_file_linked_again": ["File linked. Tap Save ink into file again to allow writing.", "Archivo vinculado. Toca Guardar tinta en el archivo otra vez para permitir escribir.", "文件已关联。再次点按“把笔迹保存到文件”以允许写入。", "Naka-link na ang file. I-tap ulit ang I-save ang tinta sa file para payagang magsulat.", "Đã liên kết tệp. Chạm Lưu nét mực vào tệp lần nữa để cho phép ghi.", "Fichier lié. Touchez à nouveau Enregistrer l'encre dans le fichier pour autoriser l'écriture.", "Arquivo vinculado. Toque em Salvar tinta no arquivo de novo para permitir gravar.", "تم ربط الملف. اضغط «حفظ الحبر في الملف» مرة أخرى للسماح بالكتابة."],
+      "st_file_save_failed": ["File save failed: {e}", "No se pudo guardar el archivo: {e}", "文件保存失败：{e}", "Hindi na-save ang file: {e}", "Lưu tệp thất bại: {e}", "Échec de l'enregistrement du fichier : {e}", "Falha ao salvar o arquivo: {e}", "فشل حفظ الملف: {e}"],
+      "st_needs_chrome": ["Save ink into file needs Chrome or Edge. Ink still saves in this browser.", "Guardar tinta en el archivo necesita Chrome o Edge. La tinta se sigue guardando en este navegador.", "“把笔迹保存到文件”需要 Chrome 或 Edge。笔迹仍会保存在此浏览器中。", "Kailangan ng Chrome o Edge para sa I-save ang tinta sa file. Nase-save pa rin ang tinta sa browser na ito.", "Lưu nét mực vào tệp cần Chrome hoặc Edge. Nét mực vẫn được lưu trong trình duyệt này.", "Enregistrer l'encre dans le fichier nécessite Chrome ou Edge. L'encre reste enregistrée dans ce navigateur.", "Salvar tinta no arquivo precisa do Chrome ou do Edge. A tinta continua salva neste navegador.", "حفظ الحبر في الملف يحتاج إلى Chrome أو Edge. لا يزال الحبر يُحفظ في هذا المتصفح."],
+      "st_could_not_save": ["Could not save: {e}", "No se pudo guardar: {e}", "无法保存：{e}", "Hindi ma-save: {e}", "Không lưu được: {e}", "Impossible d'enregistrer : {e}", "Não foi possível salvar: {e}", "تعذّر الحفظ: {e}"],
+      "already_saved": ["Already saved!", "¡Ya guardado!", "已经保存！", "Naka-save na!", "Đã lưu rồi!", "Déjà enregistré !", "Já salvo!", "محفوظ بالفعل!"],
+      "saved_to_file": ["Saved to file!", "¡Guardado en el archivo!", "已保存到文件！", "Na-save sa file!", "Đã lưu vào tệp!", "Enregistré dans le fichier !", "Salvo no arquivo!", "حُفظ في الملف!"],
+      "confirm_covers_ws": ["Covered answers are hidden in the PDF, but the text under the covers is still in it (and in this worksheet file), so anyone with the file can copy it.\n\nTo hand out a copy with the answers truly gone, print it on paper.\n\nSave the PDF anyway?", "Las respuestas tapadas no se ven en el PDF, pero el texto bajo las tapas sigue ahí (y en este archivo), así que cualquiera con el archivo puede copiarlo.\n\nPara repartir una copia sin las respuestas, imprímela en papel.\n\n¿Guardar el PDF de todos modos?", "被遮盖的答案在 PDF 中看不见，但遮盖下面的文字仍然在文件里（也在这个练习页文件里），拿到文件的人都能复制。\n\n要发一份真正没有答案的版本，请打印在纸上。\n\n仍然保存 PDF 吗？", "Nakatago ang mga natakpang sagot sa PDF, pero nandoon pa rin ang teksto sa ilalim ng takip (at sa worksheet file na ito), kaya makokopya ito ng sinumang may file.\n\nPara mamigay ng kopyang talagang walang sagot, i-print ito sa papel.\n\nI-save pa rin ang PDF?", "Đáp án bị che sẽ không hiện trong PDF, nhưng chữ bên dưới vẫn còn trong tệp (và trong tệp bài tập này), nên ai có tệp cũng sao chép được.\n\nĐể phát bản thật sự không có đáp án, hãy in ra giấy.\n\nVẫn lưu PDF?", "Les réponses cachées ne se voient pas dans le PDF, mais le texte sous les caches y est toujours (et dans ce fichier), donc toute personne qui a le fichier peut le copier.\n\nPour distribuer une copie vraiment sans les réponses, imprimez-la sur papier.\n\nEnregistrer le PDF quand même ?", "As respostas cobertas ficam escondidas no PDF, mas o texto embaixo das coberturas continua nele (e neste arquivo), então quem tiver o arquivo pode copiá-lo.\n\nPara entregar uma cópia realmente sem as respostas, imprima em papel.\n\nSalvar o PDF mesmo assim?", "الإجابات المغطاة مخفية في ملف PDF، لكن النص تحت الأغطية لا يزال موجودًا فيه (وفي ملف ورقة العمل هذا)، لذا يمكن لأي شخص لديه الملف نسخه.\n\nلتوزيع نسخة بلا إجابات فعلًا، اطبعها على الورق.\n\nهل تحفظ ملف PDF على أي حال؟"],
+      "confirm_remove_ws": ["Remove {list} and its ink from this worksheet?\n\nUndo can't bring it back.", "¿Quitar {list} y su tinta de esta hoja?\n\nDeshacer no puede recuperarla.", "要从此练习页中删除 {list} 及其笔迹吗？\n\n撤销无法恢复。", "Alisin ang {list} at ang tinta nito sa worksheet na ito?\n\nHindi na ito maibabalik ng Undo.", "Xóa {list} và nét mực của nó khỏi bài tập này?\n\nHoàn tác không lấy lại được.", "Retirer {list} et son encre de ce document ?\n\nAnnuler ne pourra pas le faire revenir.", "Remover {list} e a tinta dele desta folha?\n\nDesfazer não traz de volta.", "هل تزيل {list} وحبره من ورقة العمل هذه؟\n\nلا يمكن للتراجع إعادته."],
+      "confirm_remove_pdf": ["Remove {list} and its ink from this PDF?\n\nUndo can't bring it back.", "¿Quitar {list} y su tinta de este PDF?\n\nDeshacer no puede recuperarla.", "要从此 PDF 中删除 {list} 及其笔迹吗？\n\n撤销无法恢复。", "Alisin ang {list} at ang tinta nito sa PDF na ito?\n\nHindi na ito maibabalik ng Undo.", "Xóa {list} và nét mực của nó khỏi PDF này?\n\nHoàn tác không lấy lại được.", "Retirer {list} et son encre de ce PDF ?\n\nAnnuler ne pourra pas le faire revenir.", "Remover {list} e a tinta dele deste PDF?\n\nDesfazer não traz de volta.", "هل تزيل {list} وحبره من ملف PDF هذا؟\n\nلا يمكن للتراجع إعادته."],
+      "explain_pick": ["Ink already saves in this browser. This also saves it INSIDE the file. In the window that opens (it says \"Open\"), pick: {f}", "La tinta ya se guarda en este navegador. Esto también la guarda DENTRO del archivo. En la ventana que se abre (dice \"Abrir\"), elige: {f}", "笔迹已经保存在此浏览器中。这会同时把它保存到文件内部。在打开的窗口中（显示“打开”），选择：{f}", "Nase-save na ang tinta sa browser na ito. Sine-save din nito ang tinta SA LOOB ng file. Sa window na lalabas (nakasulat ay \"Open\"), piliin ang: {f}", "Nét mực đã được lưu trong trình duyệt này. Lệnh này lưu thêm vào BÊN TRONG tệp. Trong cửa sổ hiện ra (ghi \"Mở\"), hãy chọn: {f}", "L'encre est déjà enregistrée dans ce navigateur. Ceci l'enregistre aussi DANS le fichier. Dans la fenêtre qui s'ouvre (elle indique « Ouvrir »), choisissez : {f}", "A tinta já é salva neste navegador. Isto também a salva DENTRO do arquivo. Na janela que abrir (diz \"Abrir\"), escolha: {f}", "الحبر محفوظ بالفعل في هذا المتصفح. هذا يحفظه أيضًا داخل الملف. في النافذة التي تظهر (مكتوب فيها \"فتح\")، اختر: {f}"],
+      "this_worksheet": ["this worksheet", "esta hoja", "此练习页", "worksheet na ito", "bài tập này", "ce document", "esta folha", "ورقة العمل هذه"],
+      "tap_again_pick": ["Tap again to pick file", "Toca otra vez para elegir", "再点一次选择文件", "I-tap ulit para pumili", "Chạm lần nữa để chọn", "Touchez encore pour choisir", "Toque de novo para escolher", "اضغط مرة أخرى لاختيار الملف"],
+      "st_loaded_file": ["{p} · ink loaded from file", "{p} · tinta cargada del archivo", "{p} · 已从文件载入笔迹", "{p} · na-load ang tinta mula sa file", "{p} · đã mở nét mực từ tệp", "{p} · encre chargée depuis le fichier", "{p} · tinta carregada do arquivo", "{p} · تم تحميل الحبر من الملف"],
+      "st_restored": ["{p} · ink restored from this browser", "{p} · tinta recuperada de este navegador", "{p} · 已从此浏览器恢复笔迹", "{p} · naibalik ang tinta mula sa browser na ito", "{p} · đã khôi phục nét mực từ trình duyệt này", "{p} · encre restaurée depuis ce navigateur", "{p} · tinta recuperada deste navegador", "{p} · تمت استعادة الحبر من هذا المتصفح"],
+      "st_old_carried": ["{p} · earlier ink carried over", "{p} · se trajo la tinta anterior", "{p} · 已沿用之前的笔迹", "{p} · nailipat ang naunang tinta", "{p} · đã chuyển nét mực cũ sang", "{p} · encre précédente reprise", "{p} · tinta anterior trazida", "{p} · تم نقل الحبر السابق"],
+      "st_loading": ["{p} · loading ink…", "{p} · cargando tinta…", "{p} · 正在载入笔迹…", "{p} · nilo-load ang tinta…", "{p} · đang mở nét mực…", "{p} · chargement de l'encre…", "{p} · carregando tinta…", "{p} · جارٍ تحميل الحبر…"],
+      "st_autosaving": ["{p} · autosaving to {f}", "{p} · guardando automáticamente en {f}", "{p} · 自动保存到 {f}", "{p} · awtomatikong sine-save sa {f}", "{p} · tự động lưu vào {f}", "{p} · enregistrement automatique dans {f}", "{p} · salvando automaticamente em {f}", "{p} · حفظ تلقائي في {f}"],
+      "st_reconnect": ["{p} · tap Save ink into file to reconnect {f}", "{p} · toca Guardar tinta en el archivo para volver a conectar {f}", "{p} · 点按“把笔迹保存到文件”重新连接 {f}", "{p} · i-tap ang I-save ang tinta sa file para ikonekta ulit ang {f}", "{p} · chạm Lưu nét mực vào tệp để kết nối lại {f}", "{p} · touchez Enregistrer l'encre dans le fichier pour reconnecter {f}", "{p} · toque em Salvar tinta no arquivo para reconectar {f}", "{p} · اضغط «حفظ الحبر في الملف» لإعادة الاتصال بـ {f}"],
+      "st_could_not_save_browser": ["Could not save in this browser ({e}). Use Save ink.", "No se pudo guardar en este navegador ({e}). Usa Guardar tinta.", "无法保存在此浏览器中（{e}）。请使用“保存笔迹”。", "Hindi ma-save sa browser na ito ({e}). Gamitin ang I-save ang tinta.", "Không lưu được trong trình duyệt này ({e}). Hãy dùng Lưu nét mực.", "Impossible d'enregistrer dans ce navigateur ({e}). Utilisez Enregistrer l'encre.", "Não foi possível salvar neste navegador ({e}). Use Salvar tinta.", "تعذّر الحفظ في هذا المتصفح ({e}). استخدم «حفظ الحبر»."],
+      "st_saved_into": ["{p} · saved into {f} {t}", "{p} · guardado en {f} {t}", "{p} · 已保存到 {f} {t}", "{p} · na-save sa {f} {t}", "{p} · đã lưu vào {f} {t}", "{p} · enregistré dans {f} {t}", "{p} · salvo em {f} {t}", "{p} · حُفظ في {f} {t}"],
+      "st_tap_resume": ["Tap Resume saving into PDF to allow it again", "Toca Seguir guardando en el PDF para permitirlo otra vez", "点按“继续保存到 PDF”以再次允许", "I-tap ang Ituloy ang pag-save sa PDF para payagan ulit", "Chạm Tiếp tục lưu vào PDF để cho phép lại", "Touchez Reprendre l'enregistrement dans le PDF pour l'autoriser à nouveau", "Toque em Voltar a salvar no PDF para permitir de novo", "اضغط «استئناف الحفظ داخل PDF» للسماح بذلك مرة أخرى"],
+      "st_could_not_save_pdf": ["Could not save into the PDF: {e}", "No se pudo guardar en el PDF: {e}", "无法保存到 PDF：{e}", "Hindi ma-save sa PDF: {e}", "Không lưu được vào PDF: {e}", "Impossible d'enregistrer dans le PDF : {e}", "Não foi possível salvar no PDF: {e}", "تعذّر الحفظ داخل PDF: {e}"],
+      "st_saving_into": ["Saving ink into {f}…", "Guardando la tinta en {f}…", "正在把笔迹保存到 {f}…", "Sine-save ang tinta sa {f}…", "Đang lưu nét mực vào {f}…", "Enregistrement de l'encre dans {f}…", "Salvando a tinta em {f}…", "جارٍ حفظ الحبر في {f}…"],
+      "st_saves_into_now": ["Ink saves into {f} from now on", "Desde ahora la tinta se guarda en {f}", "从现在起笔迹会保存到 {f}", "Mula ngayon, sa {f} na nase-save ang tinta", "Từ giờ nét mực sẽ lưu vào {f}", "Désormais, l'encre s'enregistre dans {f}", "A partir de agora, a tinta é salva em {f}", "من الآن يُحفظ الحبر في {f}"],
+      "st_stopped_saving": ["Stopped saving into {f} (its ink stays in it). Ink still saves in this browser.", "Se dejó de guardar en {f} (su tinta se queda ahí). La tinta se sigue guardando en este navegador.", "已停止保存到 {f}（其中的笔迹会保留）。笔迹仍会保存在此浏览器中。", "Itinigil ang pag-save sa {f} (nananatili roon ang tinta). Nase-save pa rin ang tinta sa browser na ito.", "Đã ngừng lưu vào {f} (nét mực trong đó vẫn còn). Nét mực vẫn được lưu trong trình duyệt này.", "Enregistrement dans {f} arrêté (son encre y reste). L'encre reste enregistrée dans ce navigateur.", "Parou de salvar em {f} (a tinta continua nele). A tinta continua salva neste navegador.", "توقف الحفظ في {f} (يبقى الحبر فيه). لا يزال الحبر يُحفظ في هذا المتصفح."],
+      "st_downloaded_with_ink": ["Downloaded {f} with the ink inside", "Se descargó {f} con la tinta dentro", "已下载含笔迹的 {f}", "Na-download ang {f} na may tinta sa loob", "Đã tải {f} có nét mực bên trong", "{f} téléchargé avec l'encre à l'intérieur", "{f} baixado com a tinta dentro", "تم تنزيل {f} والحبر بداخله"],
+      "st_could_not_make_pdf": ["Could not make the PDF: {e}", "No se pudo crear el PDF: {e}", "无法生成 PDF：{e}", "Hindi magawa ang PDF: {e}", "Không tạo được PDF: {e}", "Impossible de créer le PDF : {e}", "Não foi possível criar o PDF: {e}", "تعذّر إنشاء ملف PDF: {e}"],
+      "st_not_allowed": ["Not allowed. Ink still saves in this browser.", "No permitido. La tinta se sigue guardando en este navegador.", "未获允许。笔迹仍会保存在此浏览器中。", "Hindi pinayagan. Nase-save pa rin ang tinta sa browser na ito.", "Không được phép. Nét mực vẫn được lưu trong trình duyệt này.", "Non autorisé. L'encre reste enregistrée dans ce navigateur.", "Não permitido. A tinta continua salva neste navegador.", "غير مسموح. لا يزال الحبر يُحفظ في هذا المتصفح."],
+      "st_could_not_reconnect": ["Could not reconnect to {f}", "No se pudo volver a conectar con {f}", "无法重新连接到 {f}", "Hindi maikonekta ulit sa {f}", "Không kết nối lại được với {f}", "Impossible de se reconnecter à {f}", "Não foi possível reconectar a {f}", "تعذّرت إعادة الاتصال بـ {f}"],
+      "choose_file": ["Choose file…", "Elegir archivo…", "选择文件…", "Pumili ng file…", "Chọn tệp…", "Choisir le fichier…", "Escolher arquivo…", "اختر ملفًا…"],
+      "download_it": ["Download it", "Descargarlo", "下载", "I-download", "Tải về", "Le télécharger", "Baixar", "نزّله"],
+      "st_could_not_open_save": ["Could not open the save window: {e}", "No se pudo abrir la ventana de guardar: {e}", "无法打开保存窗口：{e}", "Hindi mabuksan ang window ng pag-save: {e}", "Không mở được cửa sổ lưu: {e}", "Impossible d'ouvrir la fenêtre d'enregistrement : {e}", "Não foi possível abrir a janela de salvar: {e}", "تعذّر فتح نافذة الحفظ: {e}"],
+      "st_tap_resume_keep": ["{p} · tap Resume saving into PDF to keep saving into {f}", "{p} · toca Seguir guardando en el PDF para seguir guardando en {f}", "{p} · 点按“继续保存到 PDF”以继续保存到 {f}", "{p} · i-tap ang Ituloy ang pag-save sa PDF para patuloy na mag-save sa {f}", "{p} · chạm Tiếp tục lưu vào PDF để tiếp tục lưu vào {f}", "{p} · touchez Reprendre l'enregistrement dans le PDF pour continuer d'enregistrer dans {f}", "{p} · toque em Voltar a salvar no PDF para continuar salvando em {f}", "{p} · اضغط «استئناف الحفظ داخل PDF» لمواصلة الحفظ في {f}"],
+      "err_not_pdf": ["\"{f}\" is not a PDF or an HTML worksheet. (Word files: File → Save as PDF first.)", "\"{f}\" no es un PDF ni una hoja HTML. (Archivos de Word: primero Archivo → Guardar como PDF.)", "“{f}”不是 PDF 或 HTML 练习页。（Word 文件：请先选择“文件 → 另存为 PDF”。）", "Hindi PDF o HTML worksheet ang \"{f}\". (Mga Word file: File → Save as PDF muna.)", "\"{f}\" không phải PDF hay bài tập HTML. (Tệp Word: chọn Tệp → Lưu thành PDF trước.)", "« {f} » n'est pas un PDF ni une feuille HTML. (Fichiers Word : Fichier → Enregistrer au format PDF d'abord.)", "\"{f}\" não é um PDF nem uma folha HTML. (Arquivos do Word: primeiro Arquivo → Salvar como PDF.)", "\"{f}\" ليس ملف PDF ولا ورقة عمل HTML. (ملفات Word: اختر ملف ← حفظ بتنسيق PDF أولًا.)"],
+      "opening": ["Opening {f}…", "Abriendo {f}…", "正在打开 {f}…", "Binubuksan ang {f}…", "Đang mở {f}…", "Ouverture de {f}…", "Abrindo {f}…", "جارٍ فتح {f}…"],
+      "st_too_big_keep": ["PDF too big to keep for reopening; ink still saves.", "El PDF es demasiado grande para guardarlo y volver a abrirlo; la tinta sí se guarda.", "PDF 太大，无法保留以便再次打开；笔迹仍会保存。", "Masyadong malaki ang PDF para itago at buksan ulit; nase-save pa rin ang tinta.", "PDF quá lớn để giữ lại mở sau; nét mực vẫn được lưu.", "PDF trop gros pour être gardé et rouvert ; l'encre est quand même enregistrée.", "PDF grande demais para guardar e reabrir; a tinta continua salva.", "ملف PDF كبير جدًا للاحتفاظ به وإعادة فتحه؛ لا يزال الحبر يُحفظ."],
+      "st_loaded_inside_pdf": ["{p} · ink loaded from inside the PDF", "{p} · tinta cargada desde dentro del PDF", "{p} · 已从 PDF 内部载入笔迹", "{p} · na-load ang tinta mula sa loob ng PDF", "{p} · đã mở nét mực từ bên trong PDF", "{p} · encre chargée depuis l'intérieur du PDF", "{p} · tinta carregada de dentro do PDF", "{p} · تم تحميل الحبر من داخل ملف PDF"],
+      "err_password": ["That PDF is locked with a password.", "Ese PDF está bloqueado con contraseña.", "该 PDF 设有密码保护。", "Naka-lock ng password ang PDF na iyan.", "PDF đó bị khóa bằng mật khẩu.", "Ce PDF est protégé par un mot de passe.", "Esse PDF está bloqueado com senha.", "ملف PDF هذا مقفل بكلمة مرور."],
+      "err_pdf_reader": ["Could not load the PDF reader. Check the internet connection and reload the page.", "No se pudo cargar el lector de PDF. Revisa la conexión a internet y recarga la página.", "无法加载 PDF 阅读器。请检查网络连接并重新加载页面。", "Hindi ma-load ang PDF reader. Tingnan ang internet at i-reload ang pahina.", "Không tải được trình đọc PDF. Kiểm tra kết nối mạng rồi tải lại trang.", "Impossible de charger le lecteur PDF. Vérifiez la connexion internet et rechargez la page.", "Não foi possível carregar o leitor de PDF. Verifique a internet e recarregue a página.", "تعذّر تحميل قارئ PDF. تحقّق من الاتصال بالإنترنت وأعد تحميل الصفحة."],
+      "err_could_not_open": ["Could not open \"{f}\": {e}", "No se pudo abrir \"{f}\": {e}", "无法打开“{f}”：{e}", "Hindi mabuksan ang \"{f}\": {e}", "Không mở được \"{f}\": {e}", "Impossible d'ouvrir « {f} » : {e}", "Não foi possível abrir \"{f}\": {e}", "تعذّر فتح \"{f}\": {e}"],
+      "err_open_pdf_first": ["Open the PDF first, then drop its ink file.", "Primero abre el PDF y luego suelta su archivo de tinta.", "请先打开 PDF，再拖入它的笔迹文件。", "Buksan muna ang PDF, saka i-drop ang ink file nito.", "Mở PDF trước, rồi thả tệp nét mực của nó vào.", "Ouvrez d'abord le PDF, puis déposez son fichier d'encre.", "Abra o PDF primeiro e depois solte o arquivo de tinta.", "افتح ملف PDF أولًا، ثم أفلت ملف الحبر الخاص به."],
+      "n_page": ["{n} page", "{n} página", "{n} 页", "{n} pahina", "{n} trang", "{n} page", "{n} página", "{n} صفحة"],
+      "n_pages": ["{n} pages", "{n} páginas", "{n} 页", "{n} pahina", "{n} trang", "{n} pages", "{n} páginas", "{n} صفحات"],
+      "opened_on": ["opened {d}", "abierto el {d}", "{d} 打开", "binuksan noong {d}", "mở ngày {d}", "ouvert le {d}", "aberto em {d}", "فُتح في {d}"],
+      "err_no_longer_stored": ["That PDF is no longer stored here. Drop it in again; its ink is still saved.", "Ese PDF ya no está guardado aquí. Vuelve a soltarlo; su tinta sigue guardada.", "该 PDF 已不在此处。请重新拖入；它的笔迹仍然保存着。", "Wala na rito ang PDF na iyan. I-drop ulit; naka-save pa rin ang tinta nito.", "PDF đó không còn lưu ở đây. Hãy thả vào lại; nét mực của nó vẫn được lưu.", "Ce PDF n'est plus enregistré ici. Déposez-le à nouveau ; son encre est toujours enregistrée.", "Esse PDF não está mais guardado aqui. Solte-o de novo; a tinta dele continua salva.", "لم يعد ملف PDF هذا محفوظًا هنا. أفلته مرة أخرى؛ حبره لا يزال محفوظًا."],
+      "forget_tip": ["Remove from this list (its ink stays saved)", "Quitar de esta lista (su tinta sigue guardada)", "从列表中移除（笔迹仍然保存）", "Alisin sa listahang ito (naka-save pa rin ang tinta)", "Xóa khỏi danh sách này (nét mực vẫn được lưu)", "Retirer de cette liste (son encre reste enregistrée)", "Remover desta lista (a tinta continua salva)", "إزالة من هذه القائمة (يبقى حبره محفوظًا)"],
+      "untitled": ["(untitled)", "(sin título)", "（无标题）", "(walang pamagat)", "(không tên)", "(sans titre)", "(sem título)", "(بلا عنوان)"],
+      "st_no_ink_export": ["{p} has no ink to export", "{p} no tiene tinta que exportar", "{p} 没有可导出的笔迹", "Walang tintang mae-export sa {p}", "{p} không có nét mực để xuất", "{p} n'a pas d'encre à exporter", "{p} não tem tinta para exportar", "لا يوجد حبر لتصديره في {p}"],
+      "no_ink_yet": ["No ink yet", "Aún sin tinta", "还没有笔迹", "Wala pang tinta", "Chưa có nét mực", "Pas encore d'encre", "Ainda sem tinta", "لا حبر بعد"],
+      "st_making_pdf": ["Making the PDF…", "Creando el PDF…", "正在生成 PDF…", "Ginagawa ang PDF…", "Đang tạo PDF…", "Création du PDF…", "Criando o PDF…", "جارٍ إنشاء ملف PDF…"],
+      "st_making_pdf_n": ["Making the PDF… {n} pages", "Creando el PDF… {n} páginas", "正在生成 PDF… {n} 页", "Ginagawa ang PDF… {n} pahina", "Đang tạo PDF… {n} trang", "Création du PDF… {n} pages", "Criando o PDF… {n} páginas", "جارٍ إنشاء ملف PDF… {n} صفحات"],
+      "st_export_cancelled": ["{p} · export cancelled", "{p} · exportación cancelada", "{p} · 已取消导出", "{p} · kinansela ang pag-export", "{p} · đã hủy xuất", "{p} · export annulé", "{p} · exportação cancelada", "{p} · أُلغي التصدير"],
+      "st_pdf_downloaded": ["{p} · PDF downloaded", "{p} · PDF descargado", "{p} · PDF 已下载", "{p} · na-download ang PDF", "{p} · đã tải PDF", "{p} · PDF téléchargé", "{p} · PDF baixado", "{p} · تم تنزيل PDF"],
+      "st_covered_note": [". Covered answers are hidden but can still be copied from it.", ". Las respuestas tapadas no se ven, pero aún se pueden copiar.", "。被遮盖的答案看不见，但仍可从中复制。", ". Nakatago ang mga natakpang sagot pero makokopya pa rin.", ". Đáp án bị che không hiện nhưng vẫn sao chép được.", ". Les réponses cachées ne se voient pas mais peuvent encore être copiées.", ". As respostas cobertas ficam escondidas, mas ainda podem ser copiadas.", ". الإجابات المغطاة مخفية لكن لا يزال من الممكن نسخها."],
+      "downloaded_flash": ["Downloaded!", "¡Descargado!", "已下载！", "Na-download!", "Đã tải!", "Téléchargé !", "Baixado!", "تم التنزيل!"],
+      "st_export_failed": ["Export failed: {e}", "Falló la exportación: {e}", "导出失败：{e}", "Hindi na-export: {e}", "Xuất thất bại: {e}", "Échec de l'export : {e}", "Falha na exportação: {e}", "فشل التصدير: {e}"],
+      "st_ink_file_downloaded": ["Ink file downloaded (all periods)", "Archivo de tinta descargado (todas las clases)", "笔迹文件已下载（所有班级）", "Na-download ang ink file (lahat ng klase)", "Đã tải tệp nét mực (mọi lớp)", "Fichier d'encre téléchargé (toutes les classes)", "Arquivo de tinta baixado (todas as turmas)", "تم تنزيل ملف الحبر (كل الحصص)"],
+      "confirm_other_pdf": ["This ink file was made for \"{f}\", not this one. Load it anyway?", "Este archivo de tinta se hizo para \"{f}\", no para este. ¿Cargarlo de todos modos?", "此笔迹文件是为“{f}”制作的，不是这个。仍然载入吗？", "Para sa \"{f}\" ginawa ang ink file na ito, hindi para rito. I-load pa rin?", "Tệp nét mực này được tạo cho \"{f}\", không phải tệp này. Vẫn mở?", "Ce fichier d'encre a été fait pour « {f} », pas pour celui-ci. Le charger quand même ?", "Este arquivo de tinta foi feito para \"{f}\", não para este. Carregar mesmo assim?", "ملف الحبر هذا صُنع لـ \"{f}\" وليس لهذا الملف. هل تحمّله على أي حال؟"],
+      "another_pdf": ["another PDF", "otro PDF", "另一个 PDF", "ibang PDF", "PDF khác", "un autre PDF", "outro PDF", "ملف PDF آخر"],
+      "confirm_replace_ink": ["Replace the ink on this PDF (all class periods) with the ink from \"{f}\"?", "¿Reemplazar la tinta de este PDF (todas las clases) con la tinta de \"{f}\"?", "用“{f}”中的笔迹替换此 PDF 的笔迹（所有班级）吗？", "Palitan ang tinta sa PDF na ito (lahat ng klase) ng tinta mula sa \"{f}\"?", "Thay nét mực trên PDF này (mọi lớp) bằng nét mực từ \"{f}\"?", "Remplacer l'encre de ce PDF (toutes les classes) par l'encre de « {f} » ?", "Substituir a tinta deste PDF (todas as turmas) pela tinta de \"{f}\"?", "هل تستبدل الحبر في ملف PDF هذا (كل الحصص) بالحبر من \"{f}\"؟"],
+      "st_ink_loaded_from": ["Ink loaded from {f}", "Tinta cargada de {f}", "已从 {f} 载入笔迹", "Na-load ang tinta mula sa {f}", "Đã mở nét mực từ {f}", "Encre chargée depuis {f}", "Tinta carregada de {f}", "تم تحميل الحبر من {f}"],
+      "find_title": ["Find text", "Buscar texto", "查找文字", "Maghanap ng teksto", "Tìm chữ", "Rechercher", "Localizar texto", "بحث عن نص"],
+      "find_placeholder": ["Word or phrase", "Palabra o frase", "词或短语", "Salita o parirala", "Từ hoặc cụm từ", "Mot ou expression", "Palavra ou frase", "كلمة أو عبارة"],
+      "find_btn": ["Find", "Buscar", "查找", "Hanapin", "Tìm", "Chercher", "Localizar", "بحث"],
+      "close": ["Close", "Cerrar", "关闭", "Isara", "Đóng", "Fermer", "Fechar", "إغلاق"],
+      "searching": ["Searching… page {n} of {m}. ", "Buscando… página {n} de {m}. ", "正在搜索… 第 {n} 页，共 {m} 页。", "Naghahanap… pahina {n} sa {m}. ", "Đang tìm… trang {n}/{m}. ", "Recherche… page {n} sur {m}. ", "Procurando… página {n} de {m}. ", "جارٍ البحث… الصفحة {n} من {m}. "],
+      "first_matches": ["Showing the first {n} matches. Try more words.", "Se muestran las primeras {n} coincidencias. Prueba con más palabras.", "仅显示前 {n} 个结果。请多输入几个词。", "Ipinapakita ang unang {n} tugma. Subukan ang mas maraming salita.", "Đang hiện {n} kết quả đầu tiên. Hãy thêm từ.", "Affichage des {n} premiers résultats. Essayez plus de mots.", "Mostrando os primeiros {n} resultados. Tente mais palavras.", "عرض أول {n} نتيجة. جرّب كلمات أكثر."],
+      "no_matches": ["No matches.", "Sin coincidencias.", "没有结果。", "Walang tugma.", "Không có kết quả.", "Aucun résultat.", "Nenhum resultado.", "لا توجد نتائج."],
+      "matches": ["{n} matches on {m} pages.", "{n} coincidencias en {m} páginas.", "{n} 个结果，分布在 {m} 页。", "{n} tugma sa {m} pahina.", "{n} kết quả trên {m} trang.", "{n} résultats sur {m} pages.", "{n} resultados em {m} páginas.", "{n} نتائج في {m} صفحات."],
+      "matches_1_page": ["{n} matches on 1 page.", "{n} coincidencias en 1 página.", "{n} 个结果，在 1 页中。", "{n} tugma sa 1 pahina.", "{n} kết quả trên 1 trang.", "{n} résultats sur 1 page.", "{n} resultados em 1 página.", "{n} نتائج في صفحة واحدة."],
+      "match_1": ["1 match on 1 page.", "1 coincidencia en 1 página.", "1 个结果，在 1 页中。", "1 tugma sa 1 pahina.", "1 kết quả trên 1 trang.", "1 résultat sur 1 page.", "1 resultado em 1 página.", "نتيجة واحدة في صفحة واحدة."],
+      "page_abbr": ["p. {n}", "pág. {n}", "第 {n} 页", "p. {n}", "tr. {n}", "p. {n}", "p. {n}", "ص {n}"],
+      "start_lead": ["Write on any PDF on your smartboard: a worksheet or a whole textbook.", "Escribe sobre cualquier PDF en tu pizarra digital: una hoja de trabajo o un libro entero.", "在智能白板上的任何 PDF 上书写：练习页或整本课本都可以。", "Sumulat sa kahit anong PDF sa smartboard mo: worksheet man o buong textbook.", "Viết lên bất kỳ PDF nào trên bảng thông minh: một trang bài tập hay cả cuốn sách.", "Écrivez sur n'importe quel PDF sur votre tableau interactif : une feuille d'exercices ou un manuel entier.", "Escreva em qualquer PDF na sua lousa digital: uma folha de atividades ou um livro inteiro.", "اكتب على أي ملف PDF على سبورتك الذكية: ورقة عمل أو كتاب مدرسي كامل."],
+      "drop_to_open": ["Drop to open", "Suelta para abrir", "松开即可打开", "I-drop para buksan", "Thả để mở", "Déposez pour ouvrir", "Solte para abrir", "أفلت للفتح"],
+      "drop_title": ["Drop a PDF here", "Suelta un PDF aquí", "把 PDF 拖到这里", "I-drop ang PDF dito", "Thả PDF vào đây", "Déposez un PDF ici", "Solte um PDF aqui", "أفلت ملف PDF هنا"],
+      "drop_sub": ["or an HTML worksheet, or tap to choose a file", "o una hoja HTML, o toca para elegir un archivo", "或 HTML 练习页，或点按选择文件", "o HTML worksheet, o i-tap para pumili ng file", "hoặc bài tập HTML, hoặc chạm để chọn tệp", "ou une feuille HTML, ou touchez pour choisir un fichier", "ou uma folha HTML, ou toque para escolher um arquivo", "أو ورقة عمل HTML، أو اضغط لاختيار ملف"],
+      "install_app": ["Install app", "Instalar app", "安装应用", "I-install ang app", "Cài ứng dụng", "Installer l'app", "Instalar app", "تثبيت التطبيق"],
+      "install_note": ["Opens in its own window like any app, and works without internet.", "Se abre en su propia ventana como cualquier app y funciona sin internet.", "像普通应用一样在独立窗口中打开，没有网络也能用。", "Bumubukas sa sarili nitong window gaya ng ibang app, at gumagana kahit walang internet.", "Mở trong cửa sổ riêng như mọi ứng dụng, và chạy được khi không có mạng.", "S'ouvre dans sa propre fenêtre comme une app, et fonctionne sans internet.", "Abre em sua própria janela como qualquer app e funciona sem internet.", "يفتح في نافذته الخاصة مثل أي تطبيق، ويعمل بدون إنترنت."],
+      "open_again": ["Open again", "Abrir de nuevo", "再次打开", "Buksan ulit", "Mở lại", "Rouvrir", "Abrir de novo", "افتح مرة أخرى"],
+      "start_note": ["Your PDF and your ink stay in this browser on this computer. Nothing is uploaded. Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here. Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.", "Tu PDF y tu tinta se quedan en este navegador, en esta computadora. No se sube nada. ¿Tienes un archivo de Word? En Word, elige Archivo → Guardar como PDF y suelta el PDF aquí. ¿Tienes una hoja HTML? Suéltala aquí para obtener una copia <i>_board.html</i> en la que puedes escribir.", "你的 PDF 和笔迹只保存在这台电脑的浏览器里，不会上传任何内容。有 Word 文件？在 Word 中选择“文件 → 另存为 PDF”，再把 PDF 拖到这里。有 HTML 练习页？拖到这里即可得到一个可书写的 <i>_board.html</i> 副本。", "Nananatili ang PDF at tinta mo sa browser ng computer na ito. Walang ina-upload. May Word file ka? Sa Word, piliin ang File → Save as PDF, saka i-drop dito ang PDF. May HTML worksheet ka? I-drop ito rito para makakuha ng kopyang <i>_board.html</i> na masusulatan mo.", "PDF và nét mực của bạn chỉ nằm trong trình duyệt trên máy này. Không tải gì lên mạng. Có tệp Word? Trong Word, chọn Tệp → Lưu thành PDF, rồi thả PDF vào đây. Có bài tập HTML? Thả vào đây để có bản <i>_board.html</i> viết lên được.", "Votre PDF et votre encre restent dans ce navigateur, sur cet ordinateur. Rien n'est envoyé en ligne. Un fichier Word ? Dans Word, choisissez Fichier → Enregistrer au format PDF, puis déposez le PDF ici. Une feuille HTML ? Déposez-la ici pour obtenir une copie <i>_board.html</i> sur laquelle écrire.", "Seu PDF e sua tinta ficam neste navegador, neste computador. Nada é enviado. Tem um arquivo do Word? No Word, escolha Arquivo → Salvar como PDF e solte o PDF aqui. Tem uma folha HTML? Solte aqui para receber uma cópia <i>_board.html</i> em que dá para escrever.", "يبقى ملف PDF والحبر في هذا المتصفح على هذا الكمبيوتر. لا يُرفع أي شيء. لديك ملف Word؟ في Word اختر ملف ← حفظ بتنسيق PDF، ثم أفلت ملف PDF هنا. لديك ورقة عمل HTML؟ أفلتها هنا لتحصل على نسخة <i>_board.html</i> يمكنك الكتابة عليها."],
+      "back_demo": ["Back to the HTML worksheet demo", "Volver a la demo de hoja HTML", "返回 HTML 练习页演示", "Bumalik sa HTML worksheet demo", "Quay lại bản demo bài tập HTML", "Retour à la démo de feuille HTML", "Voltar à demonstração da folha HTML", "العودة إلى عرض ورقة عمل HTML"],
+      "about": ["About OverBoard", "Acerca de OverBoard", "关于 OverBoard", "Tungkol sa OverBoard", "Giới thiệu OverBoard", "À propos d'OverBoard", "Sobre o OverBoard", "حول OverBoard"],
+      "embed_h": ["Keep the ink inside a PDF file?", "¿Guardar la tinta dentro de un archivo PDF?", "把笔迹保存在 PDF 文件内？", "Itago ang tinta sa loob ng PDF file?", "Giữ nét mực bên trong tệp PDF?", "Garder l'encre dans un fichier PDF ?", "Guardar a tinta dentro de um arquivo PDF?", "هل تحتفظ بالحبر داخل ملف PDF؟"],
+      "embed_1": ["OverBoard saves a PDF on this computer with <b>all class periods' ink</b> stored inside it.", "OverBoard guarda un PDF en esta computadora con <b>la tinta de todas las clases</b> dentro.", "OverBoard 会在这台电脑上保存一个 PDF，里面存有<b>所有班级的笔迹</b>。", "Magse-save ang OverBoard ng PDF sa computer na ito na may <b>tinta ng lahat ng klase</b> sa loob.", "OverBoard lưu một PDF trên máy này, bên trong có <b>nét mực của mọi lớp</b>.", "OverBoard enregistre sur cet ordinateur un PDF qui contient <b>l'encre de toutes les classes</b>.", "O OverBoard salva neste computador um PDF com <b>a tinta de todas as turmas</b> dentro.", "يحفظ OverBoard ملف PDF على هذا الكمبيوتر يحتوي على <b>حبر كل الحصص</b>."],
+      "embed_2": ["<b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.", "<b>Tus páginas no cambian.</b> La tinta se añade al final del archivo. Vista Previa, Acrobat y Chrome muestran el PDF normal.", "<b>页面本身不会改变。</b>笔迹被添加在文件末尾。预览、Acrobat 和 Chrome 显示的是原始 PDF。", "<b>Hindi binabago ang mga pahina mo.</b> Idinadagdag ang tinta sa dulo ng file. Ang Preview, Acrobat at Chrome ay nagpapakita ng karaniwang PDF.", "<b>Các trang của bạn không bị thay đổi.</b> Nét mực được thêm vào cuối tệp. Preview, Acrobat và Chrome vẫn hiện PDF gốc.", "<b>Vos pages ne changent pas.</b> L'encre est ajoutée à la fin du fichier. Aperçu, Acrobat et Chrome affichent le PDF normal.", "<b>Suas páginas não mudam.</b> A tinta é adicionada no fim do arquivo. Pré-Visualização, Acrobat e Chrome mostram o PDF comum.", "<b>صفحاتك لا تتغير.</b> يُضاف الحبر في نهاية الملف. يعرض Preview وAcrobat وChrome ملف PDF العادي."],
+      "embed_3": ["Open that file in OverBoard on any computer and the ink comes back, ready to keep writing.", "Abre ese archivo en OverBoard en cualquier computadora y la tinta vuelve, lista para seguir escribiendo.", "在任何电脑上用 OverBoard 打开该文件，笔迹都会回来，可以继续书写。", "Buksan ang file na iyon sa OverBoard sa kahit anong computer at babalik ang tinta, handa nang sulatan ulit.", "Mở tệp đó bằng OverBoard trên bất kỳ máy nào và nét mực sẽ hiện lại, sẵn sàng viết tiếp.", "Ouvrez ce fichier dans OverBoard sur n'importe quel ordinateur et l'encre revient, prête pour continuer.", "Abra esse arquivo no OverBoard em qualquer computador e a tinta volta, pronta para continuar escrevendo.", "افتح هذا الملف في OverBoard على أي كمبيوتر وسيعود الحبر، جاهزًا لمواصلة الكتابة."],
+      "embed_4": ["While this is on, every change is saved into that file a few seconds after you stop writing. Tap the same button to turn it off.", "Mientras esté activo, cada cambio se guarda en ese archivo unos segundos después de que dejes de escribir. Toca el mismo botón para desactivarlo.", "开启期间，你停笔几秒后每次改动都会保存到该文件。再点同一个按钮即可关闭。", "Habang naka-on ito, sine-save ang bawat pagbabago sa file na iyon ilang segundo matapos kang tumigil sa pagsulat. I-tap ang parehong button para i-off.", "Khi bật, mọi thay đổi được lưu vào tệp đó vài giây sau khi bạn ngừng viết. Chạm cùng nút để tắt.", "Tant que c'est activé, chaque modification est enregistrée dans ce fichier quelques secondes après que vous arrêtez d'écrire. Touchez le même bouton pour arrêter.", "Enquanto estiver ligado, cada mudança é salva nesse arquivo alguns segundos depois que você para de escrever. Toque no mesmo botão para desligar.", "أثناء التشغيل، يُحفظ كل تغيير في ذلك الملف بعد ثوانٍ من توقفك عن الكتابة. اضغط الزر نفسه لإيقافه."],
+      "embed_5": ["We suggest a new file, <b class=\"name\">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.", "Te sugerimos un archivo nuevo, <b class=\"name\">Name_board.pdf</b>. Si eliges el PDF original, OverBoard añade la tinta al original.", "建议新建一个文件 <b class=\"name\">Name_board.pdf</b>。如果你选择原始 PDF，OverBoard 会把笔迹添加到原文件中。", "Mungkahi namin ang bagong file, <b class=\"name\">Name_board.pdf</b>. Kung ang orihinal na PDF ang pipiliin mo, idadagdag ng OverBoard ang tinta sa orihinal.", "Nên dùng tệp mới, <b class=\"name\">Name_board.pdf</b>. Nếu bạn chọn PDF gốc, OverBoard sẽ thêm nét mực vào tệp gốc.", "Nous suggérons un nouveau fichier, <b class=\"name\">Name_board.pdf</b>. Si vous choisissez le PDF original, OverBoard ajoute l'encre à l'original.", "Sugerimos um arquivo novo, <b class=\"name\">Name_board.pdf</b>. Se escolher o PDF original, o OverBoard adiciona a tinta ao original.", "نقترح ملفًا جديدًا، <b class=\"name\">Name_board.pdf</b>. إذا اخترت ملف PDF الأصلي، يضيف OverBoard الحبر إلى الأصل."],
+      "embed_6": ["This browser can't keep saving into a file, so you get a one-time download, <b class=\"name\">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.", "Este navegador no puede seguir guardando en un archivo, así que recibes una descarga única, <b class=\"name\">Name_board.pdf</b>. Chrome o Edge pueden mantenerlo guardado automáticamente.", "此浏览器无法持续保存到文件，所以你会得到一次性下载的 <b class=\"name\">Name_board.pdf</b>。Chrome 或 Edge 可以自动保持保存。", "Hindi kayang patuloy na mag-save sa file ng browser na ito, kaya isang beses mo itong mada-download, <b class=\"name\">Name_board.pdf</b>. Kaya ng Chrome o Edge na awtomatikong i-save ito.", "Trình duyệt này không thể lưu liên tục vào tệp, nên bạn sẽ tải về một lần, <b class=\"name\">Name_board.pdf</b>. Chrome hoặc Edge có thể tự động lưu liên tục.", "Ce navigateur ne peut pas continuer à enregistrer dans un fichier : vous obtenez un téléchargement unique, <b class=\"name\">Name_board.pdf</b>. Chrome ou Edge peuvent l'enregistrer automatiquement.", "Este navegador não consegue continuar salvando num arquivo, então você recebe um download único, <b class=\"name\">Name_board.pdf</b>. O Chrome ou o Edge podem manter salvo automaticamente.", "لا يستطيع هذا المتصفح مواصلة الحفظ في ملف، لذا ستحصل على تنزيل لمرة واحدة، <b class=\"name\">Name_board.pdf</b>. يمكن لـ Chrome أو Edge الحفظ تلقائيًا."],
+      "embed_off": ["Leave it off and nothing changes: ink still saves in this browser.", "Si lo dejas desactivado, nada cambia: la tinta se sigue guardando en este navegador.", "保持关闭则一切照旧：笔迹仍保存在此浏览器中。", "Kapag naka-off, walang magbabago: nase-save pa rin ang tinta sa browser na ito.", "Để tắt thì không có gì thay đổi: nét mực vẫn được lưu trong trình duyệt này.", "Laissez désactivé et rien ne change : l'encre reste enregistrée dans ce navigateur.", "Deixe desligado e nada muda: a tinta continua salva neste navegador.", "اتركه متوقفًا ولن يتغير شيء: لا يزال الحبر يُحفظ في هذا المتصفح."],
+      "cancel": ["Cancel", "Cancelar", "取消", "Kanselahin", "Hủy", "Annuler", "Cancelar", "إلغاء"],
+      "cw_h": ["Covered answers can still be copied from this PDF", "Las respuestas tapadas aún se pueden copiar de este PDF", "被遮盖的答案仍可从此 PDF 中复制", "Makokopya pa rin sa PDF na ito ang mga natakpang sagot", "Đáp án bị che vẫn có thể sao chép từ PDF này", "Les réponses cachées peuvent encore être copiées depuis ce PDF", "As respostas cobertas ainda podem ser copiadas deste PDF", "لا يزال من الممكن نسخ الإجابات المغطاة من ملف PDF هذا"],
+      "cw_1": ["The covers look the same in the PDF: answers are hidden on screen and on paper.", "Las tapas se ven igual en el PDF: las respuestas quedan ocultas en pantalla y en papel.", "遮盖在 PDF 中看起来一样：答案在屏幕上和纸上都看不见。", "Pareho ang hitsura ng mga takip sa PDF: nakatago ang mga sagot sa screen at sa papel.", "Phần che trong PDF trông giống hệt: đáp án bị giấu trên màn hình và trên giấy.", "Les caches sont identiques dans le PDF : les réponses sont cachées à l'écran et sur papier.", "As coberturas ficam iguais no PDF: as respostas ficam escondidas na tela e no papel.", "تبدو الأغطية كما هي في ملف PDF: الإجابات مخفية على الشاشة وعلى الورق."],
+      "cw_2": ["<b>But the text under a cover is still in the file.</b> Anyone with the PDF can select, copy or search it.", "<b>Pero el texto bajo una tapa sigue en el archivo.</b> Cualquiera con el PDF puede seleccionarlo, copiarlo o buscarlo.", "<b>但遮盖下的文字仍在文件中。</b>拿到 PDF 的人都能选中、复制或搜索。", "<b>Pero nasa file pa rin ang teksto sa ilalim ng takip.</b> Mapipili, makokopya o mahahanap ito ng sinumang may PDF.", "<b>Nhưng chữ dưới phần che vẫn nằm trong tệp.</b> Ai có PDF cũng chọn, sao chép hoặc tìm được.", "<b>Mais le texte sous un cache est toujours dans le fichier.</b> Toute personne qui a le PDF peut le sélectionner, le copier ou le rechercher.", "<b>Mas o texto embaixo de uma cobertura continua no arquivo.</b> Qualquer pessoa com o PDF pode selecioná-lo, copiá-lo ou pesquisá-lo.", "<b>لكن النص تحت الغطاء لا يزال في الملف.</b> يمكن لأي شخص لديه ملف PDF تحديده أو نسخه أو البحث فيه."],
+      "cw_3": ["To hand out a copy with the answers truly gone, print it on paper, or remove the answers from the original document before making the PDF.", "Para repartir una copia sin las respuestas, imprímela en papel o quita las respuestas del documento original antes de crear el PDF.", "要分发真正没有答案的副本，请打印在纸上，或在生成 PDF 前从原始文档中删除答案。", "Para mamigay ng kopyang talagang walang sagot, i-print ito sa papel, o alisin ang mga sagot sa orihinal na dokumento bago gawin ang PDF.", "Để phát bản thật sự không có đáp án, hãy in ra giấy, hoặc xóa đáp án khỏi tài liệu gốc trước khi tạo PDF.", "Pour distribuer une copie vraiment sans les réponses, imprimez-la sur papier, ou retirez les réponses du document original avant de créer le PDF.", "Para entregar uma cópia realmente sem as respostas, imprima em papel, ou tire as respostas do documento original antes de criar o PDF.", "لتوزيع نسخة بلا إجابات فعلًا، اطبعها على الورق، أو احذف الإجابات من المستند الأصلي قبل إنشاء ملف PDF."],
+      "export_anyway": ["Export anyway", "Exportar igual", "仍然导出", "I-export pa rin", "Vẫn xuất", "Exporter quand même", "Exportar mesmo assim", "صدّر على أي حال"]
+    };
+  }
+  /* ===== END SHARED STRINGS ===== */
 
   /* ===== SETTINGS ===== */
   var PERIODS = ['P1', 'P2', 'P3', 'P4'];  // the period tabs, until a list is set in File ▸ Settings…; a worksheet keeps its list once ink has been saved ("Period 1" etc. from older versions become "P1")
@@ -692,6 +1038,8 @@
   var HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
   var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
   var HIGHLIGHT_STRENGTH = 50;    // starting highlight strength in % (10-100; the ▾ slider changes it, remembered per browser). 100 = full color, 50 = halfway to white
+  var tr = obT(obLang());          // OverBoard's words in the language picked in Settings (shared/strings.js); setLang() swaps it
+  window.__obStrings = obStrings;   // for tests and translators
   var REPORT_URL = 'https://bpmdata.github.io/OverBoard/app/report/';   // File ▸ Board not working? (always the website's page: the overlay may be in a file on the computer)
   var PRINT_SCALE = 3;            // Save PDF redraws the ink at this sharpness (3 = crisp print)
   /* ==================== */
@@ -731,7 +1079,10 @@
   var fingerScrolls = FINGER_SCROLLS, drag = null, downAt = 0;
   var fm = getLS('ink-finger'); if (fm) fingerScrolls = fm === 'scroll';
 
-  function setStatus(t){ statusEl.textContent = t; }
+  function setStatus(msg){   // a message that takes more (or fewer) lines changes the toolbar's height, so fit it again
+    var h = statusEl.offsetHeight; statusEl.textContent = msg;
+    if (statusEl.offsetHeight !== h && fileMenu && hlm && periodPicker) fitToolbar();
+  }
   function clock(){ return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
 
   /* ---------- data: { v, t, active, periods: { name: [strokes] } }   stroke: { c, w, e: eraser, h: highlight, o: cover, p: [x,y,...] } ---------- */
@@ -821,7 +1172,7 @@
   }
   function save(){   // mark changed; the real write waits until you pause (SAVE_DELAY_MS) so writing never stutters
     D.t = Date.now(); dirty = true;
-    setStatus(D.active + ' · saving…');
+    setStatus(tr('st_saving', { p: D.active }));
     clearTimeout(saveTimer); saveTimer = setTimeout(function(){ writeLocal(false); }, SAVE_DELAY_MS);
   }
   function writeLS(){ try { localStorage.setItem(KEY, JSON.stringify(D)); return true; } catch(e){ return false; } }
@@ -835,7 +1186,7 @@
       if (ok) dropLS(t);
       else if (!backedUp) ok = writeLS();   // no IndexedDB: localStorage, as before v21
       if (dirty || (quiet && ok)) return;   // newer ink is waiting to be saved (that save sets the status), or a quiet save worked
-      setStatus(ok || backedUp ? D.active + ' · saved in browser' : 'Browser blocked storage. Use File ▸ Save ink into file.');
+      setStatus(ok || backedUp ? tr('st_saved_browser', { p: D.active }) : tr('st_storage_blocked'));
     });
     if (fileHandle && !skipFile) writeFile(false);
   }
@@ -933,8 +1284,8 @@
   function refreshRedo(){ var b = bar.querySelector('[data-act="redo"]'); if (b) b.disabled = !redos.length; }
   function setCleared(keep){ lastCleared = strokes; setStrokes(keep); redos = []; refreshRedo(); redraw(); save(); }
   function clearAll(){
-    if (!strokes.length) { setStatus(D.active + ' has no ink to clear'); return; }
-    setCleared([]); setStatus((pages().length > 1 ? 'All pages cleared in ' : 'Cleared ') + D.active + ' · Undo brings it back');
+    if (!strokes.length) { setStatus(tr('st_no_ink_clear', { p: D.active })); return; }
+    setCleared([]); setStatus(tr(pages().length > 1 ? 'st_all_cleared' : 'st_cleared', { p: D.active }));
   }
   /* Clear page: a stroke belongs to the .page its middle is on (the gap below a page and the margins beside
      it count as that page); "this page" is the one at the middle of the screen */
@@ -949,13 +1300,13 @@
       for (var k = 1; k < s.p.length; k += 2) { if (s.p[k] < lo) lo = s.p[k]; if (s.p[k] > hi) hi = s.p[k]; }
       return band((lo + hi) / 2) !== n;
     });
-    if (keep.length === strokes.length) { setStatus('Page ' + (n + 1) + ' has no ink in ' + D.active); return; }
-    setCleared(keep); setStatus('Page ' + (n + 1) + ' cleared · Undo brings it back');
+    if (keep.length === strokes.length) { setStatus(tr('st_page_no_ink', { n: n + 1, p: D.active })); return; }
+    setCleared(keep); setStatus(tr('st_page_cleared', { n: n + 1 }));
   }
 
   /* ---------- class periods ---------- */
   // one button per period, or a "P5 ▾" list when they don't fit (shared with the PDF app)
-  var periodPicker = makePeriodPicker(bar, periodsEl, function(name){ if (ready) switchTo(name); }, function(){ closeMenus('periods'); });
+  var periodPicker = makePeriodPicker(bar, periodsEl, function(name){ if (ready) switchTo(name); }, function(){ closeMenus('periods'); }, function(k, v){ return tr(k, v); });
   function renderPeriods(){ periodPicker.render(Object.keys(D.periods), D.active); }
   function switchTo(name){
     if (!D.periods[name] || name === D.active) return;
@@ -1010,9 +1361,9 @@
   async function linkFile(){
     var hs = await window.showOpenFilePicker({ types: [{ description: 'This worksheet (.html)', accept: { 'text/html': ['.html', '.htm'] } }] });
     var h = hs[0], base = decodeURIComponent(location.pathname.split('/').pop());
-    if (base && h.name !== base && !confirm('This page is "' + base + '" but you picked "' + h.name + '". Save ink into the picked file?')) return false;
+    if (base && h.name !== base && !confirm(tr('confirm_other_file', { a: base, b: h.name }))) return false;
     var txt = await (await h.getFile()).text();
-    if (injectInk(txt, '{}') === null) { setStatus('That file has no ink block. Paste the overlay snippet into it first.'); return false; }
+    if (injectInk(txt, '{}') === null) { setStatus(tr('st_no_ink_block')); return false; }
     fileHandle = h; idb('readwrite', function(st){ return st.put(h, KEY); });
     return true;
   }
@@ -1020,22 +1371,22 @@
     if (!fileHandle || fileBusy) return false;
     fileBusy = true;
     try {
-      if (!(await hasPermission(ask))) { setStatus(D.active + ' · tap File ▸ Save ink into file to allow writing'); return false; }
+      if (!(await hasPermission(ask))) { setStatus(tr('st_tap_allow', { p: D.active })); return false; }
       var txt = await (await fileHandle.getFile()).text();
       var out = injectInk(txt, JSON.stringify(D));
-      if (out === null) { setStatus('Linked file has no ink block'); return false; }
+      if (out === null) { setStatus(tr('st_linked_no_block')); return false; }
       var w = await fileHandle.createWritable();
       try { await w.write(out); await w.close(); }
       catch(err){ try { await w.abort(); } catch(_){} throw err; }   // never leave the file locked if a write fails halfway
-      setStatus(D.active + ' · saved to ' + fileHandle.name + ' ' + clock());
+      setStatus(tr('st_saved_to', { p: D.active, f: fileHandle.name, t: clock() }));
       return true;
     } catch(e) {
-      setStatus(e && e.name === 'SecurityError' ? 'File linked. Tap File ▸ Save ink into file again to allow writing.' : 'File save failed: ' + ((e && e.name) || e));
+      setStatus(e && e.name === 'SecurityError' ? tr('st_file_linked_again') : tr('st_file_save_failed', { e: (e && e.name) || e }));
       return false;
     } finally { fileBusy = false; }
   }
   async function saveFile(forcePick){   // true = ink written into the file, false = not (status line says why), null = picker cancelled
-    if (!FSA) { setStatus('Save ink into file needs Chrome or Edge. Ink still saves in this browser.'); return false; }
+    if (!FSA) { setStatus(tr('st_needs_chrome')); return false; }
     try {
       if (forcePick || !fileHandle) { if (!(await linkFile())) return null; }
       writeLocal(true);
@@ -1043,15 +1394,15 @@
       return await writeFile(true);
     } catch(e) {
       if (e && e.name === 'AbortError') return null;
-      setStatus('Could not save: ' + ((e && e.name) || e)); return false;
+      setStatus(tr('st_could_not_save', { e: (e && e.name) || e })); return false;
     }
   }
   async function saveAndShow(btn, forcePick){
     var wasLinked = !forcePick && !!fileHandle && await hasPermission(false);
     var ok = await saveFile(forcePick);
     if (ok === null) return;
-    if (ok) flashBtn(btn, wasLinked ? 'Already saved!' : 'Saved to file!', 'good');
-    else flashBtn(btn, 'Not saved!', 'warn');
+    if (ok) flashBtn(btn, tr(wasLinked ? 'already_saved' : 'saved_to_file'), 'good');
+    else flashBtn(btn, tr('not_saved'), 'warn');
   }
 
   /* ---------- toolbar ---------- */
@@ -1062,13 +1413,13 @@
     customFill.style.background = customColor || 'transparent';
     var w = hiliting ? hlWidth : width, shown = hiliting && !HL.covering ? hlInk(color, HL.hlStrength) : color;
     sizeNum.textContent = w; sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px'; sizeDot.style.background = shown;
-    smoothNum.textContent = smooth ? smooth : 'Off';
+    smoothNum.textContent = smooth ? smooth : tr('off');
     bar.querySelector('[data-act="erase"]').classList.toggle('on', erasing);
     var hb = bar.querySelector('[data-act="hilite"]');
     hb.classList.toggle('on', hiliting && !erasing); hb.classList.toggle('cover', HL.covering);
-    hb.textContent = HL.covering ? 'Cover' : 'Highlighter';   // the ▾ choice shows on the button
+    hb.textContent = tr(HL.covering ? 'cover' : 'highlighter');   // the ▾ choice shows on the button
     hlm.sync();
-    bar.querySelector('[data-act="finger"]').textContent = 'Finger: ' + (fingerScrolls ? 'scrolls' : 'draws');
+    bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   }
   function setMode(m){
     canvas.classList.toggle('scroll-mode', m === 'scroll');
@@ -1142,7 +1493,7 @@
       case 'undo': undo(); break;
       case 'redo': redo(); break;
       case 'clear-page': clearPage(); break;
-      case 'clear-all': confirmTap(b, clearAll); break;   // tap twice
+      case 'clear-all': confirmTap(b, clearAll, tr('sure')); break;   // tap twice
       case 'file': fileMenu.show(fileMenu.el.hidden); return;
       case 'zoom-in': case 'zoom-out':
         if (e.detail === 0) setZoom(Z * (b.dataset.act === 'zoom-in' ? 1.1 : 1 / 1.1));   // keyboard only; taps are handled on pointerdown
@@ -1161,7 +1512,7 @@
       case 'side': bar.classList.toggle('right'); fileMenu.place(); break;
       case 'hide': closeMenus(); bar.style.display = 'none'; showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show'); if (zoomFit) setZoom('fit'); break;
       case 'print':   // covers print as solid bars, but the text under them stays in the PDF: say so first
-        if (!strokes.some(function(s){ return s.o; }) || confirm('Covered answers are hidden in the PDF, but the text under the covers is still in it (and in this worksheet file), so anyone with the file can copy it.\n\nTo hand out a copy with the answers truly gone, print it on paper.\n\nSave the PDF anyway?')) window.print();
+        if (!strokes.some(function(s){ return s.o; }) || confirm(tr('confirm_covers_ws'))) window.print();
         break;
     }
     refresh();
@@ -1184,15 +1535,16 @@
   /* ---------- File ▸ Settings… (shared with the PDF app) ---------- */
   var settings = makeSettings({
     defaults: PERIODS, pen: PEN_COLOR,
-    colors: [].map.call(bar.querySelectorAll('[data-color]'), function(b){ return [b.dataset.color, b.title]; }),
+    colors: [].map.call(bar.querySelectorAll('[data-color]'), function(b){ return [b.dataset.color, b.title, b.dataset.ta]; }),
+    langs: obLangs(), setLang: setLang, t: function(){ return tr; },
     periods: function(){ return Object.keys(D.periods); },
     applyPeriods: function(names){
       var r = remapPeriods(D.periods, D.active, names);
       if (r.same) return true;
-      if (r.lost.length && !confirm('Remove ' + r.lost.join(', ') + ' and its ink from this worksheet?\n\nUndo can\'t bring it back.')) return false;
+      if (r.lost.length && !confirm(tr('confirm_remove_ws', { list: r.lost.join(', ') }))) return false;
       D.periods = r.periods; D.active = r.active; strokes = D.periods[D.active];
       lastCleared = null; redos = []; refreshRedo(); redraw(); renderPeriods(); save();
-      setStatus(D.active + ' · class periods changed');
+      setStatus(tr('st_periods_changed', { p: D.active }));
       return true;
     },
     tools: function(){ return { finger: fingerScrolls, width: width, smooth: smooth, hlColor: HL.hlColor, hlStrength: HL.hlStrength }; },
@@ -1200,11 +1552,19 @@
     resetTools: function(){
       width = 2.5; hlWidth = HIGHLIGHT_W; customColor = ''; smooth = SMOOTHING; fingerScrolls = FINGER_SCROLLS; penColor = PEN_COLOR; erasing = false;
       HL.hlColor = HIGHLIGHT_COLOR; HL.coverColor = '#111111'; HL.hlStrength = HIGHLIGHT_STRENGTH; HL.covering = false;
-      bar.querySelector('[data-act="finger"]').textContent = 'Finger: ' + (fingerScrolls ? 'scrolls' : 'draws');
+      bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
       color = toolColor(); refresh();
     },
     onOpen: function(){ closeMenus(); }
   });
+  /* Settings ▸ Language: remember the choice and put the new words everywhere at once (no reload) */
+  function translateAll(){ [bar, fileMenu.el, hlm.el, periodPicker.el, settings.el, showBtn].forEach(function(el){ obTranslate(el, tr); }); }
+  function setLang(code){
+    try { localStorage.setItem('ob-lang', code); } catch(e){}
+    tr = obT(code); translateAll(); refresh(); layoutClear(); renderPeriods();
+    if (zoomFit) fitBtn.textContent = tr('fit');
+    fitToolbar(); setStatus(tr('st_ready', { p: D.active }));
+  }
   fileMenu.el.addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
     onBarClick(e);
@@ -1216,7 +1576,7 @@
     var many = pages().length > 1, all = bar.querySelector('[data-act="clear-all"]');
     bar.querySelector('[data-act="clear-page"]').hidden = !many;
     all.classList.toggle('wide', !many);
-    if (!all.classList.contains('warn')) all.textContent = many ? 'Clear all' : 'Clear';
+    if (!all.classList.contains('warn')) all.textContent = tr(many ? 'clear_all' : 'clear');
   }
   /* the toolbar and its popouts shrink to fit a short window (a laptop) and undo the page zoom */
   function fitToolbar(){
@@ -1246,7 +1606,7 @@
       size();
       window.scrollTo(cx * Z - innerWidth / 2, cy * Z - innerHeight / 2);
     }
-    fitBtn.textContent = zoomFit ? 'Fit' : Math.round(Z * 100) + '%';
+    fitBtn.textContent = zoomFit ? tr('fit') : Math.round(Z * 100) + '%';
   }
   holdRepeat(bar.querySelector('[data-act="zoom-in"]'), function(){ if (Z >= 4) return false; setZoom(Z * 1.1); return true; });
   holdRepeat(bar.querySelector('[data-act="zoom-out"]'), function(){ if (Z <= 0.3) return false; setZoom(Z / 1.1); return true; });
@@ -1260,10 +1620,10 @@
   // So the first tap explains that, and the second tap opens the picker.
   function explainPick(btn, forcePick){
     if (!btn.classList.contains('warn')) {
-      var name = decodeURIComponent(location.pathname.split('/').pop()) || 'this worksheet';
-      setStatus('Ink already saves in this browser. This also saves it INSIDE the file. In the window that opens (it says "Open"), pick: ' + name);
-      btn._label = btn._label || btn.textContent; btn.classList.add('warn'); btn.textContent = 'Tap again to pick file';
-      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; setStatus(D.active + ' · ready'); }, 10000);
+      var name = decodeURIComponent(location.pathname.split('/').pop()) || tr('this_worksheet');
+      setStatus(tr('explain_pick', { f: name }));
+      btn._label = btn._label || btn.textContent; btn.classList.add('warn'); btn.textContent = tr('tap_again_pick');
+      btn._timer = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; setStatus(tr('st_ready', { p: D.active })); }, 10000);
       return;
     }
     clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label;
@@ -1307,12 +1667,12 @@
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true, true); });
 
   /* ---------- start ---------- */
-  var src = load(); size(); renderPeriods(); refresh(); setMode('write'); layoutClear(); fitToolbar();
+  var src = load(); size(); translateAll(); renderPeriods(); refresh(); setMode('write'); layoutClear(); fitToolbar();
   window.addEventListener('resize', size);
   window.addEventListener('load', size);
   if (window.ResizeObserver) new ResizeObserver(size).observe(body);
-  function started(src){ setStatus(D.active + ' · ' + (src === 'file' ? 'ink loaded from file' : src === 'browser' ? 'ink restored from this browser' : src === 'old' ? 'earlier ink carried over' : 'ready')); }
-  setStatus(D.active + ' · loading ink…');
+  function started(src){ setStatus(tr(src === 'file' ? 'st_loaded_file' : src === 'browser' ? 'st_restored' : src === 'old' ? 'st_old_carried' : 'st_ready', { p: D.active })); }
+  setStatus(tr('st_loading', { p: D.active }));
   loadDb().then(function(s){
     if (s) { redraw(); renderPeriods(); refresh(); layoutClear(); }
     started(s || src);
@@ -1322,7 +1682,7 @@
     if (!h) return;
     fileHandle = h;
     hasPermission(false).then(function(ok){
-      setStatus(D.active + ' · ' + (ok ? 'autosaving to ' + h.name : 'tap File ▸ Save ink into file to reconnect ' + h.name));
+      setStatus(tr(ok ? 'st_autosaving' : 'st_reconnect', { p: D.active, f: h.name }));
     }).catch(function(){});
   });
 })();

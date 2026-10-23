@@ -28,7 +28,7 @@ Sign in to Google as **overboard.reporting@gmail.com** (a private/incognito wind
 4. Add these, one per row, then **Save script properties**:
    - `GITHUB_TOKEN`: the token from step 1.5
    - `GITHUB_REPO`: `BPMData/OverBoard`
-   - `NOTIFY_EMAIL` (optional): your main email, if you'd rather get reports there than in the reports inbox
+   - Skip `NOTIFY_EMAIL`. Without it, each report is emailed once, to the reports inbox itself. (Only add it if you ever want reports sent to some other address instead.)
 5. Back in the **Editor** (the `< >` icon), choose **checkSetup** in the function menu at the top and press **▶ Run**.
    - Google asks for permission. Choose the reports account, then **Advanced ▸ Go to OverBoard reports (unsafe)** ▸ **Allow**. ("Unsafe" only means Google hasn't reviewed this script. It's your own script running in your own account.)
    - The log at the bottom should say the token works and a test email was sent. If it shows an error instead, the message says what to fix.

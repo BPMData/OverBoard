@@ -2,7 +2,7 @@
 """Inline the shared ink code into the paste-in overlay.
 
 The PDF app imports shared/ink-core.js and links shared/toolbar.css. The overlay must stay one
-self-contained block, so this script copies both files into overlay/ink_overlay.html between
+self-contained block, so this script copies them (and shared/strings.js, every language's words) into overlay/ink_overlay.html between
 marker comments, then copies the finished block into the demo page (index.html).
 
     python3 tools/build_overlay.py          # rebuild
@@ -15,10 +15,12 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORE = os.path.join(ROOT, 'shared', 'ink-core.js')
 CSS = os.path.join(ROOT, 'shared', 'toolbar.css')
+STRINGS = os.path.join(ROOT, 'shared', 'strings.js')
 OVERLAY = os.path.join(ROOT, 'overlay', 'ink_overlay.html')
 DEMO = os.path.join(ROOT, 'index.html')
 
 JS_RE = re.compile(r'(  /\* ===== SHARED CORE: generated from shared/ink-core\.js[^\n]*\n).*?(  /\* ===== END SHARED CORE ===== \*/)', re.S)
+STR_RE = re.compile(r'(  /\* ===== SHARED STRINGS: generated from shared/strings\.js[^\n]*\n).*?(  /\* ===== END SHARED STRINGS ===== \*/)', re.S)
 CSS_RE = re.compile(r'(/\* ===== SHARED TOOLBAR CSS: generated from shared/toolbar\.css[^\n]*\n).*?(/\* ===== END SHARED TOOLBAR CSS ===== \*/)', re.S)
 BLOCK_RE = re.compile(r'<!-- ===== INK OVERLAY START.*?<!-- ===== INK OVERLAY END ===== -->', re.S)
 
@@ -28,9 +30,9 @@ def read(path):
         return f.read()
 
 
-def core_js():
+def core_js(path=CORE):
     lines = []
-    for line in read(CORE).splitlines():
+    for line in read(path).splitlines():
         if '@strip-inline' in line:
             continue
         lines.append(('  ' + line) if line.strip() else '')
@@ -45,10 +47,12 @@ def toolbar_css():
 
 def build():
     overlay = read(OVERLAY)
-    if not JS_RE.search(overlay) or not CSS_RE.search(overlay):
-        sys.exit('overlay/ink_overlay.html is missing the SHARED CORE / SHARED TOOLBAR CSS markers')
+    if not JS_RE.search(overlay) or not CSS_RE.search(overlay) or not STR_RE.search(overlay):
+        sys.exit('overlay/ink_overlay.html is missing the SHARED CORE / SHARED STRINGS / SHARED TOOLBAR CSS markers')
     js, css = core_js(), toolbar_css()
     overlay = JS_RE.sub(lambda m: m.group(1) + js + m.group(2), overlay)
+    strings = core_js(STRINGS)
+    overlay = STR_RE.sub(lambda m: m.group(1) + strings + m.group(2), overlay)
     overlay = CSS_RE.sub(lambda m: m.group(1) + css + m.group(2), overlay)
     demo = read(DEMO)
     if not BLOCK_RE.search(demo):
