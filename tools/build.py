@@ -3,7 +3,8 @@
 
 1. the overlay: copies shared/ink-core.js and shared/toolbar.css into overlay/ink_overlay.html
    and the demo page (see tools/build_overlay.py);
-2. the version number (vN, from the first line of overlay/ink_overlay.html) on the app's start screen;
+2. the version number (vN, from the first line of overlay/ink_overlay.html) on the app's start screen
+   and the "Board not working?" page (app/report/);
    the PDF app's version stamp: app/version.json and the ob-version tag in app/index.html.
    GitHub Pages lets browsers reuse files for up to 10 minutes, so right after an update a browser
    could mix old and new app files. The app's loader reads version.json fresh and loads every
@@ -28,6 +29,7 @@ import build_overlay  # noqa: E402
 ROOT = build_overlay.ROOT
 APP = os.path.join(ROOT, 'app')
 INDEX = os.path.join(APP, 'index.html')
+REPORT = os.path.join(APP, 'report', 'index.html')   # the "Board not working?" page shows the version too
 VERSION = os.path.join(APP, 'version.json')
 SW = os.path.join(APP, 'sw.js')
 RELEASE_RE = re.compile(r'(<span id="ob-release"[^>]*>)[^<]*(</span>)')
@@ -114,6 +116,10 @@ def main():
     release = m.group(1)
     v, index, version = stamp(RELEASE_RE.sub(lambda r: r.group(1) + release + r.group(2), index))
     out[INDEX] = index
+    report = read(REPORT)
+    if not RELEASE_RE.search(report):
+        sys.exit('need <span id="ob-release"> in app/report/index.html')
+    out[REPORT] = RELEASE_RE.sub(lambda r: r.group(1) + release + r.group(2), report)
     out[VERSION] = version
     out[SW], count = service_worker(read(SW), out)
     stale = [p for p, text in out.items() if read(p) != text]

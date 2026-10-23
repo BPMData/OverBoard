@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Board not working?** (v24; PDF app File menu and start screen, HTML overlay File menu). A big-text, step-by-step check for any teacher: draw two lines with a finger, two with the pen, wipe with your hand, rub out with the board's eraser, drag two fingers. Each step records whatever the board actually sends, even when it's not what the step asked for (that's what needs fixing). Then pick the board's brand, tick what goes wrong, and press **Send**. Reports open a GitHub issue and email OverBoard's reports inbox; the teacher's email and comments stay private. If the school network blocks sending, the teacher can download the report and email it.
 - **File ▸ Settings…** (PDF app and HTML overlay v23), for teachers at other schools:
   - **Class periods:** 1–12 periods with any names. Tap a style (*P1, P2…*, *Period 1, 2…*, *Block A, B…*, *A1… B1…* for A/B days) or type your own. New worksheets and PDFs start with this list, and **Done** uses it on the one you have open. Renaming keeps the ink; removing a period that has ink asks first.
   - **Pen color at start**, so the pen doesn't always start pink.

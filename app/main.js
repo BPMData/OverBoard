@@ -641,6 +641,7 @@ function onToolbarClick(e) {
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': closeDoc(true); break;
     case 'settings': settings.show(true); break;
+    case 'report': window.open('report/?from=app', '_blank'); break;   // "Board not working?" page (app/report/)
     case 'side':
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));

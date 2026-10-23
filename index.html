@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v23) =====
+<!-- ===== INK OVERLAY START (v24) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -216,6 +216,7 @@
   <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
   <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
   <button data-act="settings" class="sm wide" title="Class periods, the pen color at start, and resetting the tools">Settings…</button>
+  <button data-act="report" class="sm wide" title="Board acting up? A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
 <script id="ink-script">
@@ -691,6 +692,7 @@
   var HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
   var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
   var HIGHLIGHT_STRENGTH = 50;    // starting highlight strength in % (10-100; the ▾ slider changes it, remembered per browser). 100 = full color, 50 = halfway to white
+  var REPORT_URL = 'https://bpmdata.github.io/OverBoard/app/report/';   // File ▸ Board not working? (always the website's page: the overlay may be in a file on the computer)
   var PRINT_SCALE = 3;            // Save PDF redraws the ink at this sharpness (3 = crisp print)
   /* ==================== */
 
@@ -1153,6 +1155,7 @@
         if (FSA) explainPick(b, true); else saveFile(true);
         break;
       case 'settings': settings.show(true); break;
+      case 'report': window.open(REPORT_URL + '?from=overlay&ov=' + overlayVersion(), '_blank'); break;
       case 'prev': jump(-1); break;
       case 'next': jump(1); break;
       case 'side': bar.classList.toggle('right'); fileMenu.place(); break;
@@ -1171,6 +1174,12 @@
     if (except !== 'file') fileMenu.show(false);
     if (except !== 'hl') hlm.show(false);
     if (except !== 'periods') periodPicker.show(false);
+  }
+  /* this overlay's version (the "INK OVERLAY START (vN)" comment), so a board report says which one a worksheet has */
+  function overlayVersion(){
+    var w = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_COMMENT), n;
+    while ((n = w.nextNode())) { var m = /INK OVERLAY START \((v\d+)\)/.exec(n.nodeValue); if (m) return m[1]; }
+    return '';
   }
   /* ---------- File ▸ Settings… (shared with the PDF app) ---------- */
   var settings = makeSettings({

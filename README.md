@@ -112,7 +112,8 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
   ```
 
   Keep the board's **drivers** installed. They're what let OverBoard tell your palm apart from the pen.
-- **Test your board** with [`tools/board-probe.html`](tools/board-probe.html). It shows what the browser (and the SMART driver, if present) report for pen, finger and palm. If OverBoard misbehaves on your board, paste the probe's log into an issue.
+- **Board not working?** Choose **File ▸ Board not working?** (or the link at the bottom of the [app](https://bpmdata.github.io/OverBoard/app/)'s start screen). A two-minute check asks you to draw with your finger and the pen and wipe with your hand, then sends what your board reported so OverBoard can be fixed for boards like yours. Nothing is sent until you press Send.
+- **For developers:** [`tools/board-probe.html`](tools/board-probe.html) shows live what the browser (and the SMART driver, if present) report for pen, finger and palm, including the driver's raw contact points.
 - Holding a finger still on some SMART Boards is swallowed by the driver until you move. Pen holds work everywhere.
 
 ## Privacy
@@ -120,12 +121,13 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 No accounts, no uploads; your ink stays on your machine.
 
 - OverBoard has no server. Ink, and PDFs you open in the app, are stored in your browser, and inside your own file if you choose.
+- The one exception is **Board not working?**, and only when you press **Send** on its last screen, after it shows you everything it will send. It sends your board's brand and model, your browser, operating system and screen size, and what the board reported while you drew (pen, mouse or touch; size; pressure). Never worksheets, PDFs, ink or file names. It becomes a public GitHub issue; the optional email address and comments go only to OverBoard's reports inbox. (Setup: [docs/REPORTS.md](docs/REPORTS.md).)
 - What does get downloaded: the web pages (kept in the browser for offline use) and the two open-source libraries the PDF app uses ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)), all from GitHub Pages (bpmdata.github.io). Your PDFs, worksheets and ink are never sent anywhere. (The board-probe diagnostic page also loads one script from cdnjs.)
 - The optional desktop installer is a Python script that runs on your computer and only edits the files you pick.
 
 ## Contributing
 
-Issues and pull requests are welcome, especially reports from boards other than SMART (Promethean, ViewSonic, Surface, iPad). Include the output of the board probe.
+Issues and pull requests are welcome, especially reports from boards other than SMART (Promethean, ViewSonic, Surface, iPad). The easiest way is **File ▸ Board not working?** on the board itself.
 
 ## License
 
