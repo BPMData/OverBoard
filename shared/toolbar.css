@@ -30,6 +30,20 @@
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */
+:is(#ob-filemenu,#ob-clearmenu){position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:196px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+:is(#ob-filemenu,#ob-clearmenu)[hidden]{display:none}
+:is(#ob-filemenu,#ob-clearmenu) button{min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
+:is(#ob-filemenu,#ob-clearmenu) button.sm{min-height:48px;font-size:13px}
+:is(#ob-filemenu,#ob-clearmenu) .wide{grid-column:1 / 3}
+:is(#ob-filemenu,#ob-clearmenu) button.warn{background:#c62828}
+:is(#ob-filemenu,#ob-clearmenu) button.good{background:#2e7d32}
+:is(#ob-filemenu,#ob-clearmenu) button:disabled{opacity:.4;cursor:default}
+#ob-clearmenu p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
+#ink-bar button[aria-expanded="true"]{background:#fff;color:#000}
+#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:44px 1fr 44px;gap:8px}
+#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:15px}
+#ink-bar #ob-zoom button[data-act="zoom-in"],#ink-bar #ob-zoom button[data-act="zoom-out"]{font-size:28px;line-height:1;padding:0}
+#ink-bar button:disabled{opacity:.4;cursor:default}
 #ink-undo{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #ink-bar #ink-undo button{padding:0;font-size:26px;line-height:1}
 #ink-bar #ink-undo button:disabled{opacity:.35;cursor:default}

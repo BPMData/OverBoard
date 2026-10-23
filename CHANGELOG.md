@@ -7,6 +7,9 @@
 - **Cover** (Highlighter ▾): solid black or gray bars that hide answers on the board and erase like any ink. Export PDF keeps them and warns that covered text can still be copied.
 - **Highlight strength** slider (10–100%) in the same ▾ menu.
 - **Install the PDF app and use it offline.** After one visit it opens, opens PDFs, takes ink and exports with no internet. Chrome and Edge offer **Install app** on the start screen; the installed app opens PDFs from Finder (Open With). Updates download in full in the background and switch in one step the next time OverBoard opens.
+- **Clear ▸ This page / All pages** in the PDF app and the HTML overlay (v18), plus **File ▸ Clear all ink**. HTML worksheets can now clear one page; PDFs can now clear every page. Undo brings either back.
+- **HTML overlay: − / Fit / + zoom** like the PDF app: the worksheet zooms, the toolbar stays the same size, and ink stays on the page. Ctrl+scroll and trackpad pinch zoom the worksheet too. Printing always happens at 100%.
+- **HTML overlay: File ▸ menu** like the PDF app's, with Save PDF, Save ink into file, Change linked file, Clear all ink and Move toolbar. The overlay's toolbar now fits a 1080p board without scrolling (it was 56 px too tall).
 - **Redo** (PDF app and HTML overlay v17): Undo and Redo share the Undo spot on the toolbar (↶ ↷). Ctrl/⌘+Z undoes; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redoes. Typing boxes keep their own undo.
 - **Keyboard reload is off** (F5, Ctrl/⌘+R, Ctrl/⌘+Shift+R), in the PDF app and the overlay. The browser's reload button still works.
 - **Reloading the PDF app no longer loses ink.** Strokes from the last few seconds used to be lost on a reload; now they're kept, and the PDF reopens where you were.

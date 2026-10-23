@@ -202,6 +202,22 @@ function makeHlMenu(bar, S, onPick, onOpen){
   return { el: m, show: show, sync: sync };
 }
 
+/* A popout menu beside the toolbar (File ▸, Clear ▸), the same in the PDF app and the overlay. It opens on a
+   tap of its button and stays open until a choice, a tap anywhere else, or Escape. onOpen() closes the
+   caller's other popouts. Returns { el, show(open), place() }. */
+function makePopMenu(menu, btn, bar, onOpen){
+  function place(){ placeMenu(menu, btn, bar, false); }
+  function show(open){
+    menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    if (open) { if (onOpen) onOpen(); place(); }
+  }
+  document.addEventListener('pointerdown', function(e){
+    if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) show(false);
+  }, true);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') show(false); });
+  return { el: menu, show: show, place: place };
+}
+
 /* Keyboard history keys, the same in the PDF app and the overlay:
    Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
    is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -216,4 +232,4 @@ function historyKey(e) {
   return null;
 }
 
-export { historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

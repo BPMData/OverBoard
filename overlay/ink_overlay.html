@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v17) =====
+<!-- ===== INK OVERLAY START (v18) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -7,7 +7,7 @@
   Works best with fixed-size .page elements (any paper size): Page jump and Save PDF then work per page.
   Without .page elements it still scrolls and prints the whole body as one sheet.
   PERIODS: each class period (P1-P4) keeps its own ink on the same worksheet. Tap a period button to switch.
-  SAVING: ink always auto-saves in this browser. "Save ink into file" (Chrome or Edge) also writes the ink INTO this .html file,
+  SAVING: ink always auto-saves in this browser. File ▸ "Save ink into file" (Chrome or Edge) also writes the ink INTO this .html file,
   so use a board copy of the sheet, not the copy you hand out.
   Settings are the variables at the top of the script. ===== -->
 <script type="application/json" id="ink-data">{}</script>
@@ -48,6 +48,20 @@
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */
+:is(#ob-filemenu,#ob-clearmenu){position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:196px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+:is(#ob-filemenu,#ob-clearmenu)[hidden]{display:none}
+:is(#ob-filemenu,#ob-clearmenu) button{min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
+:is(#ob-filemenu,#ob-clearmenu) button.sm{min-height:48px;font-size:13px}
+:is(#ob-filemenu,#ob-clearmenu) .wide{grid-column:1 / 3}
+:is(#ob-filemenu,#ob-clearmenu) button.warn{background:#c62828}
+:is(#ob-filemenu,#ob-clearmenu) button.good{background:#2e7d32}
+:is(#ob-filemenu,#ob-clearmenu) button:disabled{opacity:.4;cursor:default}
+#ob-clearmenu p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
+#ink-bar button[aria-expanded="true"]{background:#fff;color:#000}
+#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:44px 1fr 44px;gap:8px}
+#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:15px}
+#ink-bar #ob-zoom button[data-act="zoom-in"],#ink-bar #ob-zoom button[data-act="zoom-out"]{font-size:28px;line-height:1;padding:0}
+#ink-bar button:disabled{opacity:.4;cursor:default}
 #ink-undo{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 #ink-bar #ink-undo button{padding:0;font-size:26px;line-height:1}
 #ink-bar #ink-undo button:disabled{opacity:.35;cursor:default}
@@ -70,7 +84,7 @@
 #ob-hl-strength::-moz-range-track{height:14px;border-radius:7px;background:linear-gradient(90deg,#fff,var(--fill,#feec9a))}
 #ob-hl-strength::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid #ffd400}
 /* ===== END SHARED TOOLBAR CSS ===== */
-@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu{display:none!important}}
+@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu{display:none!important}}
 </style>
 <canvas id="ink-hl"></canvas>
 <canvas id="ink-canvas"></canvas>
@@ -82,7 +96,6 @@
   <button data-act="finger" class="sm wide">Finger: scrolls</button>
   <div class="lbl">Class period</div>
   <div id="ink-periods"></div>
-  <div class="lbl">Pen</div>
   <div id="ob-hl"><button data-act="hilite" title="Highlighter on / off">Highlighter</button><button data-act="hl-menu" aria-haspopup="true" aria-expanded="false" aria-label="Highlighter or cover" title="Highlight strength, or cover (black out answers)">&#9662;</button></div>
   <div id="ink-colors">
     <button data-color="#111111" style="background:#111" aria-label="Black" title="Black"></button>
@@ -99,13 +112,23 @@
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
   <button data-act="erase">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
-  <button data-act="clear">Clear</button>
-  <button data-act="print">Save PDF</button>
-  <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
-  <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
-  <button data-act="side">&#9664; Move &#9654;</button>
+  <button data-act="clear" class="wide" aria-haspopup="true" aria-expanded="false" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
+  <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>
+  <button data-act="file" aria-haspopup="true" aria-expanded="false" title="Save PDF, save ink into the file, clear all ink, move the toolbar">File &#9656;</button>
   <button data-act="hide">Hide</button>
   <div id="ink-status">Ink saves automatically</div>
+</div>
+<div id="ob-filemenu" role="menu" aria-label="File" hidden>
+  <button data-act="print" class="wide" title="Save or print a PDF of the worksheet with the current period's ink">Save PDF</button>
+  <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
+  <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
+  <button data-act="clear-all" class="sm wide" title="Clear the ink on every page, in this class period (Undo brings it back)">Clear all ink</button>
+  <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
+</div>
+<div id="ob-clearmenu" role="menu" aria-label="Clear ink" hidden>
+  <button data-act="clear-page" class="wide" title="Clear the ink on the page you are looking at">This page</button>
+  <button data-act="clear-all" class="wide" title="Clear the ink on every page (tap twice)">All pages</button>
+  <p>This class period only. Undo brings it back.</p>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
 <script id="ink-script">
@@ -317,6 +340,22 @@
     return { el: m, show: show, sync: sync };
   }
 
+  /* A popout menu beside the toolbar (File ▸, Clear ▸), the same in the PDF app and the overlay. It opens on a
+     tap of its button and stays open until a choice, a tap anywhere else, or Escape. onOpen() closes the
+     caller's other popouts. Returns { el, show(open), place() }. */
+  function makePopMenu(menu, btn, bar, onOpen){
+    function place(){ placeMenu(menu, btn, bar, false); }
+    function show(open){
+      menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+      if (open) { if (onOpen) onOpen(); place(); }
+    }
+    document.addEventListener('pointerdown', function(e){
+      if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) show(false);
+    }, true);
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') show(false); });
+    return { el: menu, show: show, place: place };
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -357,7 +396,7 @@
   var dataEl = document.getElementById('ink-data');
   var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
   var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
-  var D, strokes, lastCleared = null, redos = [], cur = null, active = null;   // redos: what Undo took back, newest last
+  var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
   var penColor = '#111111';   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
   var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
@@ -371,7 +410,7 @@
   HL.covering = getLS('ink-hl-mode') === 'cover';
   var cc = getLS('ink-custom'); if (/^#[0-9a-f]{6}$/i.test(cc || '')) customColor = cc;
   var showBtn = document.getElementById('ink-show');   // little round button left behind when the toolbar is hidden
-  showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); });
+  showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); if (zoomFit) setZoom('fit'); });
   var sizeNum = document.querySelector('#ink-size .num'), sizeDot = document.querySelector('#ink-size .dot');
   var smooth = SMOOTHING, smoothNum = document.querySelector('#ink-smooth .num');
   var sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) smooth = +sl;
@@ -424,7 +463,7 @@
     if (!dirty) return;
     dirty = false;
     try { localStorage.setItem(KEY, JSON.stringify(D)); setStatus(D.active + ' · saved in browser'); }
-    catch(e){ setStatus('Browser blocked storage. Use Save ink into file.'); }
+    catch(e){ setStatus('Browser blocked storage. Use File ▸ Save ink into file.'); }
     if (fileHandle && !skipFile) writeFile(false);
   }
 
@@ -450,8 +489,8 @@
   var FW = 0, OX = 0;   // full canvas width (CSS px) and where the page column starts inside it
   function size(){
     var h = Math.ceil(body.offsetHeight), cw = calcCW();
-    var fw = Math.max(cw, document.documentElement.clientWidth);
-    var sc = Math.min(window.devicePixelRatio || 1, 2, 30000 / h, 30000 / fw, Math.sqrt(100e6 / (fw * h)));   // stay under browser canvas limits (two canvases)
+    var fw = Math.max(cw, Math.floor(document.documentElement.clientWidth / Z));
+    var sc = Math.min((window.devicePixelRatio || 1) * Z, 2 * Math.max(1, Z), 30000 / h, 30000 / fw, Math.sqrt(100e6 / (fw * h)));   // sharp when zoomed in, under browser canvas limits (two canvases)
     if (h === H && sc === scale && cw === CW && fw === FW && canvas.width) return;
     H = h; scale = sc; CW = cw; FW = fw; OX = (fw - cw) / 2;
     [canvas, hcan].forEach(function(c){
@@ -462,8 +501,8 @@
   }
 
   function pt(e){
-    var r = canvas.getBoundingClientRect();
-    return [Math.round((e.clientX - r.left - OX) * 10) / 10, Math.round((e.clientY - r.top) * 10) / 10];
+    var r = canvas.getBoundingClientRect();   // screen px; ink is in the worksheet's own px, so divide by the zoom
+    return [Math.round(((e.clientX - r.left) / Z - OX) * 10) / 10, Math.round((e.clientY - r.top) / Z * 10) / 10];
   }
   canvas.addEventListener('pointerdown', function(e){
     if (active !== null) return;
@@ -474,7 +513,7 @@
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
     if (finger && fingerScrolls) { drag = { y: e.screenY }; e.preventDefault(); return; }
     var q = pt(e);
-    if (palm || erasing) cur = { c: color, w: palm ? PALM_ERASER_W : 44, e: 1, p: [q[0], q[1]] };
+    if (palm || erasing) cur = { c: color, w: (palm ? PALM_ERASER_W : 44) / Z, e: 1, p: [q[0], q[1]] };   // about the hand: same size on screen at any zoom
     else if (hiliting && HL.covering) cur = { c: color, w: hlWidth, e: 0, h: 1, o: 1, p: [q[0], q[1]] };
     else if (hiliting) cur = { c: hlInk(color, HL.hlStrength), w: hlWidth, e: 0, h: 1, p: [q[0], q[1]] };
     else cur = { c: color, w: width, e: 0, p: [q[0], q[1]] };
@@ -507,18 +546,39 @@
   canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
   function undo(){
-    if (strokes.length) { redos.push(strokes.pop()); redraw(); save(); }
-    else if (lastCleared) { setStrokes(lastCleared); lastCleared = null; redos.push({ cleared: 1 }); redraw(); save(); }
+    if (lastCleared) { redos.push({ after: strokes }); setStrokes(lastCleared); lastCleared = null; redraw(); save(); }   // bring back what Clear took
+    else if (strokes.length) { redos.push(strokes.pop()); redraw(); save(); }
     refreshRedo();
   }
   function redo(){   // puts back what Undo took, in order
     var r = redos.pop();
     if (!r) return;
-    if (r.cleared) clearAll(true); else { strokes.push(r); lastCleared = null; redraw(); save(); }
-    refreshRedo();
+    if (r.after) { lastCleared = strokes; setStrokes(r.after); }   // clear again
+    else { strokes.push(r); lastCleared = null; }
+    redraw(); save(); refreshRedo();
   }
   function refreshRedo(){ var b = bar.querySelector('[data-act="redo"]'); if (b) b.disabled = !redos.length; }
-  function clearAll(keepRedo){ if (strokes.length) lastCleared = strokes; setStrokes([]); if (keepRedo !== true) { redos = []; refreshRedo(); } redraw(); save(); }
+  function setCleared(keep){ lastCleared = strokes; setStrokes(keep); redos = []; refreshRedo(); redraw(); save(); }
+  function clearAll(){
+    if (!strokes.length) { setStatus(D.active + ' has no ink to clear'); return; }
+    setCleared([]); setStatus((pages().length > 1 ? 'All pages cleared in ' : 'Cleared ') + D.active + ' · Undo brings it back');
+  }
+  /* Clear page: a stroke belongs to the .page its middle is on (the gap below a page and the margins beside
+     it count as that page); "this page" is the one at the middle of the screen */
+  function pages(){ return [].slice.call(document.querySelectorAll('.page')); }
+  function clearPage(){
+    var ct = canvas.getBoundingClientRect().top;
+    var tops = pages().map(function(pg){ return (pg.getBoundingClientRect().top - ct) / Z; });
+    function band(y){ var i = 0; while (i + 1 < tops.length && tops[i + 1] <= y) i++; return i; }
+    var n = band((innerHeight / 2 - ct) / Z);
+    var keep = strokes.filter(function(s){
+      var lo = Infinity, hi = -Infinity;
+      for (var k = 1; k < s.p.length; k += 2) { if (s.p[k] < lo) lo = s.p[k]; if (s.p[k] > hi) hi = s.p[k]; }
+      return band((lo + hi) / 2) !== n;
+    });
+    if (keep.length === strokes.length) { setStatus('Page ' + (n + 1) + ' has no ink in ' + D.active); return; }
+    setCleared(keep); setStatus('Page ' + (n + 1) + ' cleared · Undo brings it back');
+  }
 
   /* ---------- class periods ---------- */
   function renderPeriods(){
@@ -593,7 +653,7 @@
     if (!fileHandle || fileBusy) return false;
     fileBusy = true;
     try {
-      if (!(await hasPermission(ask))) { setStatus(D.active + ' · tap Save ink into file to allow writing'); return false; }
+      if (!(await hasPermission(ask))) { setStatus(D.active + ' · tap File ▸ Save ink into file to allow writing'); return false; }
       var txt = await (await fileHandle.getFile()).text();
       var out = injectInk(txt, JSON.stringify(D));
       if (out === null) { setStatus('Linked file has no ink block'); return false; }
@@ -603,7 +663,7 @@
       setStatus(D.active + ' · saved to ' + fileHandle.name + ' ' + clock());
       return true;
     } catch(e) {
-      setStatus(e && e.name === 'SecurityError' ? 'File linked. Tap Save ink into file again to allow writing.' : 'File save failed: ' + ((e && e.name) || e));
+      setStatus(e && e.name === 'SecurityError' ? 'File linked. Tap File ▸ Save ink into file again to allow writing.' : 'File save failed: ' + ((e && e.name) || e));
       return false;
     } finally { fileBusy = false; }
   }
@@ -685,10 +745,10 @@
     setLS('ink-hl-mode', HL.covering ? 'cover' : 'hl'); setLS('ink-hl-strength', HL.hlStrength);
     if (HL.covering) setLS('ink-cover-color', HL.coverColor);
     hiliting = true; erasing = false; color = toolColor(); setMode('write'); refresh();
-  });
+  }, function(){ closeMenus('hl'); });
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
-  bar.addEventListener('click', function(e){
+  function onBarClick(e){   // the toolbar, the File menu and the Clear menu
     var b = e.target.closest('button'); if (!b) return;
     if (b.dataset.color) pickColor(b.dataset.color);
     else if (b.dataset.period !== undefined) switchTo(b.dataset.period);
@@ -713,7 +773,16 @@
         break;
       case 'undo': undo(); break;
       case 'redo': redo(); break;
-      case 'clear': confirmTap(b, clearAll); break;
+      case 'clear':   // a worksheet with pages: this page or all pages; otherwise it just clears (tap twice)
+        if (pages().length > 1) { clearMenu.show(clearMenu.el.hidden); return; }
+        confirmTap(b, clearAll); break;
+      case 'clear-page': clearPage(); break;
+      case 'clear-all': confirmTap(b, function(){ clearAll(); closeMenus(); }); break;
+      case 'file': fileMenu.show(fileMenu.el.hidden); return;
+      case 'zoom-in': case 'zoom-out':
+        if (e.detail === 0) setZoom(Z * (b.dataset.act === 'zoom-in' ? 1.1 : 1 / 1.1));   // keyboard only; taps are handled on pointerdown
+        break;
+      case 'zoom-fit': setZoom('fit'); break;
       case 'savefile':
         if (FSA && !fileHandle) explainPick(b, false); else saveAndShow(b, false);
         break;
@@ -722,14 +791,65 @@
         break;
       case 'prev': jump(-1); break;
       case 'next': jump(1); break;
-      case 'side': bar.classList.toggle('right'); break;
-      case 'hide': hlm.show(false); bar.style.display = 'none'; showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show'); break;
+      case 'side': bar.classList.toggle('right'); fileMenu.place(); break;
+      case 'hide': closeMenus(); bar.style.display = 'none'; showBtn.classList.toggle('right', bar.classList.contains('right')); showBtn.classList.add('show'); if (zoomFit) setZoom('fit'); break;
       case 'print':   // covers print as solid bars, but the text under them stays in the PDF: say so first
         if (!strokes.some(function(s){ return s.o; }) || confirm('Covered answers are hidden in the PDF, but the text under the covers is still in it (and in this worksheet file), so anyone with the file can copy it.\n\nTo hand out a copy with the answers truly gone, print it on paper.\n\nSave the PDF anyway?')) window.print();
         break;
     }
     refresh();
+  }
+  bar.addEventListener('click', onBarClick);
+
+  /* ---------- File ▸ and Clear ▸ popouts (shared with the PDF app) ---------- */
+  var fileMenu = makePopMenu(document.getElementById('ob-filemenu'), bar.querySelector('[data-act="file"]'), bar, function(){ closeMenus('file'); });
+  var clearMenu = makePopMenu(document.getElementById('ob-clearmenu'), bar.querySelector('[data-act="clear"]'), bar, function(){ closeMenus('clear'); });
+  function closeMenus(except){   // only one popout at a time
+    if (except !== 'file') fileMenu.show(false);
+    if (except !== 'clear') clearMenu.show(false);
+    if (except !== 'hl') hlm.show(false);
+  }
+  [fileMenu.el, clearMenu.el].forEach(function(m){
+    m.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      onBarClick(e);
+      // keep it open while a two-tap confirm is waiting, or after moving the toolbar
+      if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
+    });
   });
+
+  /* ---------- zoom (− / Fit / +), like the PDF app: the worksheet zooms, the toolbar stays the same size ----------
+     CSS zoom on the page, undone on the toolbar and its popouts. Ink is stored in the worksheet's own px, so
+     zooming never moves it; pt() and size() divide by Z. Fit fits the widest .page beside the toolbar. */
+  var zoomFit = false, fitBtn = bar.querySelector('[data-act="zoom-fit"]');
+  var UNZOOMED = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu'];
+  function fitZoom(){
+    var w = 0; pages().forEach(function(pg){ if (pg.offsetWidth > w) w = pg.offsetWidth; });
+    if (!w) return 1;
+    var side = bar.style.display === 'none' ? 16 : bar.offsetWidth + 20;
+    return (document.documentElement.clientWidth - 2 * side) / w;
+  }
+  function setZoom(z){
+    zoomFit = z === 'fit';
+    var nz = Math.min(4, Math.max(0.3, zoomFit ? fitZoom() : z));
+    if (Math.abs(nz - Z) > 1e-3) {
+      var cx = (window.pageXOffset + innerWidth / 2) / Z, cy = (window.pageYOffset + innerHeight / 2) / Z;   // keep the middle of the screen in place
+      Z = Math.abs(nz - 1) < 1e-3 ? 1 : nz;
+      document.documentElement.style.zoom = Z === 1 ? '' : String(Z);
+      UNZOOMED.forEach(function(id){ var el = document.getElementById(id); if (el) el.style.zoom = Z === 1 ? '' : String(1 / Z); });
+      size();
+      window.scrollTo(cx * Z - innerWidth / 2, cy * Z - innerHeight / 2);
+    }
+    fitBtn.textContent = zoomFit ? 'Fit' : Math.round(Z * 100) + '%';
+  }
+  holdRepeat(bar.querySelector('[data-act="zoom-in"]'), function(){ if (Z >= 4) return false; setZoom(Z * 1.1); return true; });
+  holdRepeat(bar.querySelector('[data-act="zoom-out"]'), function(){ if (Z <= 0.3) return false; setZoom(Z / 1.1); return true; });
+  window.addEventListener('wheel', function(e){   // trackpad pinch / Ctrl+wheel zooms the worksheet, not the toolbar
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setZoom(Z * Math.exp(-e.deltaY * 0.01));
+  }, { passive: false });
+  window.addEventListener('resize', function(){ if (zoomFit) setZoom('fit'); });
   // The browser can only write into a file you point it at, and the Mac's picker window always says "Open".
   // So the first tap explains that, and the second tap opens the picker.
   function explainPick(btn, forcePick){
@@ -741,7 +861,7 @@
       return;
     }
     clearTimeout(btn._timer); btn.classList.remove('warn'); btn.textContent = btn._label;
-    saveAndShow(bar.querySelector('[data-act="savefile"]'), forcePick);
+    saveAndShow(document.querySelector('#ob-filemenu [data-act="savefile"]'), forcePick);
   }
   document.addEventListener('keydown', function(e){
     var h = historyKey(e), t = document.activeElement;   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
@@ -772,8 +892,9 @@
       });
     });
   }
-  window.addEventListener('beforeprint', buildPrint);
-  window.addEventListener('afterprint', clearPrint);
+  var printZoom = 1;   // pages print at their real size, so print at 100% and put the zoom back after
+  window.addEventListener('beforeprint', function(){ printZoom = zoomFit ? 'fit' : Z; if (Z !== 1) setZoom(1); buildPrint(); });
+  window.addEventListener('afterprint', function(){ clearPrint(); if (printZoom !== 1) setZoom(printZoom); });
 
   /* ---------- never lose the last few seconds of ink ---------- */
   window.addEventListener('pagehide', function(){ writeLocal(true); });
@@ -789,7 +910,7 @@
     if (!h) return;
     fileHandle = h;
     hasPermission(false).then(function(ok){
-      setStatus(D.active + ' · ' + (ok ? 'autosaving to ' + h.name : 'tap Save ink into file to reconnect ' + h.name));
+      setStatus(D.active + ' · ' + (ok ? 'autosaving to ' + h.name : 'tap File ▸ Save ink into file to reconnect ' + h.name));
     }).catch(function(){});
   });
 })();
