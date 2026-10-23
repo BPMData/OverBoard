@@ -143,11 +143,11 @@ test('when sending fails: download, copy, or email the report; no other site is 
 
 test('PDF app: File ▸ Board not working? and the start screen link open the report page', async ({ page }) => {
   await openApp(page);
-  await expect(page.locator('#ob-start a[href="report/?from=start"]')).toHaveText('Board not working?');
+  await expect(page.locator('#ob-start a[href="report/?from=start&lang=en"]')).toHaveText('Board not working?');
   await openPdf(page, 'book.pdf');
   const [popup] = await Promise.all([page.waitForEvent('popup'), fileMenu(page, 'report')]);
   await popup.waitForLoadState();
-  expect(popup.url()).toMatch(/\/app\/report\/\?from=app$/);
+  expect(popup.url()).toMatch(/\/app\/report\/\?from=app&lang=en$/);
   await expect(popup.locator('[data-screen="welcome"] h1')).toHaveText('Is OverBoard not working on your board?');
   await expect(page.locator('#ob-filemenu')).toBeHidden();
 });
@@ -158,6 +158,38 @@ test('HTML overlay: File ▸ Board not working? opens the website page with the 
   await page.click('#ink-bar [data-act="file"]');
   await page.click('#ob-filemenu [data-act="report"]');
   const v = (await page.content()).match(/INK OVERLAY START \((v\d+)\)/)[1];
-  expect(await page.evaluate(() => window.__opened)).toEqual(['https://bpmdata.github.io/OverBoard/app/report/?from=overlay&ov=' + v]);
+  expect(await page.evaluate(() => window.__opened)).toEqual(['https://bpmdata.github.io/OverBoard/app/report/?from=overlay&ov=' + v + '&lang=en']);
   await expect(page.locator('#ob-filemenu')).toBeHidden();
+});
+
+test('the page speaks the language it was opened in, switches live, and sends the language with the report', async ({ page }) => {
+  let body = null;
+  await page.route(RELAY, async (route) => {
+    body = JSON.parse(route.request().postData());
+    route.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: true, issue: 3, url: 'https://github.com/BPMData/OverBoard/issues/3' }) });
+  });
+  await openReport(page, '?from=overlay&ov=v24&lang=es');
+  await expect(page.locator('[data-screen="welcome"] h1')).toHaveText('¿OverBoard no funciona en tu pizarra?');
+  await expect(page.locator('#lang')).toHaveValue('es');
+  await press(page, 'start');
+  await expect(page.locator('#steps .count')).toHaveText('Paso 1 de 5');
+  await line(page, 100, { type: 'mouse' });
+  expect(await seen(page)).toBe('✓ ¡Listo! Vi 1 línea.');
+  for (let i = 0; i < 5; i++) await press(page, 'next');
+  await expect(page.locator('[data-brand="unknown"]')).toHaveText('No lo sé');
+  await page.click('[data-brand="unknown"]');
+  await press(page, 'review');
+  await expect(page.locator('#summary')).toContainText('1 línea, detectado como mouse');
+  await page.selectOption('#lang', 'fr');   // live: the summary and the buttons change too
+  await expect(page.locator('[data-screen="review"] h1')).toHaveText('Prêt à envoyer');
+  await expect(page.locator('#summary')).toContainText('1 trait, vu comme mouse');
+  await expect(page.locator('#summary')).toContainText('Je ne sais pas');
+  await page.selectOption('#lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await page.selectOption('#lang', 'es');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+  await press(page, 'send');
+  await expect(page.locator('[data-screen="done"] h1')).toHaveText('¡Gracias!');
+  expect(body.lang).toBe('es');
+  expect(body.steps[0].asked).toBe('Draw 2 lines with your finger');   // the report itself stays in English for us
 });

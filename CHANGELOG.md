@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **8 languages** (v24, PDF app and HTML overlay): English, Español, 中文, Tagalog, Tiếng Việt, Français, Português (Brasil) and العربية, under **Settings… ▸ 🌐 Language** (and a 🌐 list on the PDF app's start screen). Buttons, tooltips, menus, Settings and status messages all change at once, without reloading. OverBoard starts in the browser's language when it has it. Arabic menus and Settings read right to left. A word too long for its button gets slightly smaller text, so every language fits a 1080p board.
+- **The Board not working? page speaks all 8 languages** too, with its own 🌐 list. It opens in the language OverBoard is using, and the thank-you and follow-up emails go out in that language (Claude Haiku writes its paragraph in it).
 - **File ▸ is now Settings & help ▸** (both apps), since it holds Settings, Language and Board not working? as well as saving.
 - **Tooltips on every toolbar control**, including the pen-size dot, the smoothing squiggle, the class period label and the status line.
 - **The PDF app only reopens the last PDF after a reload.** Typing or clicking the app's address shows the start screen. The browser's **Back** button goes from a PDF to the start screen (ink saved), and **Forward** opens it again.

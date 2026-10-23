@@ -554,6 +554,7 @@ function translateAll() {
   obTranslate(document.body, tr);   // everything marked data-t / data-th / data-tt / data-ta / data-tp
   $('[data-act="clear"]', bar).textContent = tr('clear') + ' ▸';
   langPick.value = tr.lang;
+  $('#ob-start a[href^="report/"]').href = 'report/?from=start&lang=' + tr.lang;
 }
 function setLang(code) {   // remember the choice and put the new words everywhere at once (no reload)
   try { localStorage.setItem('ob-lang', code); } catch (e) { /* blocked */ }
@@ -695,7 +696,7 @@ function onToolbarClick(e) {
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': toStart(); break;
     case 'settings': settings.show(true); break;
-    case 'report': window.open('report/?from=app', '_blank'); break;   // "Board not working?" page (app/report/)
+    case 'report': window.open('report/?from=app&lang=' + tr.lang, '_blank'); break;   // "Board not working?" page (app/report/), in OverBoard's language
     case 'side':
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));

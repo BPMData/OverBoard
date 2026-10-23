@@ -6,7 +6,7 @@ The **Board not working?** page (`app/report/`) walks a teacher through a few to
 2. emails the full report to the reports inbox, with the teacher's email address and comments. Those two never go into the public issue. Press **Reply** on the email to answer the teacher, and
 3. if the teacher gave an email: sends them a thank-you right away, and remembers their address (privately, in the script's settings) for one follow-up.
 
-**The follow-up.** Once a day the script checks GitHub. When a report's issue has been **closed as completed**, it emails that teacher: a short paragraph about what changed (written by Claude Haiku from your comments on the issue and the titles of your pull requests that mention it), then fixed instructions for making sure OverBoard has reloaded, with the version number to look for. Then it forgets the address. An issue closed as **not planned** (or as a duplicate) sends nothing.
+**The follow-up.** Once a day the script checks GitHub. When a report's issue has been **closed as completed**, it emails that teacher: a short paragraph about what changed (written by Claude Haiku from your comments on the issue and the titles of your pull requests that mention it), then fixed instructions for making sure OverBoard has reloaded, with the version number to look for. Both emails go out in the language the teacher used on the report page (one of OverBoard's 8). Then it forgets the address. An issue closed as **not planned** (or as a duplicate) sends nothing.
 
 So, when you fix a board problem: put `Fixes #12` in the pull request (merging it closes issue #12), and if you like, leave a one-line comment on the issue saying what changed in plain words. Haiku only reads comments from you and collaborators, never from strangers, and it never sees the teacher's email or private comments.
 
@@ -51,7 +51,7 @@ To check it's live: open the Web app URL in a browser. It should show `{"ok":tru
 
 1. **Claude API key** (optional, for Haiku's paragraph): at [console.anthropic.com](https://console.anthropic.com), add a few dollars of credit and create an API key. Add it as the script property `ANTHROPIC_API_KEY`. Each follow-up costs well under a cent. Without a key, follow-ups use a plain fixed paragraph instead.
 2. In the editor, choose **installDailyCheck** in the function menu and press **▶ Run**. Google asks for permission again (this time to run on a schedule). The check now runs once a day around 3 pm.
-3. To see what a follow-up looks like without emailing anyone: in the editor, open **previewFollowUp**, change `n = n || 1` to an issue number, and press **▶ Run**. The preview goes to the reports inbox.
+3. To see what a follow-up looks like without emailing anyone: in the editor, open **previewFollowUp**, change `n = n || 1` to an issue number (and `lang || 'en'` to `'es'`, `'zh'`… to see another language), and press **▶ Run**. The preview goes to the reports inbox.
 
 ## Changing the script later
 

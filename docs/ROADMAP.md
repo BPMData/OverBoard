@@ -87,7 +87,7 @@ Left for later from v2:
 
 ## Later
 
-- **Translate the Board not working? page** (`app/report/`) with the same table, and get native speakers to check the machine translations (Tagalog and Arabic first).
+- **Native speakers check the machine translations** (`shared/strings.js`, and the two emails in `tools/report-relay.gs`), Tagalog and Arabic first.
 - **Splitter tool**: split a PDF by its outline (chapters) or every N pages, with pdf-lib, entirely in the browser.
 - **Generic touch mode** for non-SMART boards (Windows touch screens report `pointerType: "touch"` with real contact sizes, so palm detection can use `width`/`height`). Ask contributors for probe logs.
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."
