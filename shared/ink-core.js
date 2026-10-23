@@ -229,7 +229,7 @@ function fitLabels(root){
     b.style.fontSize = '';
     if (!b.offsetParent || !b.textContent.trim()) continue;
     var px = parseFloat(getComputedStyle(b).fontSize);
-    while (b.scrollWidth > b.clientWidth + 0.5 && px > 10) { px -= 1; b.style.fontSize = px + 'px'; }
+    while (b.scrollWidth > b.clientWidth && px > 10) { px -= 1; b.style.fontSize = px + 'px'; }
   }
 }
 
@@ -238,8 +238,8 @@ function fitLabels(root){
    Call it after the window, the zoom or the toolbar's contents change. Returns the scale used (1 = full size). */
 function fitTools(bar, popouts, base){
   var els = [bar].concat(popouts.filter(Boolean)), s = 1;
-  fitLabels(bar);
   els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
+  fitLabels(bar);   // at full size, so rounding at a smaller zoom can't hide a word that's a pixel too wide
   bar.style.maxHeight = 'none';
   if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
   var room = Math.floor(innerHeight * 0.96) - 1;   // whole pixels, with 1px to spare: a toolbar a fraction of a pixel too tall would scroll
