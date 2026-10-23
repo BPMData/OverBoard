@@ -88,7 +88,7 @@ test.describe('HTML overlay', () => {
     await page.click('[data-act="thicker"]');
     await page.click('[data-act="finger"]');
     await openSettings(page);
-    await expect(page.locator('#ob-settings .ob-tools')).toContainText('Finger draws · Pen size 3');
+    await expect(page.locator('#ob-settings .ob-tools')).toContainText('Finger: draws · Pen size 3');
     await page.click('#ob-settings [data-pen="#1565c0"]');
     await expect(page.locator('#ink-colors button.on')).toHaveAttribute('data-color', '#1565c0');
     await done(page);
@@ -99,7 +99,7 @@ test.describe('HTML overlay', () => {
     await page.click('#ob-settings [data-s="reset"]');
     await expect(page.locator('#ob-settings [data-s="reset"]')).toHaveText('Sure?');
     await page.click('#ob-settings [data-s="reset"]');
-    await expect(page.locator('#ob-settings .ob-tools')).toContainText('Finger scrolls · Pen size 2.5 · Smoothing 3');
+    await expect(page.locator('#ob-settings .ob-tools')).toContainText('Finger: scrolls · Pen size 2.5 · Smoothing 3');
     await done(page);
     await expect(page.locator('#ink-size .num')).toHaveText('2.5');
     await expect(page.locator('[data-act="finger"]')).toHaveText('Finger: scrolls');

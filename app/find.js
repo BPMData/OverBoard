@@ -6,7 +6,8 @@ const MAX_HITS = 500;
 const flat = (s) => s.replace(/\s+/g, ' ');
 
 export class Finder {
-  constructor(viewer, panel, setStatus) {
+  constructor(viewer, panel, setStatus, words) {
+    this.words = words || (() => (k) => k);   // () => the current translator (shared/strings.js)
     this.v = viewer;
     this.panel = panel;
     this.input = panel.querySelector('input');
@@ -58,8 +59,8 @@ export class Finder {
         hits++; k++;
         i = low.indexOf(q, i + q.length);
       }
-      if (n % 25 === 0 || n === N) this.msg.textContent = (n < N ? 'Searching… page ' + n + ' of ' + N + '. ' : '') + summary(hits, pagesHit);
-      if (hits >= MAX_HITS) { this.msg.textContent = 'Showing the first ' + MAX_HITS + ' matches. Try more words.'; return; }
+      if (n % 25 === 0 || n === N) this.msg.textContent = (n < N ? this.words()('searching', { n, m: N }) : '') + summary(this.words(), hits, pagesHit);
+      if (hits >= MAX_HITS) { this.msg.textContent = this.words()('first_matches', { n: MAX_HITS }); return; }
     }
   }
 
@@ -70,7 +71,7 @@ export class Finder {
     const m = document.createElement('b');
     m.textContent = text.slice(i, i + len);
     t.append((from ? '…' : '') + text.slice(from, i), m, text.slice(i + len, to) + (to < text.length ? '…' : ''));
-    num.textContent = 'p. ' + n;
+    num.textContent = this.words()('page_abbr', { n });
     b.append(t, num);
     b.addEventListener('click', () => {
       for (const x of this.list.querySelectorAll('.here')) x.classList.remove('here');
@@ -99,7 +100,7 @@ export class Finder {
   }
 }
 
-function summary(hits, pages) {
-  if (!hits) return 'No matches.';
-  return hits + (hits === 1 ? ' match' : ' matches') + ' on ' + pages + (pages === 1 ? ' page.' : ' pages.');
+function summary(t, hits, pages) {
+  if (!hits) return t('no_matches');
+  return t(hits === 1 ? 'match_1' : pages === 1 ? 'matches_1_page' : 'matches', { n: hits, m: pages });
 }

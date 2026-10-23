@@ -1,6 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
+import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
 import { fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
@@ -22,6 +23,7 @@ const SMOOTHING = 3;              // starting level 0-8
 const HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
 const HIGHLIGHT_W = 22;           // starting highlighter width; the - / + buttons change it while the highlighter is on
 const HIGHLIGHT_STRENGTH = 50;    // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
+let tr = obT(obLang());   // OverBoard's words in the language picked in Settings (shared/strings.js); setLang() swaps it
 const PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
 const COVER_COLOR = '#111111';    // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
@@ -67,12 +69,15 @@ let saveTimer = null, dirty = false;
 const viewer = new Viewer(pagesEl, {
   show: (P) => ink.show(P), hide: (P) => ink.hide(P), resize: (P) => ink.resize(P), textReady: (P) => finder.showHit(P),
 });
-const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus);
+const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus, () => tr);
 const ink = new Ink(viewer, T, () => { refreshRedo(); markDirty(); });
 ink.attach(pagesEl);
 window.__overboard = { viewer, ink, get doc() { return doc; }, get data() { return D; }, flush: () => writeNow() };   // for tests and the curious
 
-function setStatus(t) { statusEl.textContent = t; }
+function setStatus(msg) {   // a message that takes more (or fewer) lines changes the toolbar's height, so fit it again
+  const h = statusEl.offsetHeight; statusEl.textContent = msg;
+  if (statusEl.offsetHeight !== h && doc) queueMicrotask(() => fitToolbar());
+}
 function fresh() { const names = loadPeriods(PERIODS), p = {}; names.forEach((n) => { p[n] = []; }); return { v: 3, t: 0, active: names[0], at: 1, periods: p }; }
 function validData(o) {
   if (!o || !o.periods || typeof o.periods !== 'object' || !Object.keys(o.periods).length) return null;
@@ -84,7 +89,7 @@ function validData(o) {
 function markDirty() {
   if (!doc) return;
   D.t = Date.now(); dirty = true;
-  setStatus(D.active + ' · saving…');
+  setStatus(tr('st_saving', { p: D.active }));
   clearTimeout(saveTimer); saveTimer = setTimeout(writeNow, SAVE_DELAY_MS);
   if (doc.link && doc.linkOn) { pdfDirty = true; clearTimeout(pdfTimer); pdfTimer = setTimeout(writePdf, PDF_SAVE_DELAY_MS); }
 }
@@ -94,8 +99,8 @@ async function writeNow() {
   dirty = false;
   D.at = viewer.currentPage();
   const hash = doc.hash;
-  try { await store.saveInk(hash, D); dropBackup(hash); setStatus(D.active + ' · saved in this browser'); }
-  catch (e) { dirty = true; setStatus('Could not save in this browser (' + ((e && e.name) || e) + '). Use Save ink.'); }
+  try { await store.saveInk(hash, D); dropBackup(hash); setStatus(tr('st_saved_this_browser', { p: D.active })); }
+  catch (e) { dirty = true; setStatus(tr('st_could_not_save_browser', { e: (e && e.name) || e })); }
 }
 /* A reload or a closed tab can cut off the IndexedDB write above, losing the last few seconds of ink.
    So on the way out, also keep a copy in localStorage (written at once); opening the PDF again uses
@@ -118,9 +123,8 @@ const linkBtn = $('[data-act="pdf-link"]'), dlg = $('#ob-embed');
 function refreshLink() {
   if (!doc) return;
   linkBtn.classList.toggle('good', !!doc.linkOn);
-  linkBtn.textContent = doc.linkOn ? 'Saving into PDF ✓' : doc.link ? 'Resume saving into PDF' : FSA ? 'Save ink into PDF…' : 'Download PDF + ink…';
-  linkBtn.title = doc.linkOn ? 'Ink is saved inside ' + doc.link.name + '. Tap to turn this off.' :
-    doc.link ? 'Tap to allow saving into ' + doc.link.name + ' again' : 'Keep the ink inside a PDF file (you choose the file)';
+  linkBtn.textContent = tr(doc.linkOn ? 'saving_into_pdf' : doc.link ? 'resume_saving' : FSA ? 'save_into_pdf' : 'download_pdf_ink');
+  linkBtn.title = doc.linkOn ? tr('saving_into_tip', { f: doc.link.name }) : doc.link ? tr('resume_tip', { f: doc.link.name }) : tr('save_into_pdf_tip');
   linkBtn._label = linkBtn.textContent;
 }
 const baseBlob = () => doc.file.slice(0, doc.base);
@@ -139,11 +143,11 @@ async function writePdf() {
       const update = await buildUpdate(await linkInfo(), d.base, store.makeSidecar(D, d));
       await writeInto(d.link, baseBlob(), update);
       d.file = await d.link.getFile();   // same original bytes + the new ink; keeps working even if it was the file we opened
-      if (doc === d) setStatus(D.active + ' · saved into ' + d.link.name + ' ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      if (doc === d) setStatus(tr('st_saved_into', { p: D.active, f: d.link.name, t: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }));
     } catch (e) {
       pdfDirty = true;
-      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) { d.linkOn = false; refreshLink(); setStatus('Tap Resume saving into PDF to allow it again'); }
-      else setStatus('Could not save into the PDF: ' + ((e && e.message) || e));
+      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) { d.linkOn = false; refreshLink(); setStatus(tr('st_tap_resume')); }
+      else setStatus(tr('st_could_not_save_pdf', { e: (e && e.message) || e }));
     } finally { pdfBusy = null; }
   })();
   return pdfBusy;
@@ -151,13 +155,13 @@ async function writePdf() {
 async function startLink(handle) {
   try {
     doc.link = handle; doc.linkOn = true; pdfDirty = true;
-    refreshLink(); setStatus('Saving ink into ' + handle.name + '…');
+    refreshLink(); setStatus(tr('st_saving_into', { f: handle.name }));
     await writePdf();
     if (!doc.linkOn) return;
     await store.setLink(doc.hash, handle).catch(() => {});
-    flashBtn(linkBtn, 'Saved!', 'good');
-    setStatus('Ink saves into ' + handle.name + ' from now on');
-  } catch (e) { setStatus('Could not save into the PDF: ' + ((e && e.message) || e)); }
+    flashBtn(linkBtn, tr('saved_flash'), 'good');
+    setStatus(tr('st_saves_into_now', { f: handle.name }));
+  } catch (e) { setStatus(tr('st_could_not_save_pdf', { e: (e && e.message) || e })); }
 }
 async function stopLink() {
   await writePdf();
@@ -165,27 +169,27 @@ async function stopLink() {
   doc.link = null; doc.linkOn = false; doc.info = null;
   await store.forgetLink(doc.hash).catch(() => {});
   refreshLink();
-  setStatus('Stopped saving into ' + name + ' (its ink stays in it). Ink still saves in this browser.');
+  setStatus(tr('st_stopped_saving', { f: name }));
 }
 async function downloadWithInk() {   // browsers without file access: a one-time copy
   try {
     const update = await buildUpdate(await linkInfo(), doc.base, store.makeSidecar(D, doc));
     store.download(new Blob([baseBlob(), update], { type: 'application/pdf' }), boardPdfName());
-    setStatus('Downloaded ' + boardPdfName() + ' with the ink inside');
-  } catch (e) { setStatus('Could not make the PDF: ' + ((e && e.message) || e)); }
+    setStatus(tr('st_downloaded_with_ink', { f: boardPdfName() }));
+  } catch (e) { setStatus(tr('st_could_not_make_pdf', { e: (e && e.message) || e })); }
 }
 const boardPdfName = () => doc.name.replace(/\.pdf$/i, '').replace(/_board$/, '') + '_board.pdf';
 function onLinkButton(b) {
-  if (doc.linkOn) { confirmTap(b, stopLink); return; }
+  if (doc.linkOn) { confirmTap(b, stopLink, tr('sure')); return; }
   if (doc.link) {   // reconnect: the browser asks again after a restart
     doc.link.requestPermission({ mode: 'readwrite' }).then((p) => {
-      if (p === 'granted') startLink(doc.link); else setStatus('Not allowed. Ink still saves in this browser.');
-    }).catch(() => setStatus('Could not reconnect to ' + doc.link.name));
+      if (p === 'granted') startLink(doc.link); else setStatus(tr('st_not_allowed'));
+    }).catch(() => setStatus(tr('st_could_not_reconnect', { f: doc.link.name })));
     return;
   }
   $('.name', dlg).textContent = boardPdfName();
   dlg.classList.toggle('nofsa', !FSA);
-  $('[value="ok"]', dlg).textContent = FSA ? 'Choose file…' : 'Download it';
+  $('[value="ok"]', dlg).textContent = tr(FSA ? 'choose_file' : 'download_it');
   dlg.showModal();
 }
 dlg.addEventListener('click', (e) => {
@@ -197,7 +201,7 @@ dlg.addEventListener('click', (e) => {
   // the save window must open straight from the tap
   window.showSaveFilePicker({ suggestedName: boardPdfName(), ...(doc.origin ? { startIn: doc.origin } : { id: 'overboard-pdf' }), types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }] })
     .then((h) => startLink(h))
-    .catch((err) => { if (!err || err.name !== 'AbortError') setStatus('Could not open the save window: ' + ((err && err.message) || err)); });
+    .catch((err) => { if (!err || err.name !== 'AbortError') setStatus(tr('st_could_not_open_save', { e: (err && err.message) || err })); });
 });
 async function reconnectLink() {   // a file chosen on an earlier visit
   if (!FSA || !doc) return;
@@ -206,7 +210,7 @@ async function reconnectLink() {   // a file chosen on an earlier visit
   d.link = h;
   try { d.linkOn = (await h.queryPermission({ mode: 'readwrite' })) === 'granted'; } catch (e) { d.linkOn = false; }
   refreshLink();
-  if (!d.linkOn) setStatus(D.active + ' · tap Resume saving into PDF to keep saving into ' + h.name);
+  if (!d.linkOn) setStatus(tr('st_tap_resume_keep', { p: D.active, f: h.name }));
 }
 
 /* ---------- opening a PDF ---------- */
@@ -241,10 +245,10 @@ async function makeBoardCopy(file, handlePromise) {
 async function openFile(file, handlePromise) {
   if (!file) return;
   if (isHtml(file)) { if (doc) await closeDoc(true); return makeBoardCopy(file, handlePromise); }
-  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { showError('"' + file.name + '" is not a PDF or an HTML worksheet. (Word files: File → Save as PDF first.)'); return; }
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { showError(tr('err_not_pdf', { f: file.name })); return; }
   showError(''); showMsg('');
   const drop = $('#ob-drop strong'), label = drop.textContent;
-  drop.textContent = 'Opening ' + file.name + '…';
+  drop.textContent = tr('opening', { f: file.name });
   try {
     if (doc) await closeDoc(false);
     const buf = await file.arrayBuffer();
@@ -266,19 +270,19 @@ async function openFile(file, handlePromise) {
     const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
     D = fromPdf ? inPdf : saved || fresh();
     doc = { hash, base, name: file.name, pages: pdf.numPages, file, pdf, link: null, linkOn: false, info: null };
-    store.rememberFile(hash, { name: file.name, pages: pdf.numPages }, file).catch(() => setStatus('PDF too big to keep for reopening; ink still saves.'));
+    store.rememberFile(hash, { name: file.name, pages: pdf.numPages }, file).catch(() => setStatus(tr('st_too_big_keep')));
     store.askPersistent();
     document.body.classList.remove('start');
     bar.hidden = false;
     layoutClear(); fitToolbar();
     document.title = file.name.replace(/\.pdf$/i, '') + ' · OverBoard';
-    pagesTotal.textContent = 'of ' + pdf.numPages;
+    pagesTotal.textContent = tr('of_n', { n: pdf.numPages });
     fitSpace();
     await viewer.open(pdf);
     ink.setData(D); refreshRedo();
     renderPeriods(); refresh(); fitToolbar();
     if (D.at > 1) viewer.goTo(D.at); else window.scrollTo(0, 0);
-    setStatus(D.active + ' · ' + (fromPdf ? 'ink loaded from inside the PDF' : saved ? 'ink restored from this browser' : 'ready'));
+    setStatus(tr(fromPdf ? 'st_loaded_inside_pdf' : saved ? 'st_restored' : 'st_ready', { p: D.active }));
     if (fromPdf || fromBackup) store.saveInk(hash, D).then(() => dropBackup(hash), () => {});   // keep this browser's copy current too
     rememberOpen(hash);
     if (handlePromise) handlePromise.then((h) => { if (h && h.kind === 'file' && doc && doc.hash === hash) doc.origin = h; }, () => {});   // its folder, for save windows
@@ -288,9 +292,9 @@ async function openFile(file, handlePromise) {
     console.error(e);
     doc = null; D = null;
     document.body.classList.add('start'); bar.hidden = true;
-    showError(e && e.name === 'PasswordException' ? 'That PDF is locked with a password.' :
-      e && /fetch|import|module/i.test(String(e.message)) ? 'Could not load the PDF reader. Check the internet connection and reload the page.' :
-      'Could not open "' + file.name + '": ' + ((e && e.message) || e));
+    showError(e && e.name === 'PasswordException' ? tr('err_password') :
+      e && /fetch|import|module/i.test(String(e.message)) ? tr('err_pdf_reader') :
+      tr('err_could_not_open', { f: file.name, e: (e && e.message) || e }));
   } finally { drop.textContent = label; }
 }
 
@@ -336,7 +340,7 @@ window.addEventListener('drop', (e) => {
   // Chrome/Edge: a handle to the dropped file lets the board copy be saved next to it (must be asked for during the drop)
   const item = e.dataTransfer.items && e.dataTransfer.items[0];
   const handle = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
-  if (/\.json$/i.test(f.name)) { if (doc) importInk(f); else showError('Open the PDF first, then drop its ink file.'); }
+  if (/\.json$/i.test(f.name)) { if (doc) importInk(f); else showError(tr('err_open_pdf_first')); }
   else openFile(f, handle);
 });
 
@@ -353,16 +357,16 @@ async function renderRecent() {
     open.className = 'open';
     const b = document.createElement('b'); b.textContent = r.name;
     const sm = document.createElement('small');
-    sm.textContent = r.pages + (r.pages === 1 ? ' page' : ' pages') + ' · opened ' + new Date(r.opened).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    sm.textContent = tr(r.pages === 1 ? 'n_page' : 'n_pages', { n: r.pages }) + ' · ' + tr('opened_on', { d: new Date(r.opened).toLocaleDateString(tr.lang, { month: 'short', day: 'numeric' }) });
     open.append(b, sm);
     open.addEventListener('click', async () => {
       const rec = await store.getFile(r.hash).catch(() => null);
-      if (!rec || !rec.blob) { showError('That PDF is no longer stored here. Drop it in again; its ink is still saved.'); renderRecent(); return; }
+      if (!rec || !rec.blob) { showError(tr('err_no_longer_stored')); renderRecent(); return; }
       openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
     });
     const forget = document.createElement('button');
     forget.className = 'forget'; forget.textContent = '×';
-    forget.title = forget.ariaLabel = 'Remove from this list (its ink stays saved)';
+    forget.title = forget.ariaLabel = tr('forget_tip');
     forget.addEventListener('click', async () => { await store.forgetFile(r.hash).catch(() => {}); renderRecent(); });
     li.append(open, forget);
     ul.appendChild(li);
@@ -381,7 +385,7 @@ function layoutClear() {
   pageBtn.hidden = menu || !many;
   allBtn.hidden = menu;
   allBtn.classList.toggle('wide', !hasChapters && !many);
-  if (!allBtn.classList.contains('warn')) allBtn.textContent = many ? 'Clear all' : 'Clear';
+  if (!allBtn.classList.contains('warn')) allBtn.textContent = tr(many ? 'clear_all' : 'clear');
   if (bar.classList.contains('right')) tocBtn.before(menuBtn); else tocBtn.after(menuBtn);
   if (!menu) clearMenu.show(false);
 }
@@ -402,7 +406,7 @@ async function loadOutline(pdf) {
   const build = (list, parent) => {
     for (const it of list) {
       const li = document.createElement('li'), b = document.createElement('button');
-      const t = document.createElement('span'); t.textContent = it.title || '(untitled)';
+      const t = document.createElement('span'); t.textContent = it.title || tr('untitled');
       const n = document.createElement('small');
       b.append(t, n);
       const entry = { button: b, page: null, dest: it.dest, num: n };
@@ -469,7 +473,7 @@ function jump(dir) {
 const ZOOM_100 = 96 / 72;   // CSS px per point at 100%
 function fitSpace() { viewer.sideSpace = bar.style.display === 'none' || bar.hidden ? 16 : bar.getBoundingClientRect().width + 20; }
 function zoomBy(f) { viewer.setZoom(viewer.zoom * f); refreshZoom(); }
-function refreshZoom() { fitBtn.textContent = viewer.fit ? 'Fit' : Math.round(viewer.zoom / ZOOM_100 * 100) + '%'; }
+function refreshZoom() { fitBtn.textContent = viewer.fit ? tr('fit') : Math.round(viewer.zoom / ZOOM_100 * 100) + '%'; }
 window.addEventListener('wheel', (e) => {   // trackpad pinch / ctrl+wheel zooms the pages, not the toolbar
   if (!doc || !e.ctrlKey) return;
   e.preventDefault();
@@ -483,21 +487,22 @@ window.addEventListener('resize', () => {
 
 /* ---------- class periods ---------- */
 // one button per period, or a "P5 ▾" list when they don't fit (shared with the overlay)
-const periodPicker = makePeriodPicker(bar, periodsEl, (name) => { if (ink.switchTo(name)) renderPeriods(); refresh(); }, () => closeMenus('periods'));
+const periodPicker = makePeriodPicker(bar, periodsEl, (name) => { if (ink.switchTo(name)) renderPeriods(); refresh(); }, () => closeMenus('periods'), (k, v) => tr(k, v));
 function renderPeriods() { periodPicker.render(Object.keys(D.periods), D.active); }
 
 /* ---------- File ▸ Settings… (shared with the overlay) ---------- */
 const settings = makeSettings({
   defaults: PERIODS, pen: PEN_COLOR,
-  colors: [...bar.querySelectorAll('[data-color]')].map((b) => [b.dataset.color, b.title]),
+  colors: [...bar.querySelectorAll('[data-color]')].map((b) => [b.dataset.color, b.title, b.dataset.ta]),
+  langs: obLangs(), setLang, t: () => tr,
   periods: () => (D ? Object.keys(D.periods) : null),
   applyPeriods(names) {
     if (!D) return true;
     const r = remapPeriods(D.periods, D.active, names);
     if (r.same) return true;
-    if (r.lost.length && !confirm('Remove ' + r.lost.join(', ') + ' and its ink from this PDF?\n\nUndo can\'t bring it back.')) return false;
+    if (r.lost.length && !confirm(tr('confirm_remove_pdf', { list: r.lost.join(', ') }))) return false;
     ink.setPeriods(r.periods, r.active); renderPeriods(); refreshRedo();
-    setStatus(D.active + ' · class periods changed');
+    setStatus(tr('st_periods_changed', { p: D.active }));
     return true;
   },
   tools: () => ({ finger: T.fingerScrolls, width: T.width, smooth: T.smooth, hlColor: T.hlColor, hlStrength: T.hlStrength }),
@@ -510,6 +515,24 @@ const settings = makeSettings({
   onOpen: () => closeMenus(),
 });
 
+/* ---------- language (Settings ▸ Language, or the 🌐 list on the start screen; shared/strings.js) ---------- */
+const langPick = $('#ob-lang');
+for (const [code, name] of obLangs()) langPick.append(new Option(name, code));
+langPick.addEventListener('change', () => setLang(langPick.value));
+function translateAll() {
+  obTranslate(document.body, tr);   // everything marked data-t / data-th / data-tt / data-ta / data-tp
+  $('[data-act="clear"]', bar).textContent = tr('clear') + ' ▸';
+  langPick.value = tr.lang;
+}
+function setLang(code) {   // remember the choice and put the new words everywhere at once (no reload)
+  try { localStorage.setItem('ob-lang', code); } catch (e) { /* blocked */ }
+  tr = obT(code); translateAll(); renderRecent();
+  if (!doc) return;
+  refresh(); refreshLink(); layoutClear(); renderPeriods(); refreshZoom();
+  pagesTotal.textContent = tr('of_n', { n: doc.pages });
+  fitToolbar(); setStatus(tr('st_ready', { p: D.active }));
+}
+
 /* ---------- toolbar ---------- */
 const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
 function refresh() {
@@ -518,14 +541,14 @@ function refresh() {
   customFill.style.background = T.customColor || 'transparent';
   const w = T.hiliting ? T.hlWidth : T.width, shown = T.hiliting && !T.covering ? T.hlInk() : T.color;
   sizeNum.textContent = w; sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px'; sizeDot.style.background = shown;
-  smoothNum.textContent = T.smooth ? T.smooth : 'Off';
+  smoothNum.textContent = T.smooth ? T.smooth : tr('off');
   $('[data-act="erase"]', bar).classList.toggle('on', T.erasing);
   const hb = $('[data-act="hilite"]', bar);
   hb.classList.toggle('on', T.hiliting && !T.erasing);
   hb.classList.toggle('cover', T.covering);
-  hb.textContent = T.covering ? 'Cover' : 'Highlighter';   // the ▾ choice shows on the button
+  hb.textContent = tr(T.covering ? 'cover' : 'highlighter');   // the ▾ choice shows on the button
   hlMenu.sync();
-  $('[data-act="finger"]', bar).textContent = 'Finger: ' + (T.fingerScrolls ? 'scrolls' : 'draws');
+  $('[data-act="finger"]', bar).textContent = tr(T.fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   refreshZoom();
 }
 function setMode(m) {
@@ -623,13 +646,13 @@ function onToolbarClick(e) {
     case 'clear': clearMenu.show(clearMenu.el.hidden); return;   // only shown beside Chapters: this page or all pages
     case 'clear-page': {
       const n = viewer.currentPage();
-      if (!ink.pageList(n).length) setStatus('Page ' + n + ' has no ink in ' + D.active);
-      else { ink.clearPage(n); setStatus('Page ' + n + ' cleared · Undo brings it back'); }
+      if (!ink.pageList(n).length) setStatus(tr('st_page_no_ink', { n, p: D.active }));
+      else { ink.clearPage(n); setStatus(tr('st_page_cleared', { n })); }
       break;
     }
     case 'clear-all':
-      if (!ink.count()) { setStatus(D.active + ' has no ink to clear'); break; }
-      confirmTap(b, () => { ink.clearAll(); setStatus((doc.pages > 1 ? 'All pages cleared in ' : 'Cleared ') + D.active + ' · Undo brings it back'); clearMenu.show(false); });
+      if (!ink.count()) { setStatus(tr('st_no_ink_clear', { p: D.active })); break; }
+      confirmTap(b, () => { ink.clearAll(); setStatus(tr(doc.pages > 1 ? 'st_all_cleared' : 'st_cleared', { p: D.active })); clearMenu.show(false); }, tr('sure'));
       return;
     case 'toc': toggleToc(); break;
     case 'find': openFind(); break;
@@ -641,6 +664,7 @@ function onToolbarClick(e) {
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': closeDoc(true); break;
     case 'settings': settings.show(true); break;
+    case 'report': window.open('report/?from=app', '_blank'); break;   // "Board not working?" page (app/report/)
     case 'side':
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));
@@ -711,23 +735,23 @@ async function exportPdf(btn) {
   if (!doc) return;
   let covered = false;
   await writeNow();
-  if (!ink.count()) { flashBtn(btn, 'No ink yet', 'warn'); setStatus(D.active + ' has no ink to export'); return; }
+  if (!ink.count()) { flashBtn(btn, tr('no_ink_yet'), 'warn'); setStatus(tr('st_no_ink_export', { p: D.active })); return; }
   btn.disabled = true;
-  setStatus('Making the PDF…');
+  setStatus(tr('st_making_pdf'));
   try {
     const { exportAnnotatedPdf, hasCovers } = await import('./export.js');
     // covers hide answers in the PDF too, but the text under them is still in the file: say so plainly
     covered = hasCovers(ink.byPage);
-    if (covered && !(await ask(coverWarn))) { setStatus(D.active + ' · export cancelled'); return; }
+    if (covered && !(await ask(coverWarn))) { setStatus(tr('st_export_cancelled', { p: D.active })); return; }
     const bytes = new Uint8Array(await doc.file.slice(0, doc.base).arrayBuffer());   // without the stored ink
-    const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus('Making the PDF… ' + n + ' pages'));
+    const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus(tr('st_making_pdf_n', { n })));
     store.download(new Blob([out], { type: 'application/pdf' }), exportName());
-    setStatus(D.active + ' · PDF downloaded' + (covered ? '. Covered answers are hidden but can still be copied from it.' : ''));
-    flashBtn(btn, 'Downloaded!', 'good');
+    setStatus(tr('st_pdf_downloaded', { p: D.active }) + (covered ? tr('st_covered_note') : ''));
+    flashBtn(btn, tr('downloaded_flash'), 'good');
   } catch (e) {
     console.error(e);
-    setStatus('Export failed: ' + ((e && e.message) || e));
-    flashBtn(btn, 'Not saved!', 'warn');
+    setStatus(tr('st_export_failed', { e: (e && e.message) || e }));
+    flashBtn(btn, tr('not_saved'), 'warn');
   } finally { btn.disabled = false; }
 }
 
@@ -736,26 +760,26 @@ async function saveInkFile(btn) {
   if (!doc) return;
   await writeNow();
   store.download(new Blob([store.makeSidecar(D, doc)], { type: 'application/json' }), baseName() + '.overboard.json');
-  flashBtn(btn, 'Saved!', 'good');
-  setStatus('Ink file downloaded (all periods)');
+  flashBtn(btn, tr('saved_flash'), 'good');
+  setStatus(tr('st_ink_file_downloaded'));
 }
 async function importInk(file) {
   try {
     const { data, pdf } = store.parseSidecar(await file.text());
     if (pdf.sha256 && pdf.sha256 !== doc.hash &&
-        !confirm('This ink file was made for "' + (pdf.name || 'another PDF') + '", not this one. Load it anyway?')) return;
+        !confirm(tr('confirm_other_pdf', { f: pdf.name || tr('another_pdf') }))) return;
     const has = Object.values(D.periods).some((l) => l.length);
-    if (has && !confirm('Replace the ink on this PDF (all class periods) with the ink from "' + file.name + '"?')) return;
+    if (has && !confirm(tr('confirm_replace_ink', { f: file.name }))) return;
     D = data;
     ink.setData(D); refreshRedo(); renderPeriods(); refresh();
     markDirty(); await writeNow();
-    setStatus('Ink loaded from ' + file.name);
+    setStatus(tr('st_ink_loaded_from', { f: file.name }));
   } catch (e) { setStatus(e.message || String(e)); }
 }
 $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && doc) importInk(f); });
 
 /* ---------- start ---------- */
-refresh(); setMode('write'); renderRecent();
+translateAll(); refresh(); setMode('write'); renderRecent();
 setupOffline(openFile);
 (async () => {   // reopen the PDF that was open before a reload
   let hash = null;

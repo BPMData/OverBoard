@@ -24,8 +24,10 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Cover**: tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them. The same menu sets **highlight strength** (10–100%)
 - **Undo and Redo** (↶ ↷ on the toolbar, or Ctrl/⌘+Z and Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z). Reloading from the keyboard is turned off, so a slip can't throw away the page
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
-- **Separate ink for each class period** on the same worksheet: P1–P4 to start, or set your own in **File ▸ Settings…** (1–12 periods, any names)
-- **File ▸ Settings…**: class periods (tap a style such as *Block A, B…* or *A1… B1…* for A/B days, or type your own names), the pen color at start, and **Reset tools to defaults**. Saved in the browser, so every worksheet and PDF on that computer uses them. The website and worksheets opened from your computer keep separate settings.
+- **Separate ink for each class period** on the same worksheet: P1–P4 to start, or set your own in **Settings & help ▸ Settings…** (1–12 periods, any names)
+- **Settings & help ▸ Settings…**: class periods (tap a style such as *Block A, B…* or *A1… B1…* for A/B days, or type your own names), the pen color at start, and **Reset tools to defaults**. Saved in the browser, so every worksheet and PDF on that computer uses them. The website and worksheets opened from your computer keep separate settings.
+- **8 languages**: English, Español, 中文 (Mandarin), Tagalog, Tiếng Việt, Français, Português (Brasil) and العربية (Arabic), in **Settings & help ▸ Settings… ▸ 🌐 Language** (or the 🌐 list on the PDF app's start screen). It changes OverBoard's buttons, tooltips and messages, not your worksheet. OverBoard starts in the browser's own language when it has it. Translations by Claude; corrections from native speakers are very welcome (`shared/strings.js`).
+- **Tooltips**: hold the mouse (or pen) over any button, or the smoothing squiggle, to see what it does.
 - **Save PDF** with crisp ink, page by page
 - **Clear page / Clear all** (Undo brings either back), and **− / Fit / +** zoom that keeps the toolbar the same size, on PDFs and HTML worksheets alike. On a small screen (a laptop) the toolbar shrinks to fit instead of scrolling
 - **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
@@ -38,13 +40,13 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
-- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods, undo and redo, Clear page / Clear all, zoom and File ▸.
+- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods, undo and redo, Clear page / Clear all, zoom and Settings & help ▸.
 - **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
 - **Clear page** clears the page you're looking at; **Clear all** clears every page (tap twice). A PDF with a chapter list has **Chapters** in that row instead, and **Clear ▸** opens the same two choices beside it. Both clear only the current class period, and Undo brings it back. A one-page PDF just has **Clear** (tap twice).
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
 - **Text and links work like a normal PDF reader** in **Scroll** mode: drag across text to select and copy it (scanned PDFs too, if they were OCR'd), tap a link in a contents page to jump there, and web links open in a new tab. In **Write** mode the pen, palm and finger work exactly as before; the text never gets in the way.
-- **Find text** (File ▸ Find text…, or Ctrl/⌘+F) searches every page of the PDF, not just the ones on screen. Tap a result to jump to it.
+- **Find text** (Settings & help ▸ Find text…, or Ctrl/⌘+F) searches every page of the PDF, not just the ones on screen. Tap a result to jump to it.
 - **Ink saves automatically** in this browser, matched to the exact PDF file. The PDF is kept too, so it's under **Open again** next time. If the page reloads, the PDF reopens where you were, with every stroke.
 - **Export PDF** downloads a copy of the PDF with the current period's ink drawn in as sharp vector lines, named for the period (`Moby_Dick_annotated_P1.pdf`). Share it, print it, or post it to your class. The original text and links stay in it, so it can still be searched and copied.
 - **Save ink / Load ink** moves your ink between computers as a small `.overboard.json` file. Open the same PDF on the other computer, then load (or drop) the ink file.
@@ -79,7 +81,7 @@ From a terminal:
 python3 overlay/ink_overlay_installer.py worksheet.html --open
 ```
 
-The toolbar matches the PDF app's: **− / Fit / +** zoom the worksheet but not the toolbar (ink stays on the page; Ctrl+scroll or a trackpad pinch works too), **Clear page | Clear all** (a worksheet without `.page` sections gets one **Clear**), and **File ▸** holds Save PDF, Save ink into file, Change linked file and Move toolbar.
+The toolbar matches the PDF app's: **− / Fit / +** zoom the worksheet but not the toolbar (ink stays on the page; Ctrl+scroll or a trackpad pinch works too), **Clear page | Clear all** (a worksheet without `.page` sections gets one **Clear**), and **Settings & help ▸** holds Save PDF, Save ink into file, Change linked file, Move toolbar, Settings… and Board not working?.
 
 **Option 3: paste it in.** Copy everything in [`overlay/ink_overlay.html`](overlay/ink_overlay.html) and paste it just before `</body>` in any HTML file.
 
@@ -112,7 +114,8 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
   ```
 
   Keep the board's **drivers** installed. They're what let OverBoard tell your palm apart from the pen.
-- **Test your board** with [`tools/board-probe.html`](tools/board-probe.html). It shows what the browser (and the SMART driver, if present) report for pen, finger and palm. If OverBoard misbehaves on your board, paste the probe's log into an issue.
+- **Board not working?** Choose **Settings & help ▸ Board not working?** (or the link at the bottom of the [app](https://bpmdata.github.io/OverBoard/app/)'s start screen). A two-minute check asks you to draw with your finger and the pen and wipe with your hand, then sends what your board reported so OverBoard can be fixed for boards like yours. Nothing is sent until you press Send.
+- **For developers:** [`tools/board-probe.html`](tools/board-probe.html) shows live what the browser (and the SMART driver, if present) report for pen, finger and palm, including the driver's raw contact points.
 - Holding a finger still on some SMART Boards is swallowed by the driver until you move. Pen holds work everywhere.
 
 ## Privacy
@@ -120,12 +123,13 @@ Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 
 No accounts, no uploads; your ink stays on your machine.
 
 - OverBoard has no server. Ink, and PDFs you open in the app, are stored in your browser, and inside your own file if you choose.
+- The one exception is **Board not working?**, and only when you press **Send** on its last screen, after it shows you everything it will send. It sends your board's brand and model, your browser, operating system and screen size, and what the board reported while you drew (pen, mouse or touch; size; pressure). Never worksheets, PDFs, ink or file names. It becomes a public GitHub issue; the optional email address and comments go only to OverBoard's reports inbox. (Setup: [docs/REPORTS.md](docs/REPORTS.md).)
 - What does get downloaded: the web pages (kept in the browser for offline use) and the two open-source libraries the PDF app uses ([PDF.js](https://mozilla.github.io/pdf.js/) and [pdf-lib](https://pdf-lib.js.org/)), all from GitHub Pages (bpmdata.github.io). Your PDFs, worksheets and ink are never sent anywhere. (The board-probe diagnostic page also loads one script from cdnjs.)
 - The optional desktop installer is a Python script that runs on your computer and only edits the files you pick.
 
 ## Contributing
 
-Issues and pull requests are welcome, especially reports from boards other than SMART (Promethean, ViewSonic, Surface, iPad). Include the output of the board probe.
+Issues and pull requests are welcome, especially reports from boards other than SMART (Promethean, ViewSonic, Surface, iPad). The easiest way is **Settings & help ▸ Board not working?** on the board itself.
 
 ## License
 

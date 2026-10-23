@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OverBoard: board not working?</title>
+<meta name="description" content="A two-minute check that tells the OverBoard team how your board talks to the browser, so they can fix it.">
+<meta name="theme-color" content="#1f1f1f">
+<link rel="icon" href="../icons/icon-192.png">
+<!-- "Board not working?" (app start screen, Settings & help ▸ in the PDF app and the HTML overlay).
+     Walks a teacher through a few touches, one step per screen, and records whatever the browser reports,
+     right or wrong: that is the point. Nothing is sent until Send on the last screen.
+     Sending goes to a small Google Apps Script (tools/report-relay.gs, setup in docs/REPORTS.md) that emails
+     the report and opens a GitHub issue. If it can't be reached, the person downloads the report instead. -->
+<style>
+:root { --desk: #e9e7e2; --ink: #111; --mute: #555; --line: #d6d3cc; --go: #111; --goText: #ffd400; --ok: #1b5e20; --okBg: #e8f5e9; --warn: #8a5a00; --warnBg: #fff4d6; --bad: #b71c1c; --badBg: #ffebee; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--desk); color: var(--ink); font: 22px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; overscroll-behavior: none; }
+[hidden] { display: none !important; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; border-radius: 14px; min-height: 64px; padding: 0 26px; font-weight: 700; background: #fff; box-shadow: inset 0 0 0 2px var(--line); }
+button.go { background: var(--go); color: var(--goText); box-shadow: none; }
+button.big { min-height: 84px; padding: 0 40px; font-size: 28px; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px solid #e6b800; outline-offset: 2px; }
+.back { min-height: 52px; padding: 0 18px; font-size: 18px; background: transparent; box-shadow: none; color: var(--mute); }
+.screen { min-height: 100%; }
+.page { width: min(900px, 100%); margin: 0 auto; padding: 28px 16px 48px; }
+.card { background: #fff; border-radius: 18px; box-shadow: 0 2px 14px rgba(0,0,0,.12); padding: 32px; }
+h1 { font-size: 44px; line-height: 1.12; margin: 0 0 14px; }
+h2 { font-size: 30px; line-height: 1.2; margin: 30px 0 10px; }
+.lead { font-size: 26px; margin: 0 0 18px; }
+.mute { color: var(--mute); }
+.small { font-size: 17px; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 26px; }
+.brand-name { background: #111; color: #ffd400; border-radius: 8px; padding: 0 10px; }
+
+/* ---------- drawing steps ---------- */
+#steps { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+#steps header { display: flex; gap: 18px; align-items: center; padding: 12px 18px; background: #fff; border-bottom: 2px solid var(--line); }
+#steps .icon { font-size: 60px; line-height: 1; flex: none; }
+#steps .count { font-size: 17px; color: var(--mute); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+#steps .title { font-size: 36px; font-weight: 800; line-height: 1.12; }
+#steps .text { font-size: 23px; color: #333; }
+#pad { position: relative; background: repeating-linear-gradient(0deg, #fff 0 47px, #eee 47px 48px); overflow: hidden; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+#pad canvas { position: absolute; inset: 0; }
+#steps footer { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 12px 18px; background: #fff; border-top: 2px solid var(--line); }
+#seen { flex: 1 1 320px; min-height: 64px; display: flex; flex-direction: column; justify-content: center; }
+#seen .msg { font-size: 25px; font-weight: 700; }
+#seen .msg.ok { color: var(--ok); }
+#seen .msg.wait { color: var(--mute); }
+#seen .msg.warn { color: var(--warn); }
+#seen .detail { font-size: 16px; color: var(--mute); }
+
+/* ---------- questions ---------- */
+.brands { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.brands button { min-height: 92px; padding: 10px; display: grid; place-items: center; gap: 4px; font-size: 22px; }
+.brands button img { max-width: 150px; max-height: 44px; }
+.brands button[aria-pressed="true"] { box-shadow: inset 0 0 0 4px #111; background: #fffbe0; }
+label.field { display: block; margin-top: 14px; }
+input[type="text"], input[type="email"], textarea { width: 100%; border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+textarea { min-height: 120px; resize: vertical; }
+.checks { display: grid; gap: 10px; }
+.checks label { display: flex; gap: 14px; align-items: center; min-height: 60px; padding: 8px 16px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; background: #fff; }
+.checks input { width: 30px; height: 30px; flex: none; accent-color: #111; }
+.checks label:has(input:checked) { box-shadow: inset 0 0 0 3px #111; background: #fffbe0; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------- review / send ---------- */
+.summary { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.summary li { display: flex; gap: 12px; padding: 10px 14px; background: #f6f5f1; border-radius: 12px; }
+.summary b { flex: none; min-width: 9em; }
+details { margin-top: 18px; }
+summary { cursor: pointer; font-size: 19px; color: var(--mute); min-height: 44px; display: flex; align-items: center; }
+pre { font: 13px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 360px; overflow: auto; background: #f6f5f1; border-radius: 12px; padding: 12px; touch-action: pan-y; }
+.note { border-radius: 14px; padding: 16px 20px; margin-top: 20px; }
+.note.ok { background: var(--okBg); color: var(--ok); }
+.note.bad { background: var(--badBg); color: var(--bad); }
+.note.warn { background: var(--warnBg); color: var(--warn); }
+.page { touch-action: pan-y; }
+@media (max-width: 700px) { body { font-size: 19px; } h1 { font-size: 34px; } #steps .title { font-size: 26px; } #steps .icon { font-size: 42px; } .card { padding: 20px; } }
+</style>
+</head>
+<body>
+
+<section class="screen" data-screen="welcome">
+  <div class="page"><div class="card">
+    <h1>Is OverBoard not working on your board?</h1>
+    <p class="lead">Let's find out why. This takes about two minutes.</p>
+    <p>You'll touch the board a few different ways (finger, pen, your hand), and then answer two quick questions. This page writes down what your board tells the browser, so I can make OverBoard work on boards like yours.</p>
+    <p>If something doesn't work the way the page asks, that's fine. <b>That's exactly what I need to know.</b> Just keep going.</p>
+    <p class="mute small">Nothing is sent until you press <b>Send</b> at the very end, and you'll see everything first. No worksheets, PDFs or ink are ever included.</p>
+    <div class="row"><button class="go big" data-go="start">Start</button></div>
+    <p class="mute small" style="margin-top:28px">OverBoard <span id="ob-release" title="OverBoard version">v24</span></p>
+  </div></div>
+</section>
+
+<section class="screen" id="steps" data-screen="steps" hidden>
+  <header>
+    <div class="icon" aria-hidden="true"></div>
+    <div style="flex:1">
+      <div class="count"></div>
+      <div class="title"></div>
+      <div class="text"></div>
+    </div>
+    <button class="back" data-go="back">‹ Back</button>
+  </header>
+  <div id="pad" aria-label="Drawing area"><canvas></canvas></div>
+  <footer>
+    <div id="seen" role="status" aria-live="polite"><div class="msg wait"></div><div class="detail"></div></div>
+    <button data-go="redo">Start this step over</button>
+    <button data-go="skip" hidden></button>
+    <button class="go big" data-go="next">Next →</button>
+  </footer>
+</section>
+
+<section class="screen" data-screen="questions" hidden>
+  <div class="page"><div class="card">
+    <button class="back" data-go="back">‹ Back</button>
+    <h1>Two quick questions</h1>
+    <h2>1. What brand is your board?</h2>
+    <p class="mute small">The name is usually printed on the front, below or beside the screen.</p>
+    <div class="brands" role="group" aria-label="Board brand"></div>
+    <label class="field">Model, if you know it <span class="mute small">(often on a sticker on the side or back, like "ActivPanel 9" or "SBID-MX275")</span>
+      <input type="text" id="model" maxlength="120" autocomplete="off"></label>
+    <h2>2. What goes wrong? <span class="mute small">(tick any that fit)</span></h2>
+    <div class="checks" id="problems">
+      <label><input type="checkbox" value="nothing-draws"> Nothing shows up when I write</label>
+      <label><input type="checkbox" value="finger"> My finger doesn't do what I expect</label>
+      <label><input type="checkbox" value="palm-draws"> My hand draws a line instead of erasing</label>
+      <label><input type="checkbox" value="eraser"> The board's eraser doesn't erase</label>
+      <label><input type="checkbox" value="offset"> Lines show up in the wrong place</label>
+      <label><input type="checkbox" value="slow"> It's slow or lags behind</label>
+      <label><input type="checkbox" value="scroll"> The page scrolls or zooms when I write</label>
+      <label><input type="checkbox" value="other"> Something else</label>
+    </div>
+    <label class="field">Anything else you'd like to tell me? <span class="mute small">(optional; only I see this)</span>
+      <textarea id="comments" maxlength="4000"></textarea></label>
+    <label class="field">Your email, if you'd like a reply <span class="mute small">(optional; only I see this, it's never posted)</span>
+      <input type="email" id="email" maxlength="200" autocomplete="email"></label>
+    <label class="hp" aria-hidden="true">Leave this empty <input type="text" id="website" tabindex="-1" autocomplete="off"></label>
+    <div class="row"><button class="go big" data-go="review">Next →</button></div>
+  </div></div>
+</section>
+
+<section class="screen" data-screen="review" hidden>
+  <div class="page"><div class="card">
+    <button class="back" data-go="back">‹ Back</button>
+    <h1>Ready to send</h1>
+    <p class="lead">Here's what I learned about your board:</p>
+    <ul class="summary" id="summary"></ul>
+    <details><summary>Show everything that will be sent</summary><pre id="raw"></pre></details>
+    <div class="row"><button class="go big" data-go="send">Send</button></div>
+    <div class="note" id="sendmsg" role="status" hidden></div>
+    <div id="fallback" hidden>
+      <div class="note warn">
+        <p style="margin-top:0"><b>Sending didn't work.</b> Some school networks block it. You can still send it by email:</p>
+        <p>1. Download the report: <button data-go="download">Download report</button></p>
+        <p class="mail">2. Email the downloaded file to <b class="addr"></b>, or <a class="mailto" href="#">start an email</a> and attach it.</p>
+        <p class="nomail" hidden>2. Attach the downloaded file to a new issue at <a href="https://github.com/BPMData/OverBoard/issues/new" target="_blank" rel="noopener">github.com/BPMData/OverBoard/issues</a>.</p>
+        <p style="margin-bottom:0">Or <button data-go="copy">Copy report</button> and paste it into an email.</p>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="screen" data-screen="done" hidden>
+  <div class="page"><div class="card">
+    <h1>Thank you!</h1>
+    <p class="lead">Your report is on its way. I'll use it to make OverBoard work on your board.</p>
+    <p class="followup" hidden>If you gave your email, I'll write back. You can also <a class="issue" href="#" target="_blank" rel="noopener">follow the report here</a>.</p>
+    <p class="mute">You can close this tab now.</p>
+  </div></div>
+</section>
+
+<script type="module">
+import { pointerKind } from '../../shared/ink-core.js';
+
+/* Where reports go. Fill these in after deploying tools/report-relay.gs (see docs/REPORTS.md).
+   With no RELAY_URL, Send goes straight to the download-and-email fallback. */
+const RELAY_URL = 'https://script.google.com/macros/s/AKfycbzhWbjDvn6ynHOQLAMRFKPb2VoGBVez8HjZ_X27ce_iciRorJCo8wUc8fOzyjD0fGRc/exec';
+const REPORT_EMAIL = 'overboard.reporting@gmail.com';
+const relay = () => window.__obReportRelay !== undefined ? window.__obReportRelay : RELAY_URL;   // tests point this elsewhere
+
+const STEPS = [
+  { id: 'finger', icon: '☝️', title: 'Draw 2 lines with your finger',
+    text: 'Use one finger. Draw two lines from top to bottom, anywhere in the white area.' },
+  { id: 'pen', icon: '🖊️', title: 'Now draw 2 lines with the pen',
+    text: "Pick up the board's pen and draw two more lines from top to bottom.", skip: "I don't have a pen" },
+  { id: 'palm', icon: '✋', title: 'Wipe with your flat hand',
+    text: 'Put your whole hand flat on the board and wipe across the lines, like wiping a steamy bathroom mirror.' },
+  { id: 'eraser', icon: '🧽', title: "Rub out the lines with the board's eraser",
+    text: 'If your board came with an eraser (or the pen has an eraser end), rub out the lines with it.', skip: 'My board has no eraser' },
+  { id: 'two', icon: '✌️', title: 'Drag two fingers down',
+    text: 'Put two fingers on the board together and drag them down, like scrolling a page.' },
+];
+const BRANDS = [   // logo: true once app/report/brands/<id>.svg exists
+  ['smart', 'SMART'], ['promethean', 'Promethean'], ['viewsonic', 'ViewSonic'], ['benq', 'BenQ'],
+  ['newline', 'Newline'], ['clevertouch', 'Clevertouch'], ['boxlight', 'Boxlight / Mimio'], ['samsung', 'Samsung Flip'],
+  ['surface-hub', 'Microsoft Surface Hub'], ['projector', 'A projector (Epson, etc.)'], ['laptop', 'A laptop or tablet touch screen'],
+  ['other', 'Other'], ['unknown', "I don't know"],
+].map(([id, name]) => ({ id, name, logo: false }));
+const MAX_EVENTS = 150;   // raw events kept per step (all of them are still counted)
+
+const $ = (s, el = document) => el.querySelector(s);
+const params = new URLSearchParams(location.search);
+const T0 = performance.now();
+const ms = () => Math.round(performance.now() - T0);
+
+/* ---------- the report ---------- */
+const report = {
+  app: 'OverBoard', kind: 'board-report', v: 1,
+  release: $('#ob-release').textContent.trim(),
+  from: (params.get('from') || 'direct').slice(0, 20),
+  overlayVersion: (params.get('ov') || '').slice(0, 10) || undefined,
+  device: deviceInfo(),
+  startedWith: null,   // what the Start button was pressed with
+  steps: STEPS.map((s) => ({ id: s.id, asked: s.title, skipped: false, visited: false, seen: newStats(), events: [] })),
+  answers: { brand: null, model: '', problems: [] },
+};
+window.__obReport = () => buildPayload();   // tests and curious people
+
+function newStats() {
+  return { lines: 0, taps: 0, downs: 0, ups: 0, cancels: 0, moves: 0, types: {}, kinds: {}, buttons: {},
+    eraserButton: 0, maxWidth: 0, maxHeight: 0, maxPressure: 0, tilt: false, pointerIds: 0, maxAtOnce: 0, outsidePad: 0,
+    touchEvents: 0, maxTouches: 0, wheel: 0, ctrlWheel: 0, contextMenu: 0, gestures: 0, buttonPresses: {}, firstAtMs: null, lastAtMs: null, dropped: 0 };
+}
+
+function deviceInfo() {
+  const mq = (q) => matchMedia(q).matches;
+  const d = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    languages: (navigator.languages || [navigator.language]).slice(0, 3),
+    screen: { w: screen.width, h: screen.height, availW: screen.availWidth, availH: screen.availHeight, colorDepth: screen.colorDepth,
+      orientation: screen.orientation ? screen.orientation.type : undefined, extended: screen.isExtended },
+    window: { w: innerWidth, h: innerHeight },
+    devicePixelRatio: devicePixelRatio,
+    maxTouchPoints: navigator.maxTouchPoints,
+    pointer: { fine: mq('(pointer: fine)'), coarse: mq('(pointer: coarse)'), anyFine: mq('(any-pointer: fine)'), anyCoarse: mq('(any-pointer: coarse)'),
+      hover: mq('(hover: hover)'), anyHover: mq('(any-hover: hover)') },
+    supports: { pointerEvents: 'PointerEvent' in window, touchEvents: 'ontouchstart' in window,
+      coalesced: !!(window.PointerEvent && PointerEvent.prototype.getCoalescedEvents) },
+    cpuCores: navigator.hardwareConcurrency, memoryGB: navigator.deviceMemory,
+    installed: mq('(display-mode: standalone)') || mq('(display-mode: window-controls-overlay)'),
+  };
+  const ua = navigator.userAgentData;   // Chrome and Edge: the real OS version, the device model on Android boards
+  if (ua) {
+    d.uaData = { brands: ua.brands, mobile: ua.mobile, platform: ua.platform };
+    if (ua.getHighEntropyValues) ua.getHighEntropyValues(['platformVersion', 'model', 'architecture', 'bitness', 'fullVersionList', 'formFactors'])
+      .then((h) => { d.uaData = h; }, () => {});
+  }
+  return d;
+}
+
+/* plain words for the summary and the issue title */
+function describeSystem(d) {
+  const ua = d.userAgent, h = d.uaData || {};
+  let browser = 'Unknown browser';
+  const full = (h.fullVersionList || h.brands || []).filter((b) => !/Not.?A.?Brand|Chromium/i.test(b.brand));
+  if (full.length) browser = full[0].brand.replace('Google ', '') + ' ' + full[0].version.split('.')[0];
+  else { const m = ua.match(/(Edg|Firefox|Chrome|Version)\/(\d+)/); if (m) browser = ({ Edg: 'Edge', Version: /Safari/.test(ua) ? 'Safari' : 'Browser' }[m[1]] || m[1]) + ' ' + m[2]; }
+  let os = h.platform || (/Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /CrOS/.test(ua) ? 'ChromeOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Unknown system');
+  if (os === 'Windows' && h.platformVersion) os += parseInt(h.platformVersion, 10) >= 13 ? ' 11' : ' 10';
+  else if (os === 'macOS' && h.platformVersion) os += ' ' + h.platformVersion.split('.').slice(0, 2).join('.');
+  else if (os === 'Android' && h.platformVersion) os += ' ' + h.platformVersion.split('.')[0];
+  if (h.model) os += ' (' + h.model + ')';
+  return { browser, os };
+}
+
+/* ---------- screens ---------- */
+let screen_ = 'welcome', stepIx = 0, stepStart = 0, history = [];
+function show(name, push = true) {
+  if (push && name !== screen_) history.push([screen_, stepIx]);
+  screen_ = name;
+  document.querySelectorAll('[data-screen]').forEach((s) => { s.hidden = s.dataset.screen !== name; });
+  document.body.style.touchAction = name === 'steps' ? 'none' : '';
+  if (name === 'steps') { sizePad(); openStep(); }
+  if (name === 'review') renderReview();
+  window.scrollTo(0, 0);
+  guardButtons();
+}
+function openStep() {
+  const s = STEPS[stepIx], r = report.steps[stepIx];
+  r.visited = true; stepStart = ms();
+  const el = $('#steps');
+  $('.icon', el).textContent = s.icon;
+  $('.count', el).textContent = 'Step ' + (stepIx + 1) + ' of ' + STEPS.length;
+  $('.title', el).textContent = s.title;
+  $('.text', el).textContent = s.text;
+  const skip = $('[data-go="skip"]', el); skip.hidden = !s.skip; skip.textContent = s.skip || '';
+  redraw(); updateSeen();
+}
+/* a tap that lands just as a screen changes (a double tap, a palm sliding onto a button) shouldn't also press the next screen's button */
+let guardUntil = 0;
+function guardButtons() { guardUntil = performance.now() + 450; }
+
+let btnKind = null;   // what the last button press was made with
+document.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) btnKind = pointerKind(e); }, true);
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-go]'); if (!b) return;
+  if (performance.now() < guardUntil) return;
+  if (btnKind === 'palm' && screen_ === 'steps') return;   // a palm wipe that slid onto a button
+  go(b.dataset.go, b, e);
+});
+function go(act, b, e) {
+  switch (act) {
+    case 'start':
+      report.startedWith = { pointerType: e.pointerType || (e.detail === 0 ? 'keyboard' : 'unknown'), kind: btnKind };
+      stepIx = 0; show('steps'); break;
+    case 'next': case 'skip':
+      report.steps[stepIx].skipped = act === 'skip';
+      if (stepIx < STEPS.length - 1) { history.push(['steps', stepIx]); stepIx++; openStep(); guardButtons(); }
+      else show('questions');
+      break;
+    case 'redo': {
+      const r = report.steps[stepIx]; r.seen = newStats(); r.events = []; r.skipped = false;
+      strokes = strokes.filter((st) => st.step !== stepIx); redraw(); updateSeen(); break;
+    }
+    case 'back': {
+      const prev = history.pop(); if (!prev) break;
+      stepIx = prev[1];
+      if (prev[0] === 'steps' && screen_ === 'steps') { openStep(); guardButtons(); }
+      else show(prev[0], false);
+      break;
+    }
+    case 'review': collectAnswers(); show('review'); break;
+    case 'send': send(b); break;
+    case 'download': download(); break;
+    case 'copy': copy(b); break;
+  }
+}
+document.addEventListener('keydown', (e) => {   // a keyboard works too, for boards where touch doesn't
+  if (screen_ === 'steps' && (e.key === 'Enter' || e.key === 'ArrowRight') && !e.target.closest('button')) { e.preventDefault(); go('next', null, e); }
+});
+
+/* ---------- recording: everything the browser reports during a step, wherever it lands ---------- */
+const down = new Map();   // pointerId -> { onPad, x, y, dist, moves, kind, color }
+function rec(e, extra) {
+  if (screen_ !== 'steps') return null;
+  const r = report.steps[stepIx], s = r.seen, t = ms() - stepStart;
+  if (s.firstAtMs === null) s.firstAtMs = t;
+  s.lastAtMs = t;
+  const o = Object.assign({ t, ev: e.type }, extra);
+  if (r.events.length < MAX_EVENTS) r.events.push(o); else s.dropped++;
+  return s;
+}
+function pointerInfo(e) {
+  return { type: e.pointerType, id: e.pointerId, primary: e.isPrimary, button: e.button, buttons: e.buttons, kind: pointerKind(e),
+    x: Math.round(e.clientX), y: Math.round(e.clientY), w: +(e.width || 0).toFixed(1), h: +(e.height || 0).toFixed(1),
+    p: +(e.pressure || 0).toFixed(3), tiltX: e.tiltX || 0, tiltY: e.tiltY || 0, twist: e.twist || 0,
+    on: e.target.closest('#pad') ? 'pad' : e.target.closest('button') ? 'button:' + (e.target.closest('button').dataset.go || '') : 'other' };
+}
+function tally(s, i) {
+  s.maxWidth = Math.max(s.maxWidth, i.w); s.maxHeight = Math.max(s.maxHeight, i.h); s.maxPressure = Math.max(s.maxPressure, i.p);
+  if (i.tiltX || i.tiltY) s.tilt = true;
+  s.buttons[i.buttons] = (s.buttons[i.buttons] || 0) + 1;
+  if (i.buttons & 32) s.eraserButton++;   // SMART: palm and eraser come as the pen with its eraser button
+}
+const seenIds = new Set();
+document.addEventListener('pointerdown', (e) => {
+  const i = pointerInfo(e), s = rec(e, i); if (!s) return;
+  if (i.on.startsWith('button:')) { s.buttonPresses[i.type] = (s.buttonPresses[i.type] || 0) + 1; return; }   // Next, Skip…: kept apart from the step's own input
+  s.downs++; s.types[i.type] = (s.types[i.type] || 0) + 1; s.kinds[i.kind] = (s.kinds[i.kind] || 0) + 1;
+  if (i.on !== 'pad') s.outsidePad++;
+  const key = stepIx + ':' + e.pointerId; if (!seenIds.has(key)) { seenIds.add(key); s.pointerIds++; }
+  tally(s, i);
+  down.set(e.pointerId, { onPad: i.on === 'pad', x: e.clientX, y: e.clientY, dist: 0, moves: 0, kind: i.kind, last: i });
+  s.maxAtOnce = Math.max(s.maxAtOnce, down.size);
+  if (i.on === 'pad') { try { $('#pad').setPointerCapture(e.pointerId); } catch (_) {} startStroke(e, i.kind); e.preventDefault(); }
+  updateSeen();
+}, true);
+document.addEventListener('pointermove', (e) => {
+  if (screen_ !== 'steps') return;
+  const d = down.get(e.pointerId), r = report.steps[stepIx], s = r.seen;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  if (!d) {   // hovering (a pen above the board, a mouse): count it, keep a few
+    if (e.pointerType !== 'mouse' && s.moves < 40) { s.moves++; rec(e, pointerInfo(e)); }
+    return;
+  }
+  s.moves++;
+  const i = pointerInfo(e);
+  tally(s, i);
+  const changed = i.buttons !== d.last.buttons || i.type !== d.last.type || Math.abs(i.w - d.last.w) > 0.5 || Math.abs(i.h - d.last.h) > 0.5;
+  if (changed || d.moves % 10 === 0) rec(e, Object.assign(i, { coalesced: evs.length }));   // keep every 10th move, and every change
+  d.moves++; d.dist += Math.hypot(e.clientX - d.x, e.clientY - d.y); d.x = e.clientX; d.y = e.clientY; d.last = i;
+  if (d.onPad) { addPoints(e, evs); e.preventDefault(); }
+  if (changed) updateSeen();
+}, true);
+function up(e) {
+  const d = down.get(e.pointerId); down.delete(e.pointerId);
+  const s = rec(e, pointerInfo(e)); if (!s || !d) return;
+  if (e.type === 'pointercancel') s.cancels++; else s.ups++;
+  if (d.onPad) { if (d.dist > 30) s.lines++; else s.taps++; endStroke(e); }
+  updateSeen();
+}
+document.addEventListener('pointerup', up, true);
+document.addEventListener('pointercancel', up, true);
+for (const n of ['touchstart', 'touchend']) document.addEventListener(n, (e) => {
+  const s = rec(e, { touches: e.touches.length, changed: [].map.call(e.changedTouches, (t) => ({ rx: +(t.radiusX || 0).toFixed(1), ry: +(t.radiusY || 0).toFixed(1), force: +(t.force || 0).toFixed(3), touchType: t.touchType || undefined })) });
+  if (!s) return;
+  s.touchEvents++; s.maxTouches = Math.max(s.maxTouches, e.touches.length);
+}, { capture: true, passive: true });
+document.addEventListener('wheel', (e) => {   // two fingers can arrive as scrolling instead of touches
+  if (screen_ === 'steps') e.preventDefault();
+  const s = rec(e, { dx: Math.round(e.deltaX), dy: Math.round(e.deltaY), mode: e.deltaMode, ctrl: e.ctrlKey }); if (!s) return;
+  s.wheel++; if (e.ctrlKey) s.ctrlWheel++;
+  updateSeen();
+}, { capture: true, passive: false });
+document.addEventListener('contextmenu', (e) => {   // a long press or two-finger tap can arrive as a right-click
+  const s = rec(e, { x: Math.round(e.clientX), y: Math.round(e.clientY) }); if (!s) return;
+  s.contextMenu++; e.preventDefault(); updateSeen();
+}, true);
+for (const n of ['gesturestart', 'gestureend']) document.addEventListener(n, (e) => {   // Safari pinch
+  const s = rec(e, { scale: e.scale }); if (!s) return;
+  s.gestures++; e.preventDefault(); updateSeen();
+}, true);
+
+/* what the page tells the person: always "got it" for anything at all, never "wrong" */
+let waitTimer = null;
+function updateSeen() {
+  if (screen_ !== 'steps') return;
+  const s = report.steps[stepIx].seen, msg = $('#seen .msg'), detail = $('#seen .detail');
+  clearTimeout(waitTimer);
+  let text, cls = 'ok';
+  const other = s.wheel + s.contextMenu + s.gestures + s.touchEvents;
+  if (s.lines) text = '✓ Got it! I saw ' + s.lines + (s.lines === 1 ? ' line.' : ' lines.');
+  else if (s.downs && s.outsidePad === s.downs) text = '✓ I felt a touch outside the white area. That helps too.';
+  else if (s.taps) text = '✓ I felt ' + (s.taps === 1 ? 'a touch' : s.taps + ' touches') + '. Try a longer line, or tap Next.';
+  else if (other) text = '✓ Something happened, but not a line (maybe the page tried to scroll). That helps too.';
+  else {
+    cls = 'wait'; text = 'Waiting… touch the white area.';
+    waitTimer = setTimeout(() => {
+      if (screen_ !== 'steps') return;
+      msg.className = 'msg warn';
+      msg.textContent = "Nothing has shown up. That's useful to know too: tap Next.";
+      detail.textContent = "If tapping Next doesn't work either, use the computer's mouse or press Enter.";
+    }, 12000);
+  }
+  msg.className = 'msg ' + cls; msg.textContent = text;
+  const types = Object.entries(s.types).map(([k, n]) => k + (n > 1 ? ' ×' + n : ''));
+  detail.textContent = types.length ? 'Your board said: ' + types.join(', ') + (s.eraserButton ? ' (eraser button)' : '') : '';
+}
+
+/* ---------- the drawing area (only so people see their lines; the report doesn't need it) ---------- */
+const pad = $('#pad'), cv = $('canvas', pad), g = cv.getContext('2d');
+let strokes = [], live = new Map();
+const INK = { finger: '#1565c0', pen: '#111', palm: 'rgba(120,120,120,.35)' };
+function sizePad() {
+  const r = pad.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); redraw();
+}
+addEventListener('resize', () => { if (screen_ === 'steps') sizePad(); });
+function startStroke(e, kind) {
+  const r = pad.getBoundingClientRect();
+  const st = { step: stepIx, kind, w: kind === 'palm' ? 46 : 5, p: [[e.clientX - r.left, e.clientY - r.top]] };
+  strokes.push(st); live.set(e.pointerId, st);
+}
+function addPoints(e, evs) {
+  const st = live.get(e.pointerId); if (!st) return;
+  const r = pad.getBoundingClientRect();
+  for (const c of (evs.length ? evs : [e])) {
+    const p = [c.clientX - r.left, c.clientY - r.top], q = st.p[st.p.length - 1];
+    paint(st, q, p); st.p.push(p);
+  }
+}
+function endStroke(e) { live.delete(e.pointerId); }
+function paint(st, a, b) {
+  g.strokeStyle = INK[st.kind] || '#111'; g.lineWidth = st.w; g.lineCap = g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+}
+function redraw() {
+  g.clearRect(0, 0, cv.width, cv.height);
+  for (const st of strokes) for (let i = 1; i < st.p.length; i++) paint(st, st.p[i - 1], st.p[i]);
+}
+
+/* ---------- questions ---------- */
+const brandBox = $('.brands');
+for (const b of BRANDS) {
+  const el = document.createElement('button');
+  el.type = 'button'; el.dataset.brand = b.id; el.setAttribute('aria-pressed', 'false');
+  if (b.logo) { const img = document.createElement('img'); img.src = 'brands/' + b.id + '.svg'; img.alt = ''; el.append(img); }
+  el.append(b.name);
+  el.addEventListener('click', () => {
+    for (const x of brandBox.children) x.setAttribute('aria-pressed', String(x === el));
+    report.answers.brand = b.id;
+  });
+  brandBox.append(el);
+}
+function collectAnswers() {
+  report.answers.model = $('#model').value.trim();
+  report.answers.problems = [...document.querySelectorAll('#problems input:checked')].map((i) => i.value);
+}
+
+/* ---------- review and send ---------- */
+function buildPayload() {
+  return Object.assign({}, report, {
+    sentAt: new Date().toISOString(), tookSeconds: Math.round(ms() / 1000),
+    system: describeSystem(report.device),
+    private: { email: $('#email').value.trim(), comments: $('#comments').value.trim() },   // the relay emails these and never posts them
+    website: $('#website').value,   // left empty by people; filled in by spam robots
+  });
+}
+function stepSummary(r) {
+  const s = r.seen;
+  if (r.skipped) return 'Skipped (' + STEPS.find((x) => x.id === r.id).skip.toLowerCase() + ')';
+  if (!r.visited) return 'Not reached';
+  const types = Object.keys(s.types);
+  const parts = [];
+  if (s.lines) parts.push(s.lines + (s.lines === 1 ? ' line' : ' lines'));
+  if (s.taps) parts.push(s.taps + (s.taps === 1 ? ' touch' : ' touches'));
+  if (s.wheel) parts.push('scrolling');
+  if (s.contextMenu) parts.push('a right-click');
+  if (s.gestures) parts.push('a pinch');
+  if (!parts.length && !s.touchEvents) return 'Nothing came through';
+  return parts.join(', ') + (types.length ? ', seen as ' + types.join(' and ') : '') + (s.eraserButton ? ' (with the eraser button)' : '');
+}
+function renderReview() {
+  const p = buildPayload(), sys = p.system, list = $('#summary');
+  const brand = BRANDS.find((b) => b.id === p.answers.brand);
+  const rows = [
+    ['Board', (brand ? brand.name : 'Not chosen') + (p.answers.model ? ' · ' + p.answers.model : '')],
+    ['Computer', sys.os + ' · ' + sys.browser],
+    ['Screen', p.device.screen.w + ' × ' + p.device.screen.h + (p.device.maxTouchPoints ? ' · ' + p.device.maxTouchPoints + ' touch points' : ' · no touch reported')],
+    ...report.steps.map((r, i) => [STEPS[i].icon + ' ' + ['Finger', 'Pen', 'Hand', 'Eraser', 'Two fingers'][i], stepSummary(r)]),
+  ];
+  list.replaceChildren(...rows.map(([k, v]) => { const li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span'); b.textContent = k; s.textContent = v; li.append(b, s); return li; }));
+  $('#raw').textContent = JSON.stringify(p, null, 1);
+  $('#sendmsg').hidden = true; $('#fallback').hidden = true;
+  const send = $('[data-go="send"]'); send.disabled = false; send.textContent = 'Send';
+}
+async function send(btn) {
+  const msg = $('#sendmsg'), url = relay();
+  const p = buildPayload();
+  $('#raw').textContent = JSON.stringify(p, null, 1);
+  if (!url) return fail();
+  btn.disabled = true; btn.textContent = 'Sending…';
+  msg.hidden = false; msg.className = 'note'; msg.textContent = 'Sending…';
+  try {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
+    // text/plain keeps this a "simple" request, which Google Apps Script accepts from any page
+    const r = await fetch(url, { method: 'POST', body: JSON.stringify(p), headers: { 'Content-Type': 'text/plain;charset=utf-8' }, signal: ctl.signal, redirect: 'follow' });
+    clearTimeout(timer);
+    const out = await r.json();
+    if (!out || !out.ok) throw new Error((out && out.error) || 'not ok');
+    const done = $('[data-screen="done"]');
+    if (out.url) { $('.followup', done).hidden = false; $('.issue', done).href = out.url; }
+    show('done');
+  } catch (err) {
+    fail();
+  }
+  function fail() {
+    btn.disabled = false; btn.textContent = 'Try sending again';
+    msg.hidden = true;
+    const fb = $('#fallback'); fb.hidden = false;
+    $('.mail', fb).hidden = !REPORT_EMAIL; $('.nomail', fb).hidden = !!REPORT_EMAIL;
+    if (REPORT_EMAIL) {
+      $('.addr', fb).textContent = REPORT_EMAIL;
+      const sys = p.system, brand = BRANDS.find((b) => b.id === p.answers.brand);
+      $('.mailto', fb).href = 'mailto:' + REPORT_EMAIL + '?subject=' + encodeURIComponent('OverBoard board report: ' + (brand ? brand.name : 'unknown board') + ', ' + sys.os) +
+        '&body=' + encodeURIComponent('The report file (OverBoard-board-report.json) is attached.\n\n');
+    }
+  }
+}
+function reportText() { return JSON.stringify(buildPayload(), null, 1); }
+function download() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([reportText()], { type: 'application/json' }));
+  a.download = 'OverBoard-board-report.json';
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+async function copy(btn) {
+  const text = reportText();
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (_) {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (_) {}
+    ta.remove();
+  }
+  const was = btn.textContent; btn.textContent = ok ? 'Copied!' : "Couldn't copy"; setTimeout(() => { btn.textContent = was; }, 2500);
+}
+</script>
+</body>
+</html>
