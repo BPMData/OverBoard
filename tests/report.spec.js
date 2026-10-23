@@ -162,7 +162,7 @@ test('HTML overlay: File ▸ Board not working? opens the website page with the 
   await expect(page.locator('#ob-filemenu')).toBeHidden();
 });
 
-test('the page speaks the language it was opened in, switches live, and sends the language with the report', async ({ page }) => {
+test('the page speaks the language it was opened in, switches from its 🌐 list, and sends the language with the report', async ({ page }) => {
   let body = null;
   await page.route(RELAY, async (route) => {
     body = JSON.parse(route.request().postData());
@@ -171,6 +171,14 @@ test('the page speaks the language it was opened in, switches live, and sends th
   await openReport(page, '?from=overlay&ov=v24&lang=es');
   await expect(page.locator('[data-screen="welcome"] h1')).toHaveText('¿OverBoard no funciona en tu pizarra?');
   await expect(page.locator('#lang')).toHaveValue('es');
+  // the 🌐 list is on the first screen; switching changes every word at once
+  await page.selectOption('#lang', 'fr');
+  await expect(page.locator('[data-screen="welcome"] h1')).toHaveText('OverBoard ne fonctionne pas sur votre tableau ?');
+  await expect(page.locator('[data-go="start"]')).toHaveText('Commencer');
+  await page.selectOption('#lang', 'ar');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await page.selectOption('#lang', 'es');
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await press(page, 'start');
   await expect(page.locator('#steps .count')).toHaveText('Paso 1 de 5');
   await line(page, 100, { type: 'mouse' });
@@ -180,14 +188,8 @@ test('the page speaks the language it was opened in, switches live, and sends th
   await page.click('[data-brand="unknown"]');
   await press(page, 'review');
   await expect(page.locator('#summary')).toContainText('1 línea, detectado como mouse');
-  await page.selectOption('#lang', 'fr');   // live: the summary and the buttons change too
-  await expect(page.locator('[data-screen="review"] h1')).toHaveText('Prêt à envoyer');
-  await expect(page.locator('#summary')).toContainText('1 trait, vu comme mouse');
-  await expect(page.locator('#summary')).toContainText('Je ne sais pas');
-  await page.selectOption('#lang', 'ar');
-  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await page.selectOption('#lang', 'es');
-  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+  await expect(page.locator('#summary')).toContainText('No lo sé');
+  await expect(page.locator('[data-go="send"]')).toHaveText('Enviar');
   await press(page, 'send');
   await expect(page.locator('[data-screen="done"] h1')).toHaveText('¡Gracias!');
   expect(body.lang).toBe('es');
