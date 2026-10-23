@@ -40,8 +40,9 @@
 :is(#ob-filemenu,#ob-clearmenu) button:disabled{opacity:.4;cursor:default}
 #ob-clearmenu p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
 #ink-bar button[aria-expanded="true"]{background:#fff;color:#000}
-#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:44px 1fr 44px;gap:8px}
-#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:15px}
+#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:40px 1fr 40px;gap:6px}
+#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:14px;letter-spacing:-.02em;text-overflow:clip}
+#ink-bar [hidden]{display:none!important}
 #ink-bar #ob-zoom button[data-act="zoom-in"],#ink-bar #ob-zoom button[data-act="zoom-out"]{font-size:28px;line-height:1;padding:0}
 #ink-bar button:disabled{opacity:.4;cursor:default}
 #ink-undo{display:grid;grid-template-columns:1fr 1fr;gap:6px}

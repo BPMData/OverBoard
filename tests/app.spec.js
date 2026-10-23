@@ -76,8 +76,7 @@ test('undo, clear page and undo-clear; periods keep separate ink', async ({ page
   await draw(page, 1, line(100, 250, 300, 250));
   await page.click('[data-act="undo"]');
   expect(await strokes(page)).toHaveLength(1);
-  await page.click('[data-act="clear"]');                        // opens Clear ▸
-  await page.click('#ob-clearmenu [data-act="clear-page"]');
+  await page.click('[data-act="clear-page"]');                   // no chapters: Clear page | Clear all
   expect(await strokes(page)).toHaveLength(0);
   await page.click('[data-act="undo"]');
   expect(await strokes(page)).toHaveLength(1);

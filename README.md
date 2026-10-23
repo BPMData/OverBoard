@@ -26,7 +26,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** (P1–P4) on the same worksheet
 - **Save PDF** with crisp ink, page by page
-- **Clear ▸** this page or all pages (Undo brings either back), and **− / Fit / +** zoom that keeps the toolbar the same size, on PDFs and HTML worksheets alike
+- **Clear page / Clear all** (Undo brings either back), and **− / Fit / +** zoom that keeps the toolbar the same size, on PDFs and HTML worksheets alike. On a small screen (a laptop) the toolbar shrinks to fit instead of scrolling
 - **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
 - **The PDF's text stays text**: select and copy it, follow its links, and search the whole book (great with OCR'd scans). Exports keep it.
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
@@ -37,9 +37,9 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
-- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo and redo, Clear ▸, zoom and File ▸.
+- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo and redo, Clear page / Clear all, zoom and File ▸.
 - **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
-- **Clear ▸** opens two choices: **This page** (the page you're looking at) or **All pages** (tap twice). **File ▸ Clear all ink** does the same as All pages. Both clear only the current class period, and Undo brings it back. A one-page PDF just clears (tap twice).
+- **Clear page** clears the page you're looking at; **Clear all** clears every page (tap twice). A PDF with a chapter list has **Chapters** in that row instead, and **Clear ▸** opens the same two choices beside it. Both clear only the current class period, and Undo brings it back. A one-page PDF just has **Clear** (tap twice).
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
 - **Zoom** with − / Fit / +, or pinch on a trackpad. Ink stays on the page at any zoom.
 - **Text and links work like a normal PDF reader** in **Scroll** mode: drag across text to select and copy it (scanned PDFs too, if they were OCR'd), tap a link in a contents page to jump there, and web links open in a new tab. In **Write** mode the pen, palm and finger work exactly as before; the text never gets in the way.
@@ -78,11 +78,11 @@ From a terminal:
 python3 overlay/ink_overlay_installer.py worksheet.html --open
 ```
 
-The toolbar matches the PDF app's: **− / Fit / +** zoom the worksheet but not the toolbar (ink stays on the page; Ctrl+scroll or a trackpad pinch works too), **Clear ▸** offers this page or all pages, and **File ▸** holds Save PDF, Save ink into file, Change linked file, Clear all ink and Move toolbar.
+The toolbar matches the PDF app's: **− / Fit / +** zoom the worksheet but not the toolbar (ink stays on the page; Ctrl+scroll or a trackpad pinch works too), **Clear page | Clear all** (a worksheet without `.page` sections gets one **Clear**), and **File ▸** holds Save PDF, Save ink into file, Change linked file and Move toolbar.
 
 **Option 3: paste it in.** Copy everything in [`overlay/ink_overlay.html`](overlay/ink_overlay.html) and paste it just before `</body>` in any HTML file.
 
-Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 8.5×11 in) get page-by-page jumping, **Clear ▸ This page**, Fit zoom and PDF output. Other pages still work and print as one long sheet.
+Worksheets built from fixed-size `.page` elements (like `<div class="page">` at 8.5×11 in) get page-by-page jumping, **Clear page**, Fit zoom and PDF output. Other pages still work and print as one long sheet.
 
 ## For contributors
 

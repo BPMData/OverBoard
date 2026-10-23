@@ -1,7 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { makePopMenu, historyKey, hlInk, placeMenu, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
+import { fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -268,12 +268,13 @@ async function openFile(file, handlePromise) {
     store.askPersistent();
     document.body.classList.remove('start');
     bar.hidden = false;
+    layoutClear(); fitToolbar();
     document.title = file.name.replace(/\.pdf$/i, '') + ' · OverBoard';
     pagesTotal.textContent = 'of ' + pdf.numPages;
     fitSpace();
     await viewer.open(pdf);
     ink.setData(D); refreshRedo();
-    renderPeriods(); refresh();
+    renderPeriods(); refresh(); fitToolbar();
     if (D.at > 1) viewer.goTo(D.at); else window.scrollTo(0, 0);
     setStatus(D.active + ' · ' + (fromPdf ? 'ink loaded from inside the PDF' : saved ? 'ink restored from this browser' : 'ready'));
     if (fromPdf || fromBackup) store.saveInk(hash, D).then(() => dropBackup(hash), () => {});   // keep this browser's copy current too
@@ -297,7 +298,7 @@ async function closeDoc(showStart = true) {
   viewer.close();
   try { await doc.pdf.destroy(); } catch (e) { /* already gone */ }
   doc = null; D = null;
-  toc.hidden = true; tocBtn.disabled = true; outline = [];
+  toc.hidden = true; outline = []; hasChapters = false;
   finder.close(); finder.reset();
   if (showStart) {
     document.body.classList.add('start'); bar.hidden = true; showBtn.classList.remove('show');
@@ -356,6 +357,25 @@ async function renderRecent() {
   }
 }
 
+/* ---------- the Clear buttons ----------
+   A PDF with chapters: Chapters | Clear ▸ (a menu: this page or all pages), with Clear on the side the menu
+   opens. Without chapters: Clear page | Clear all, like the HTML overlay. One page: just Clear. */
+let hasChapters = false;
+function layoutClear() {
+  const many = !!doc && doc.pages > 1, menu = hasChapters && many;
+  const menuBtn = $('[data-act="clear"]', bar), pageBtn = $('[data-act="clear-page"]', bar), allBtn = $('[data-act="clear-all"]', bar);
+  tocBtn.hidden = !hasChapters;
+  menuBtn.hidden = !menu;
+  pageBtn.hidden = menu || !many;
+  allBtn.hidden = menu;
+  allBtn.classList.toggle('wide', !hasChapters && !many);
+  if (!allBtn.classList.contains('warn')) allBtn.textContent = many ? 'Clear all' : 'Clear';
+  if (bar.classList.contains('right')) tocBtn.before(menuBtn); else tocBtn.after(menuBtn);
+  if (!menu) clearMenu.show(false);
+}
+/* the toolbar and its popouts shrink to fit a short window, such as a laptop screen */
+const fitToolbar = () => fitTools(bar, [fileMenu, clearMenu.el, hlMenu.el], 1);
+
 /* ---------- chapters (PDF outline) ---------- */
 let outline = [];   // flat [{ button, page }] for marking the current chapter
 async function loadOutline(pdf) {
@@ -363,9 +383,10 @@ async function loadOutline(pdf) {
   ul.textContent = ''; outline = [];
   let items = null;
   try { items = await pdf.getOutline(); } catch (e) { /* no outline */ }
-  tocBtn.disabled = !(items && items.length);
-  tocBtn.title = tocBtn.disabled ? 'This PDF has no chapter list' : 'Chapters of this PDF';
-  if (!items || !items.length || doc.pdf !== pdf) return;
+  if (doc.pdf !== pdf) return;
+  hasChapters = !!(items && items.length);
+  layoutClear(); fitToolbar();
+  if (!hasChapters) return;
   const build = (list, parent) => {
     for (const it of list) {
       const li = document.createElement('li'), b = document.createElement('button');
@@ -434,7 +455,7 @@ function jump(dir) {
 
 /* ---------- zoom ---------- */
 const ZOOM_100 = 96 / 72;   // CSS px per point at 100%
-function fitSpace() { viewer.sideSpace = bar.style.display === 'none' || bar.hidden ? 16 : bar.offsetWidth + 20; }
+function fitSpace() { viewer.sideSpace = bar.style.display === 'none' || bar.hidden ? 16 : bar.getBoundingClientRect().width + 20; }
 function zoomBy(f) { viewer.setZoom(viewer.zoom * f); refreshZoom(); }
 function refreshZoom() { fitBtn.textContent = viewer.fit ? 'Fit' : Math.round(viewer.zoom / ZOOM_100 * 100) + '%'; }
 window.addEventListener('wheel', (e) => {   // trackpad pinch / ctrl+wheel zooms the pages, not the toolbar
@@ -445,7 +466,7 @@ window.addEventListener('wheel', (e) => {   // trackpad pinch / ctrl+wheel zooms
 let resizeRaf = 0;
 window.addEventListener('resize', () => {
   if (resizeRaf) return;
-  resizeRaf = requestAnimationFrame(() => { resizeRaf = 0; if (doc) { fitSpace(); viewer.layout(); refreshZoom(); } });
+  resizeRaf = requestAnimationFrame(() => { resizeRaf = 0; if (doc) { fitToolbar(); fitSpace(); viewer.layout(); refreshZoom(); } });
 });
 
 /* ---------- class periods ---------- */
@@ -568,11 +589,7 @@ function onToolbarClick(e) {
       break;
     case 'zoom-fit': viewer.setZoom('fit'); break;
     case 'undo': case 'redo': historyStep(b.dataset.act); break;
-    case 'clear':   // a one-page PDF just clears (tap twice); otherwise the menu asks: this page or all pages
-      if (doc.pages > 1) { clearMenu.show(clearMenu.el.hidden); return; }
-      if (!ink.count()) { setStatus(D.active + ' has no ink to clear'); break; }
-      confirmTap(b, () => { ink.clearPage(1); setStatus('Page cleared · Undo brings it back'); });
-      break;
+    case 'clear': clearMenu.show(clearMenu.el.hidden); return;   // only shown beside Chapters: this page or all pages
     case 'clear-page': {
       const n = viewer.currentPage();
       if (!ink.pageList(n).length) setStatus('Page ' + n + ' has no ink in ' + D.active);
@@ -581,7 +598,7 @@ function onToolbarClick(e) {
     }
     case 'clear-all':
       if (!ink.count()) { setStatus(D.active + ' has no ink to clear'); break; }
-      confirmTap(b, () => { ink.clearAll(); setStatus('All pages cleared in ' + D.active + ' · Undo brings them back'); clearMenu.show(false); showFileMenu(false); });
+      confirmTap(b, () => { ink.clearAll(); setStatus((doc.pages > 1 ? 'All pages cleared in ' : 'Cleared ') + D.active + ' · Undo brings it back'); clearMenu.show(false); });
       return;
     case 'toc': toggleToc(); break;
     case 'find': openFind(); break;
@@ -596,6 +613,7 @@ function onToolbarClick(e) {
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));
       findPanel.classList.toggle('left', bar.classList.contains('right'));
+      layoutClear();   // Clear ▸ moves to the side its menu opens on
       break;
     case 'file': showFileMenu(fileMenu.hidden); return;
     case 'hide':
@@ -608,7 +626,7 @@ function onToolbarClick(e) {
   refresh();
 }
 showBtn.addEventListener('click', () => {
-  bar.style.display = ''; showBtn.classList.remove('show');
+  bar.style.display = ''; showBtn.classList.remove('show'); fitToolbar();
   if (viewer.fit && doc) { fitSpace(); viewer.layout(); }
 });
 $('[data-act="toc-close"]', toc).addEventListener('click', () => { toc.hidden = true; });
