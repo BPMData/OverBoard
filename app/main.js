@@ -110,6 +110,35 @@ function backupNow() { if (doc) { try { localStorage.setItem(BACKUP + doc.hash, 
 function dropBackup(hash) { try { localStorage.removeItem(BACKUP + hash); } catch (e) { /* blocked */ } }
 function readBackup(hash) { try { return validData(JSON.parse(localStorage.getItem(BACKUP + hash))); } catch (e) { return null; } }
 function rememberOpen(hash) { try { if (hash) sessionStorage.setItem(OPEN_KEY, hash); else sessionStorage.removeItem(OPEN_KEY); } catch (e) { /* blocked */ } }
+/* The browser's Back button: opening a PDF adds one step to this tab's history (the address doesn't change), so Back
+   returns to the start screen and Forward opens the PDF again. Opening another PDF from inside one replaces the step. */
+const inPdfStep = () => !!(history.state && history.state.obPdf);
+let stepBack = false, leaving = null;   // Open another PDF went back one step and the browser hasn't arrived yet; the PDF being closed
+function pdfStep(hash) {
+  if (stepBack) return;   // added when the step back lands (popstate)
+  if (inPdfStep()) history.replaceState({ obPdf: hash }, '');
+  else history.pushState({ obPdf: hash }, '');
+}
+function toStart() {   // Open another PDF: close now, and take back the step we added, so Back isn't needed twice
+  if (inPdfStep()) { stepBack = true; leaving = doc; history.back(); }
+  closeDoc(true);
+}
+window.addEventListener('popstate', (e) => {
+  if (stepBack) {   // a PDF picked in the meantime gets its step (not the one still saving on its way out)
+    stepBack = false;
+    if (doc && doc !== leaving) pdfStep(doc.hash);
+    leaving = null;
+    return;
+  }
+  const hash = e.state && e.state.obPdf;
+  if (doc && !hash) closeDoc(true);
+  else if (hash && (!doc || doc.hash !== hash)) reopen(hash);
+});
+async function reopen(hash) {   // a PDF kept in the Open again store
+  const rec = await store.getFile(hash).catch(() => null);
+  if (rec && rec.blob && (!doc || doc.hash !== hash)) openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
+  else if (!rec && inPdfStep()) history.replaceState(null, '');   // no longer stored: stay on the start screen
+}
 window.addEventListener('pagehide', () => { if (doc) { D.at = viewer.currentPage(); backupNow(); dirty = true; writeNow(); writePdf(); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && doc) { dirty = true; writeNow(); writePdf(); } });
 window.addEventListener('beforeunload', (e) => { if (doc && pdfDirty && doc.linkOn) { writePdf(); e.preventDefault(); } });   // the PDF write takes a moment
@@ -285,6 +314,7 @@ async function openFile(file, handlePromise) {
     setStatus(tr(fromPdf ? 'st_loaded_inside_pdf' : saved ? 'st_restored' : 'st_ready', { p: D.active }));
     if (fromPdf || fromBackup) store.saveInk(hash, D).then(() => dropBackup(hash), () => {});   // keep this browser's copy current too
     rememberOpen(hash);
+    pdfStep(hash);
     if (handlePromise) handlePromise.then((h) => { if (h && h.kind === 'file' && doc && doc.hash === hash) doc.origin = h; }, () => {});   // its folder, for save windows
     refreshLink(); reconnectLink();
     loadOutline(pdf);
@@ -308,6 +338,7 @@ async function closeDoc(showStart = true) {
   toc.hidden = true; outline = []; hasChapters = false;
   finder.close(); finder.reset();
   if (showStart) {
+    if (inPdfStep() && !stepBack) history.replaceState(null, '');
     document.body.classList.add('start'); bar.hidden = true; showBtn.classList.remove('show');
     document.title = 'OverBoard PDF';
     renderRecent();
@@ -662,7 +693,7 @@ function onToolbarClick(e) {
     case 'ink-save': saveInkFile(b); break;
     case 'pdf-link': onLinkButton(b); return;
     case 'ink-load': $('#ob-inkfile').click(); break;
-    case 'close': closeDoc(true); break;
+    case 'close': toStart(); break;
     case 'settings': settings.show(true); break;
     case 'report': window.open('report/?from=app', '_blank'); break;   // "Board not working?" page (app/report/)
     case 'side':
@@ -781,9 +812,12 @@ $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]
 /* ---------- start ---------- */
 translateAll(); refresh(); setMode('write'); renderRecent();
 setupOffline(openFile);
-(async () => {   // reopen the PDF that was open before a reload
+(() => {   // reopen the PDF after a reload; typing or clicking the address shows the start screen
+  const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+  const how = nav ? nav.type : 'navigate';
   let hash = null;
-  try { hash = sessionStorage.getItem(OPEN_KEY); } catch (e) { /* blocked */ }
-  const rec = hash && await store.getFile(hash).catch(() => null);
-  if (rec && rec.blob && !doc) openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
+  if (how === 'reload') { try { hash = sessionStorage.getItem(OPEN_KEY); } catch (e) { /* blocked */ } }
+  else if (how === 'back_forward' && inPdfStep()) hash = history.state.obPdf;   // Back/Forward to where a PDF was open
+  if (!hash && inPdfStep()) history.replaceState(null, '');
+  if (hash && !doc) reopen(hash);
 })();

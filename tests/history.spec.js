@@ -1,6 +1,6 @@
 // Undo / Redo and keyboard safety, the same in the PDF app and the HTML overlay:
 // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; reloading from the keyboard is off.
-// A reload (from the browser's button) never loses ink and reopens the PDF.
+// A reload (from the browser's button) never loses ink and reopens the PDF; a fresh visit or Back shows the start screen.
 const { test } = require('@playwright/test');
 const { expect, openApp, openPdf, strokes } = require('./support/app');
 const { openOverlay, savedInk } = require('./support/overlay');
@@ -80,6 +80,44 @@ test.describe('PDF app', () => {
     await page.waitForFunction(() => window.__overboard);
     await page.waitForTimeout(500);
     await expect(page.locator('#ob-start')).toBeVisible();
+  });
+});
+
+test.describe('PDF app: coming back to the app', () => {
+  const pdfOpen = (page) => page.waitForFunction(() => window.__overboard.doc && window.__overboard.viewer.stats().images >= 1);
+  const startScreen = (page) => expect(page.locator('#ob-start')).toBeVisible();
+
+  test("typing or clicking the app's address shows the start screen, not the last PDF", async ({ page }) => {
+    await openApp(page);
+    await openPdf(page, 'worksheet.pdf');
+    await draw(page, 1, line(100, 200, 300, 200));
+    const before = await strokes(page);
+    await page.goto('app/');   // same tab, a fresh visit (not a reload)
+    await page.waitForFunction(() => window.__overboard);
+    await page.waitForTimeout(500);
+    await startScreen(page);
+    await openPdf(page, 'worksheet.pdf');   // its ink was kept
+    expect(await strokes(page)).toEqual(before);
+  });
+
+  test('Back from a PDF goes to the start screen and Forward opens it again; Open another PDF never needs Back twice', async ({ page }) => {
+    await page.goto('./');   // a page before the app, so a second Back has somewhere to go
+    await openApp(page);
+    await openPdf(page, 'worksheet.pdf');
+    await page.goBack();
+    await startScreen(page);
+    await page.goForward();
+    await pdfOpen(page);
+    expect(await page.evaluate(() => window.__overboard.doc.name)).toBe('worksheet.pdf');
+    await page.click('[data-act="file"]');
+    await page.click('#ob-filemenu [data-act="close"]');   // Open another PDF
+    await startScreen(page);
+    await openPdf(page, 'book.pdf');
+    await page.goBack();
+    await startScreen(page);
+    expect(page.url()).toMatch(/\/app\/$/);
+    await page.goBack();   // the start screen was one step: this leaves the app
+    expect(page.url()).not.toMatch(/\/app\//);
   });
 });
 
