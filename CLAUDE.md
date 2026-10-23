@@ -1,6 +1,8 @@
 # OverBoard: notes for Claude
 
-- **The PDF app (`app/`) and the HTML overlay (`overlay/ink_overlay.html`) must always have identical functionality.** The owner mainly uses the HTML overlay. Any toolbar button, shortcut or behavior added to one goes into the other in the same PR. Put shared logic in `shared/ink-core.js` / `shared/toolbar.css`, and bump the overlay version in its first line.
+- **The PDF app (`app/`) and the HTML overlay (`overlay/ink_overlay.html`) should work the same wherever the document type allows.** The owner mainly uses the HTML overlay. Any toolbar button, shortcut or behavior added to one goes into the other in the same PR. Put shared logic in `shared/ink-core.js` / `shared/toolbar.css`, and bump the overlay version in its first line.
+  - Differences the owner has approved, because the documents differ: only PDFs have **Chapters** (and Find text, Export PDF, Save ink into PDF, ink files); so a PDF with chapters shows **Chapters | Clear ▸** (a This page / All pages menu), while the overlay and a PDF without chapters show **Clear page | Clear all**. The overlay keeps ▲ Page / ▼ Page and its own File ▸ items (Save PDF, Save ink into file, Change linked file).
+  - If a new difference seems needed, ask the owner first.
 - After editing `app/`, `shared/` or the overlay, run `python3 tools/build.py` (CI runs `--check`).
 - The toolbar must fit a 1080p board (`tests/site.spec.js`); there is about 10 px to spare, so split an existing cell rather than adding a row.
 - Tests: `npm install && npx playwright install chromium && npm test`.
