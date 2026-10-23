@@ -2,7 +2,7 @@
 // Everything runs in this browser tab. Nothing is uploaded.
 
 import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
-import { fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods } from '../shared/ink-core.js';
+import { makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -521,10 +521,18 @@ window.addEventListener('resize', () => {
 const periodPicker = makePeriodPicker(bar, periodsEl, (name) => { if (ink.switchTo(name)) renderPeriods(); refresh(); }, () => closeMenus('periods'), (k, v) => tr(k, v));
 function renderPeriods() { periodPicker.render(Object.keys(D.periods), D.active); }
 
+/* ---------- ⏱ Timer (shared with the overlay). Its own sound (Settings ▸ Timer sound) is kept beside the ink. ---------- */
+const SOUND_KEY = 'ob-timer-sound';
+const timer = makeTimer({
+  t: () => tr, bar, btn: $('[data-act="timer"]', bar),
+  loadSound: () => store.loadExtra(SOUND_KEY).catch(() => null),
+  saveSound: (rec) => (rec ? store.saveExtra(SOUND_KEY, rec) : store.dropExtra(SOUND_KEY)).then(() => true, () => false),
+});
+
 /* ---------- File ▸ Settings… (shared with the overlay) ---------- */
 const settings = makeSettings({
-  defaults: PERIODS, pen: PEN_COLOR,
-  colors: [...bar.querySelectorAll('[data-color]')].map((b) => [b.dataset.color, b.title, b.dataset.ta]),
+  defaults: PERIODS, pen: PEN_COLOR, extra: timer.soundEl,
+  colors: paletteColors('pen').map((c) => [c[0], c[2], c[1]]),
   langs: obLangs(), setLang, t: () => tr,
   periods: () => (D ? Object.keys(D.periods) : null),
   applyPeriods(names) {
@@ -543,7 +551,7 @@ const settings = makeSettings({
       coverColor: COVER_COLOR, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS, penColor: PEN_COLOR, erasing: false });
     T.color = toolColor(); refresh();
   },
-  onOpen: () => closeMenus(),
+  onOpen: () => { closeMenus(); timer.syncSound(); },
 });
 
 /* ---------- language (Settings ▸ Language, or the 🌐 list on the start screen; shared/strings.js) ---------- */
@@ -558,7 +566,7 @@ function translateAll() {
 }
 function setLang(code) {   // remember the choice and put the new words everywhere at once (no reload)
   try { localStorage.setItem('ob-lang', code); } catch (e) { /* blocked */ }
-  tr = obT(code); translateAll(); renderRecent();
+  tr = obT(code); translateAll(); renderRecent(); timer.refresh();
   if (!doc) return;
   refresh(); refreshLink(); layoutClear(); renderPeriods(); refreshZoom();
   pagesTotal.textContent = tr('of_n', { n: doc.pages });
@@ -568,6 +576,7 @@ function setLang(code) {   // remember the choice and put the new words everywhe
 /* ---------- toolbar ---------- */
 const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
 function refresh() {
+  setPalette(bar, T.hiliting ? (T.covering ? 'cover' : 'hl') : 'pen', tr);   // the swatches change with the tool
   for (const b of bar.querySelectorAll('[data-color]')) b.classList.toggle('on', !T.erasing && b.dataset.color === T.color);
   $('[data-act="custom"]', bar).classList.toggle('on', !T.erasing && !!T.customColor && T.color === T.customColor && !isPreset(T.color));
   customFill.style.background = T.customColor || 'transparent';
@@ -696,6 +705,7 @@ function onToolbarClick(e) {
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': toStart(); break;
     case 'settings': settings.show(true); break;
+    case 'timer': closeMenus(); timer.open(); break;
     case 'report': window.open('report/?from=app&lang=' + tr.lang, '_blank'); break;   // "Board not working?" page (app/report/), in OverBoard's language
     case 'side':
       bar.classList.toggle('right');

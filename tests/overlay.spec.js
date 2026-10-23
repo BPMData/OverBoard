@@ -109,7 +109,7 @@ test('Save PDF with covers: the teacher is told the text can still be copied; co
   await savePdf(page);
   expect(await page.evaluate(() => window.__printed)).toBe(1);
   await tapOn(page, '[data-act="hl-menu"]', 'pen');
-  await tapOn(page, '#ob-hlmenu [data-cover="#5f5f5f"]', 'pen');
+  await tapOn(page, '#ob-hlmenu [data-cover="#a6a6a6"]', 'pen');
   await stroke(page, line(x0, y + 60, x0 + 300, y + 60));
   let msg = '';
   page.once('dialog', (d) => { msg = d.message(); d.dismiss(); });

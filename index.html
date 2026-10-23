@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v25) =====
+<!-- ===== INK OVERLAY START (v26) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -133,6 +133,7 @@
 #ob-hlmenu button.on{border-color:#ffd400}
 #ob-hlmenu .sw{grid-row:1 / 3;width:28px;height:28px;border-radius:6px;box-shadow:0 0 0 2px #fff}
 #ob-hlmenu .sw.hl{background:linear-gradient(transparent 30%,#fff176 30%,#fff176 75%,transparent 75%),repeating-linear-gradient(90deg,#ddd 0 3px,#fff 3px 6px)}
+#ob-hlmenu .sw.pick{background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336)}
 #ob-hlmenu .strength{display:grid;gap:2px;margin:0;padding:4px 6px 8px;color:#fff;font:700 13px Inter,system-ui,sans-serif}
 #ob-hlmenu .strength b{color:#ffd400}
 #ob-hl-strength{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:0;padding:0;border:0;background:transparent;cursor:pointer;touch-action:none}
@@ -168,7 +169,7 @@
 #ob-settings input:focus{outline:none;border-color:#ffd400;box-shadow:0 0 0 2px #ffd400}
 #ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
 #ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
-#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #ob-settings .ob-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 /* Settings & help ▸ (data-act="file"): two short lines in a half-width cell */
 #ink-bar button[data-act="file"]{font-size:13px;line-height:1.15;padding:2px}
@@ -177,8 +178,50 @@
 #ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}
 #ob-settings .ob-tools .ob-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;box-shadow:0 0 0 1px #fff}
 #ob-settings .ob-reset{width:100%;margin-top:10px}
+/* ⏱ Timer (makeTimer in ink-core.js): the setup box in the middle of the screen, then the countdown that floats over the page */
+#ink-bar button[data-act="timer"]{font-variant-numeric:tabular-nums}
+#ob-timerset{position:fixed;inset:0;z-index:102;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
+#ob-timerset[hidden]{display:none}
+#ob-timerset .ob-box{width:min(460px,94vw);max-height:94vh;overflow-y:auto;box-sizing:border-box;padding:16px 18px 18px;background:#1f1f1f;color:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+#ob-timerset .ob-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ob-timerset .ob-head strong{font-size:22px}
+#ob-timerset button{min-height:64px;margin:0;border:3px solid transparent;border-radius:14px;background:#3a3a3a;color:#fff;font:700 20px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 8px;touch-action:manipulation}
+#ob-timerset button.on{border-color:#ffd400}
+#ob-timerset button:disabled{opacity:.35;cursor:default}
+#ob-timerset .ob-head button{min-height:48px;font-size:15px}
+#ob-timerset .ob-tm-pick{display:grid;grid-template-columns:96px 1fr 96px;gap:10px;align-items:center;margin:14px 0}
+#ob-timerset .ob-tm-pick button{min-height:96px;font-size:48px;line-height:1;padding:0}
+#ob-timerset .ob-tm-val{text-align:center;font:800 64px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+#ob-timerset .ob-tm-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#ob-timerset .ob-tm-start{width:100%;margin-top:14px;min-height:84px;font-size:28px;background:#ffd400;color:#000}
+#ob-timer{position:fixed;top:24px;left:24px;z-index:99;width:min(480px,94vw);display:grid;gap:10px;padding:12px 14px 14px;box-sizing:border-box;background:rgba(24,24,24,.94);color:#fff;border-radius:20px;box-shadow:0 6px 28px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+#ob-timer[hidden]{display:none}
+#ob-timer .ob-tm-face{cursor:grab;text-align:center;line-height:1}
+#ob-timer .ob-tm-face b{display:block;font:800 150px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+#ob-timer .ob-tm-msg{display:none;margin-bottom:6px;font:800 36px/1.1 Inter,system-ui,sans-serif}
+#ob-timer.up .ob-tm-msg{display:block}
+#ob-timer.soon .ob-tm-face b{color:#ffd400}
+#ob-timer.paused .ob-tm-face b{opacity:.55}
+#ob-timer.up{animation:ob-tm-flash 1s steps(1) infinite}
+@keyframes ob-tm-flash{0%{background:#c62828}50%{background:#1f1f1f}}
+@media (prefers-reduced-motion:reduce){#ob-timer.up{animation:none;background:#c62828}}
+#ob-timer .ob-tm-btns{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px}
+#ob-timer button{min-width:0;min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 18px Inter,system-ui,sans-serif;cursor:pointer;padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation}
+#ob-timer button[data-tm="pause"]{background:#ffd400;color:#000}
+#ob-timer button[data-tm="reset"],#ob-timer button[data-tm="close"],#ob-timer button[data-tm="small"]{font-size:26px;line-height:1}
+#ob-timer button.warn{background:#c62828;color:#fff;font-size:15px}
+#ob-timer button:disabled{opacity:.35;cursor:default}
+#ob-timer.small{width:auto;padding:6px 14px}
+#ob-timer.small .ob-tm-btns,#ob-timer.small .ob-tm-msg{display:none}
+#ob-timer.small .ob-tm-face b{font-size:44px}
+/* Settings ▸ Timer sound */
+#ob-settings .ob-tm-now{margin:0 0 8px;font-size:14px}
+#ob-settings .ob-tm-sbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#ob-settings .ob-tm-chime{width:100%;margin-top:8px}
+#ob-settings .ob-tm-chime[hidden]{display:none}
+@media print{#ob-timer,#ob-timerset{display:none!important}}
 /* ===== END SHARED TOOLBAR CSS ===== */
-@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings{display:none!important}}
+@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings,#ob-timer,#ob-timerset{display:none!important}}
 </style>
 <canvas id="ink-hl"></canvas>
 <canvas id="ink-canvas"></canvas>
@@ -195,11 +238,8 @@
     <button data-color="#111111" style="background:#111" aria-label="Black" title="Black" data-ta="black" data-tt="black"></button>
     <button data-color="#1565c0" style="background:#1565c0" aria-label="Blue" title="Blue" data-ta="blue" data-tt="blue"></button>
     <button data-color="#d32f2f" style="background:#d32f2f" aria-label="Red" title="Red" data-ta="red" data-tt="red"></button>
-    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green" data-ta="green" data-tt="green"></button>
     <button data-color="#e0218a" style="background:#e0218a" aria-label="Barbie pink" title="Barbie pink" data-ta="pink" data-tt="pink"></button>
-    <button data-color="#e8441a" style="background:#e8441a" aria-label="Sunset orange" title="Sunset orange" data-ta="orange" data-tt="orange"></button>
-    <button data-color="#fdd835" style="background:#fdd835" aria-label="Yellow" title="Yellow" data-ta="yellow" data-tt="yellow"></button>
-    <button data-color="#7b1fa2" style="background:#7b1fa2" aria-label="Purple" title="Purple" data-ta="purple" data-tt="purple"></button>
+    <button data-color="#2e7d32" style="background:#2e7d32" aria-label="Green" title="Green" data-ta="green" data-tt="green"></button>
     <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color" data-ta="custom_color" data-tt="custom_color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
   </div>
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
@@ -209,6 +249,7 @@
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)">Clear page</button>
   <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)">Clear all</button>
   <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out" data-ta="zoom_out" data-tt="zoom_out">&minus;</button><button data-act="zoom-fit" class="sm" data-tt="zoom_tip" title="Page zoom. Tap to fit the page to the screen.">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in" data-ta="zoom_in" data-tt="zoom_in">+</button></div>
+  <button data-act="timer" class="sm wide" data-t="timer_btn" data-tt="timer_tip" title="A big countdown for the class, with a sound at zero">&#9201; Timer</button>
   <button data-act="file" aria-haspopup="true" aria-expanded="false" data-t="menu" data-tt="menu_tip" title="Save PDF, save ink into the file, settings, language and help">Settings &amp; help &#9656;</button>
   <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the ✎ button brings it back)">Hide</button>
   <div id="ink-status" data-tt="status_tip" title="What OverBoard did last">Ink saves automatically</div>
@@ -378,6 +419,26 @@
   /* highlight color at a strength in % (10-100): mixed toward white. It multiplies, so printed text stays black. */
   function hlInk(color, strength){ return tint(color, 1 - strength / 100); }
 
+  /* The five color swatches change with the tool: pen colors you can read, highlighter colors that are light
+     enough to read through, and cover colors. [color, strings.js key for its name, English name] */
+  function paletteColors(mode){
+    if (mode === 'hl') return [['#fdd835', 'yellow', 'Yellow'], ['#2e7d32', 'green', 'Green'], ['#e0218a', 'pink', 'Barbie pink'], ['#1565c0', 'blue', 'Blue'], ['#e8441a', 'orange', 'Sunset orange']];
+    if (mode === 'cover') return [['#111111', 'cover_black', 'Cover: black'], ['#a6a6a6', 'cover_light', 'Cover: light gray'], ['#ffffff', 'cover_white', 'Cover: white'], ['#fdd835', 'cover_yellow', 'Cover: yellow'], ['#e0218a', 'cover_pink', 'Cover: pink']];
+    return [['#111111', 'black', 'Black'], ['#1565c0', 'blue', 'Blue'], ['#d32f2f', 'red', 'Red'], ['#e0218a', 'pink', 'Barbie pink'], ['#2e7d32', 'green', 'Green']];
+  }
+  /* show the swatches for mode ('pen', 'hl' or 'cover') in the toolbar; t (optional) is the translator */
+  function setPalette(bar, mode, t){
+    var box = bar.querySelector('#ink-colors'); if (!box || box.dataset.mode === mode && !t) return;
+    var bs = box.querySelectorAll('[data-color]'), cs = paletteColors(mode);
+    box.dataset.mode = mode;
+    for (var i = 0; i < bs.length && i < cs.length; i++) {
+      var b = bs[i], c = cs[i], name = t ? t(c[1]) : c[2];
+      b.dataset.color = c[0]; b.style.background = c[0];
+      b.setAttribute('data-ta', c[1]); b.setAttribute('data-tt', c[1]);
+      b.setAttribute('aria-label', name); b.title = name;
+    }
+  }
+
   /* put a popout beside the toolbar, next to btn (alignTop: tops line up; otherwise bottoms) */
   function placeMenu(menu, btn, bar, alignTop){
     var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), m = menu.getBoundingClientRect();
@@ -395,7 +456,8 @@
      Returns { el, show(open), sync() }. */
   function makeHlMenu(bar, S, onPick, onOpen){
     var btn = bar.querySelector('[data-act="hl-menu"]');
-    var covers = [['#111111', 'Cover: black', 'hides answers', 'cover_black'], ['#5f5f5f', 'Cover: dark gray', '', 'cover_dark'], ['#a6a6a6', 'Cover: light gray', '', 'cover_light']];
+    // the last one opens the color picker (the toolbar's own), for a cover in any color
+    var covers = [['#111111', 'Cover: black', 'cover_black'], ['#a6a6a6', 'Cover: light gray', 'cover_light'], ['#ffffff', 'Cover: white', 'cover_white'], ['pick', 'Cover: any color…', 'cover_any']];
     var m = document.createElement('div');
     m.id = 'ob-hlmenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Highlighter'); m.setAttribute('data-ta', 'highlighter'); m.hidden = true;
     // data-t / data-ta: words translated by obTranslate (shared/strings.js)
@@ -403,8 +465,8 @@
       '<label class="strength"><span><span data-t="hl_strength">Highlight strength</span> <b id="ob-hl-pct"></b></span>' +
       '<input type="range" id="ob-hl-strength" min="10" max="100" step="5" aria-label="Highlight strength" data-ta="hl_strength"></label>';
     for (var i = 0; i < covers.length; i++)
-      html += '<button data-mode="cover" data-cover="' + covers[i][0] + '"><span class="sw" style="background:' + covers[i][0] + '"></span>' +
-        '<span data-t="' + covers[i][3] + '">' + covers[i][1] + '</span>' + (covers[i][2] ? '<small data-t="hides_answers">' + covers[i][2] + '</small>' : '') + '</button>';
+      html += '<button data-mode="cover" data-cover="' + covers[i][0] + '"><span class="sw' + (covers[i][0] === 'pick' ? ' pick"' : '" style="background:' + covers[i][0] + '"') + '></span>' +
+        '<span data-t="' + covers[i][2] + '">' + covers[i][1] + '</span><small data-t="hides_answers">hides answers</small></button>';
     m.innerHTML = html;
     document.body.appendChild(m);
     var slider = m.querySelector('input'), pct = m.querySelector('b');
@@ -417,15 +479,23 @@
       slider.value = S.hlStrength; pct.textContent = S.hlStrength + '%';
       slider.style.setProperty('--fill', hlInk(S.hlColor, S.hlStrength));
       var bs = m.querySelectorAll('button');
-      for (var i = 0; i < bs.length; i++)
-        bs[i].classList.toggle('on', bs[i].dataset.mode === 'cover' ? S.covering && bs[i].dataset.cover === S.coverColor : !S.covering);
+      var fixed = covers.map(function(c){ return c[0]; });
+      for (var i = 0; i < bs.length; i++) {
+        var c = bs[i].dataset.cover;
+        bs[i].classList.toggle('on', bs[i].dataset.mode === 'cover' ? S.covering && (c === S.coverColor || (c === 'pick' && fixed.indexOf(S.coverColor) < 0)) : !S.covering);
+      }
     }
     btn.addEventListener('click', function(){ show(m.hidden); });
     m.addEventListener('click', function(e){
       var b = e.target.closest('button'); if (!b) return;
       S.covering = b.dataset.mode === 'cover';
-      if (S.covering) S.coverColor = b.dataset.cover;
+      var pick = b.dataset.cover === 'pick', picker = bar.querySelector('#ink-picker');
+      if (S.covering && !pick) S.coverColor = b.dataset.cover;
       show(false); onPick();
+      if (pick && picker) {   // a picked color becomes the cover's color (the toolbar's picker handles it while covering)
+        picker.value = S.coverColor;
+        try { if (picker.showPicker) picker.showPicker(); else picker.click(); } catch(_){ picker.click(); }
+      }
     });
     slider.addEventListener('input', function(){ S.hlStrength = +slider.value; S.covering = false; onPick(); });
     document.addEventListener('pointerdown', function(e){ if (!m.hidden && !m.contains(e.target) && !btn.contains(e.target)) show(false); }, true);
@@ -585,7 +655,8 @@
            periods(): the open document's period names (or null),
            applyPeriods(names): use them on the open document; return false if the teacher said no,
            tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen(),
-           langs: [[code, name], …] and setLang(code) for the Language buttons, t(): the current translator }
+           langs: [[code, name], …] and setLang(code) for the Language buttons, t(): the current translator,
+           extra: an element to show above Toolbar settings (optional) }
      colors may carry a third item, the strings.js key for the color's name.
      Returns { el, show(open) }. */
   function makeSettings(O){
@@ -617,6 +688,7 @@
       '<p class="ob-hint" data-t="remembers_hint">The toolbar remembers these when you change them.</p>' +
       '<button data-s="reset" class="ob-reset" data-t="reset_tools">Reset tools to defaults</button>' +
       '</div>';
+    if (O.extra) el.querySelector('.ob-box').insertBefore(O.extra, el.querySelector('[data-t="toolbar_settings"]'));   // e.g. the Timer sound section (makeTimer)
     document.body.appendChild(el);
     var namesEl = el.querySelector('.ob-names'), err = el.querySelector('.ob-err');
     var names = [], touched = false;
@@ -705,6 +777,273 @@
     return { el: el, show: show };
   }
 
+  /* ---- the ⏱ Timer, the same in the PDF app and the overlay ----
+     Setting the time is all big taps: presets and − / + minutes (hold to go faster). No typing.
+     The countdown floats over the page in its own box: drag it aside, shrink it to a small box, or close it.
+     It never touches the ink: drawing listens on the page itself, and a stroke that passes under the box keeps
+     going (the page holds on to the pen until it lifts).
+     At zero the box flashes and a sound plays: a short chime made on the spot (Web Audio, no sound file), or the
+     teacher's own .wav / .mp3 from Settings ▸ Timer sound, kept in this browser's database. Browsers only allow
+     sound after a tap, so tapping Start (or Test sound) switches sound on.
+     O = { t(): the current translator, bar: the toolbar, btn: the toolbar's Timer button (shows the time left),
+           loadSound(): Promise of { name, type, data: ArrayBuffer } or null, saveSound(rec or null): Promise of true / false }
+     Returns { open(), soundEl: the section for Settings, syncSound(), refresh(), els: [setup box, timer box] }. */
+  function makeTimer(O){
+    var PRESETS = [1, 2, 3, 5, 10, 15], MAX = 99, SOUND_MAX = 5 * 1024 * 1024;
+    function tr(k, v){ return O.t ? O.t()(k, v) : k; }
+    function ls(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){} return null; }
+    var mins = parseInt(ls('ob-timer-min'), 10); if (!(mins >= 1 && mins <= MAX)) mins = 5;
+    var total = 0, left = 0, endAt = 0, running = false, up = false, tick = null, pos = null;
+    try { pos = JSON.parse(ls('ob-timer-pos')); } catch(e){}
+
+    /* the setup box: − / + minutes, presets, Start */
+    var set = document.createElement('div'), pre = '';
+    set.id = 'ob-timerset'; set.hidden = true;
+    set.setAttribute('role', 'dialog'); set.setAttribute('aria-modal', 'true'); set.setAttribute('aria-label', 'Timer'); set.setAttribute('data-ta', 'timer');
+    for (var i = 0; i < PRESETS.length; i++) pre += '<button data-min="' + PRESETS[i] + '"></button>';
+    set.innerHTML = '<div class="ob-box"><div class="ob-head"><strong data-t="timer">Timer</strong><button data-ts="cancel" data-t="cancel">Cancel</button></div>' +
+      '<div class="ob-tm-pick"><button data-ts="less" aria-label="One minute less" title="One minute less" data-ta="timer_less" data-tt="timer_less">&minus;</button>' +
+      '<b class="ob-tm-val" dir="ltr"></b>' +
+      '<button data-ts="more" aria-label="One minute more" title="One minute more" data-ta="timer_more" data-tt="timer_more">+</button></div>' +
+      '<div class="ob-tm-presets">' + pre + '</div>' +
+      '<button data-ts="start" class="ob-tm-start" data-t="timer_start">Start</button></div>';
+    document.body.appendChild(set);
+    var val = set.querySelector('.ob-tm-val');
+    function drawSet(){
+      val.textContent = mins + ':00';
+      var bs = set.querySelectorAll('[data-min]');
+      for (var i = 0; i < bs.length; i++) { bs[i].textContent = tr('n_min', { n: bs[i].dataset.min }); bs[i].classList.toggle('on', +bs[i].dataset.min === mins); }
+      set.querySelector('[data-ts="less"]').disabled = mins <= 1;
+      set.querySelector('[data-ts="more"]').disabled = mins >= MAX;
+    }
+    function stepMin(d){ var m = Math.min(MAX, Math.max(1, mins + d)); if (m === mins) return false; mins = m; drawSet(); return true; }
+    holdRepeat(set.querySelector('[data-ts="less"]'), function(){ return stepMin(-1); });
+    holdRepeat(set.querySelector('[data-ts="more"]'), function(){ return stepMin(1); });
+    function showSet(open){ if (open) drawSet(); set.hidden = !open; }
+    set.addEventListener('click', function(e){
+      if (e.target === set) return showSet(false);   // a tap outside the box
+      var b = e.target.closest('button'); if (!b) return;
+      var a = b.dataset.ts;
+      if (b.dataset.min) { mins = +b.dataset.min; drawSet(); }
+      else if (a === 'cancel') showSet(false);
+      else if (a === 'start') start();
+      else if ((a === 'less' || a === 'more') && e.detail === 0) stepMin(a === 'less' ? -1 : 1);   // keyboard only; taps are handled on pointerdown
+    });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !set.hidden) showSet(false); });
+
+    /* the countdown box */
+    var box = document.createElement('div');
+    box.id = 'ob-timer'; box.hidden = true;
+    box.setAttribute('role', 'timer'); box.setAttribute('aria-label', 'Timer'); box.setAttribute('data-ta', 'timer');
+    box.innerHTML = '<div class="ob-tm-face" title="Drag to move the timer. When it\'s small, tap to make it big." data-tt="timer_drag">' +
+        '<span class="ob-tm-msg" data-t="times_up">Time\'s up!</span><b dir="ltr"></b></div>' +
+      '<div class="ob-tm-btns">' +
+        '<button data-tm="pause" title="Pause the countdown, or start it again" data-tt="timer_pause_tip"></button>' +
+        '<button data-tm="reset" aria-label="Reset" data-ta="timer_reset" title="Back to the start time (paused)" data-tt="timer_reset_tip">&#8634;</button>' +
+        '<button data-tm="plus" aria-label="Add a minute" data-ta="timer_plus" title="Add a minute" data-tt="timer_plus">+1</button>' +
+        '<button data-tm="small" aria-label="Make the timer small" data-ta="timer_small" title="Shrink the timer out of the way; tap it to make it big again" data-tt="timer_small_tip">&#9601;</button>' +
+        '<button data-tm="close" aria-label="Close the timer" data-ta="timer_close" title="Close the timer (tap twice while it\'s running)" data-tt="timer_close_tip">&times;</button>' +
+      '</div>';
+    document.body.appendChild(box);
+    var face = box.querySelector('.ob-tm-face'), digits = face.querySelector('b'), pauseBtn = box.querySelector('[data-tm="pause"]');
+
+    function fmt(ms){ var s = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(s / 60); s %= 60; return m + ':' + (s < 10 ? '0' : '') + s; }
+    function remaining(){ return running ? endAt - Date.now() : left; }
+    function draw(){
+      var ms = remaining(), k = running ? 'timer_pause' : left < total ? 'timer_resume' : 'timer_start';
+      digits.textContent = fmt(ms);
+      box.classList.toggle('up', up);
+      box.classList.toggle('soon', running && ms <= 10000);   // the last ten seconds turn yellow
+      box.classList.toggle('paused', !running && !up);
+      pauseBtn.setAttribute('data-t', k); pauseBtn.textContent = tr(k); pauseBtn.disabled = up;
+      if (O.btn) O.btn.textContent = box.hidden ? tr('timer_btn') : '⏱ ' + fmt(ms);
+    }
+    function loop(on){
+      clearInterval(tick); tick = null;
+      if (on) tick = setInterval(function(){ if (endAt - Date.now() <= 0) finish(); else draw(); }, 200);
+    }
+    function run(){ endAt = Date.now() + left; running = true; up = false; loop(true); draw(); }
+    function pause(){ left = Math.max(0, endAt - Date.now()); running = false; loop(false); draw(); }
+    function finish(){ running = false; up = true; left = 0; loop(false); setSmall(false); draw(); ring(); }
+    function reset(){ stopSound(); running = false; up = false; left = total; loop(false); draw(); }
+    function plus(){
+      stopSound();
+      if (up) { up = false; left = 60000; return run(); }
+      if (running) endAt = Math.min(endAt + 60000, Date.now() + MAX * 60000);
+      else left = Math.min(left + 60000, MAX * 60000);
+      draw();
+    }
+    function close(){ stopSound(); running = false; up = false; loop(false); box.hidden = true; draw(); }
+    function start(){
+      audio();   // this tap is what lets the page make a sound at zero
+      loadBuffer();
+      ls('ob-timer-min', String(mins));
+      total = left = mins * 60000;
+      showSet(false);
+      var was = box.hidden;
+      box.hidden = false; box.classList.remove('small');
+      if (was) place();
+      run(); fitLabels(box);
+    }
+
+    /* moving it: drag the numbers with a finger or the pen (a palm on it does nothing) */
+    function moveTo(x, y){
+      var w = box.offsetWidth, h = box.offsetHeight;
+      x = Math.max(4, Math.min(x, innerWidth - w - 4)); y = Math.max(4, Math.min(y, innerHeight - h - 4));
+      box.style.left = x + 'px'; box.style.top = y + 'px';
+      pos = { x: Math.round(x), y: Math.round(y) };
+    }
+    function place(){   // where it was left last time, else the top corner away from the toolbar
+      if (pos && typeof pos.x === 'number') return moveTo(pos.x, pos.y);
+      var right = O.bar && O.bar.classList.contains('right');
+      moveTo(right ? 24 : innerWidth - box.offsetWidth - 24, 24);
+    }
+    function setSmall(small){
+      if (box.hidden || box.classList.contains('small') === small) return;
+      var r = box.getBoundingClientRect(), keepRight = r.left + r.width / 2 > innerWidth / 2;   // stay against the nearer side
+      box.classList.toggle('small', small);
+      moveTo(keepRight ? r.right - box.offsetWidth : r.left, r.top);
+      ls('ob-timer-pos', JSON.stringify(pos));
+    }
+    var drag = null;
+    face.addEventListener('pointerdown', function(e){
+      if (pointerKind(e) === 'palm' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      e.preventDefault();
+      var r = box.getBoundingClientRect();
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, l: r.left, t: r.top, moved: false };
+      try { face.setPointerCapture(e.pointerId); } catch(_){}
+    });
+    face.addEventListener('pointermove', function(e){
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 8) return;   // a tap wobbles a little
+      drag.moved = true; moveTo(drag.l + dx, drag.t + dy);
+    });
+    function endDrag(e){
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      if (d.moved) return ls('ob-timer-pos', JSON.stringify(pos));
+      if (e.type !== 'pointerup') return;
+      if (up) reset();                                     // a tap on a flashing timer stops the alert
+      else if (box.classList.contains('small')) setSmall(false);
+    }
+    face.addEventListener('pointerup', endDrag);
+    face.addEventListener('pointercancel', endDrag);
+    face.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    window.addEventListener('resize', function(){ if (!box.hidden) moveTo(parseFloat(box.style.left) || 0, parseFloat(box.style.top) || 0); });
+    box.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      audio();
+      var a = b.dataset.tm;
+      if (a === 'pause') { if (running) pause(); else run(); }
+      else if (a === 'reset') reset();
+      else if (a === 'plus') plus();
+      else if (a === 'small') setSmall(true);
+      else if (a === 'close') { if (running) confirmTap(b, close, tr('sure')); else close(); }
+    });
+
+    /* sound: the built-in chime, or the teacher's own file */
+    var actx = null, rec, buf = null, playing = null;   // rec: { name, type, data } or null for the chime; undefined until read
+    function audio(){
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      try { if (!actx) actx = new C(); if (actx.state === 'suspended') actx.resume(); } catch(e){ return null; }
+      return actx;
+    }
+    function chime(ctx){   // three bell notes, twice: each a sine tone plus a faint higher one, struck and fading out
+      var t0 = ctx.currentTime + 0.05, notes = [784, 988, 1319];
+      for (var r = 0; r < 2; r++) for (var i = 0; i < notes.length; i++) {
+        var at = t0 + r * 1.1 + i * 0.25;
+        [[notes[i], 0.3], [notes[i] * 2.76, 0.05]].forEach(function(p){
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = p[0];
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(p[1], at + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 1.4);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(at); o.stop(at + 1.5);
+        });
+      }
+    }
+    function getRec(){
+      if (rec !== undefined) return Promise.resolve(rec);
+      return Promise.resolve(O.loadSound ? O.loadSound() : null).then(function(r){ rec = r && r.data ? r : null; return rec; }, function(){ rec = null; return null; });
+    }
+    function decode(ctx, data){
+      return new Promise(function(ok, bad){
+        try { var p = ctx.decodeAudioData(data.slice(0), ok, bad); if (p && p.then) p.then(ok, bad); } catch(e){ bad(e); }
+      });
+    }
+    function loadBuffer(){   // get the teacher's sound ready to play
+      var ctx = audio(); if (!ctx) return Promise.resolve(null);
+      return getRec().then(function(r){
+        if (!r) return null;
+        if (buf && buf.rec === r) return buf.b;
+        return decode(ctx, r.data).then(function(b){ buf = { rec: r, b: b }; return b; }, function(){ return null; });
+      });
+    }
+    function stopSound(){ if (playing) { try { playing.stop(); } catch(e){} playing = null; } }
+    function ring(){
+      var ctx = audio(); if (!ctx) return;
+      stopSound();
+      var b = rec && buf && buf.rec === rec ? buf.b : null;
+      if (!b) return chime(ctx);
+      var s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(); playing = s;
+    }
+
+    /* Settings ▸ Timer sound */
+    var snd = document.createElement('div');
+    snd.className = 'ob-tm-sound';
+    snd.innerHTML = '<h3 data-t="timer_sound">Timer sound</h3><p class="ob-tm-now"></p>' +
+      '<div class="ob-tm-sbtns"><button data-snd="test" data-t="test_sound">&#9654; Test sound</button><button data-snd="pick" data-t="choose_sound">Choose a sound…</button></div>' +
+      '<button data-snd="chime" class="ob-tm-chime" data-t="use_chime" hidden>Back to the built-in chime</button>' +
+      '<p class="ob-hint" data-t="sound_hint">Your own sound: a .wav or .mp3 file, up to 5 MB. It stays in this browser.</p>' +
+      '<p class="ob-err" role="alert" hidden></p>' +
+      '<input type="file" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg" hidden>';
+    var now = snd.querySelector('.ob-tm-now'), err = snd.querySelector('.ob-err'), file = snd.querySelector('input');
+    function syncSound(){
+      return getRec().then(function(r){
+        now.textContent = tr('sound_now', { name: r ? r.name : tr('chime') });
+        snd.querySelector('[data-snd="chime"]').hidden = !r;
+      });
+    }
+    function oops(k){ err.textContent = tr(k); err.hidden = false; }
+    function keep(r){
+      stopSound();
+      return Promise.resolve(O.saveSound ? O.saveSound(r) : false).then(function(ok){
+        if (!ok) return oops('sound_save_fail');
+        rec = r; buf = null; return syncSound();
+      });
+    }
+    snd.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      err.hidden = true;
+      if (b.dataset.snd === 'test') { audio(); stopSound(); loadBuffer().then(ring); }
+      else if (b.dataset.snd === 'pick') { file.value = ''; file.click(); }
+      else if (b.dataset.snd === 'chime') keep(null);
+    });
+    file.addEventListener('change', function(){
+      var f = file.files && file.files[0]; if (!f) return;
+      err.hidden = true;
+      if (!/\.(wav|mp3)$/i.test(f.name) && !/^audio\/(wav|x-wav|wave|mpeg|mp3)$/.test(f.type)) return oops('sound_bad');
+      if (f.size > SOUND_MAX) return oops('sound_too_big');
+      var ctx = audio();
+      (f.arrayBuffer ? f.arrayBuffer() : new Response(f).arrayBuffer()).then(function(data){
+        var r = { name: f.name, type: f.type, data: data };
+        return (ctx ? decode(ctx, data) : Promise.resolve(null)).then(function(b){   // only keep a file this browser can play
+          return keep(r).then(function(){ if (b && rec === r) buf = { rec: r, b: b }; });
+        }, function(){ oops('sound_bad'); });
+      });
+    });
+
+    draw();
+    return {
+      open: function(){ showSet(true); },
+      soundEl: snd, syncSound: syncSound, els: [set, box],
+      refresh: function(){ if (!set.hidden) drawSet(); draw(); if (!snd.offsetParent) return; syncSound(); },   // after the language changes
+    };
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -773,7 +1112,7 @@
       }
     }
     var tag = { zh: 'zh-CN', pt: 'pt-BR', tl: 'fil' }[t.lang] || t.lang;
-    var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
+    var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-timer', 'ob-timerset', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
     for (i = 0; i < boxes.length; i++) {
       var b = document.getElementById(boxes[i]); if (!b) continue;
       b.setAttribute('lang', tag);
@@ -813,7 +1152,6 @@
       "pink": ["Barbie pink", "Rosa Barbie", "芭比粉", "Barbie pink", "Hồng Barbie", "Rose Barbie", "Rosa Barbie", "وردي باربي"],
       "orange": ["Sunset orange", "Naranja atardecer", "夕阳橙", "Kahel", "Cam hoàng hôn", "Orange coucher de soleil", "Laranja pôr do sol", "برتقالي الغروب"],
       "yellow": ["Yellow", "Amarillo", "黄色", "Dilaw", "Vàng", "Jaune", "Amarelo", "أصفر"],
-      "purple": ["Purple", "Morado", "紫色", "Lila", "Tím", "Violet", "Roxo", "بنفسجي"],
       "custom_color": ["Pick any color", "Elegir cualquier color", "选择任意颜色", "Pumili ng kahit anong kulay", "Chọn màu bất kỳ", "Choisir une couleur", "Escolher qualquer cor", "اختر أي لون"],
       "thinner": ["Thinner", "Más fino", "更细", "Mas manipis", "Mảnh hơn", "Plus fin", "Mais fino", "أرفع"],
       "thicker": ["Thicker", "Más grueso", "更粗", "Mas makapal", "Dày hơn", "Plus épais", "Mais grosso", "أعرض"],
@@ -887,7 +1225,6 @@
       "hl_strength": ["Highlight strength", "Intensidad del resaltado", "高亮深浅", "Tingkad ng highlight", "Độ đậm tô sáng", "Intensité du surlignage", "Intensidade do destaque", "قوة التمييز"],
       "cover_black": ["Cover: black", "Tapar: negro", "遮盖：黑色", "Takip: itim", "Che: đen", "Cacher : noir", "Cobrir: preto", "تغطية: أسود"],
       "hides_answers": ["hides answers", "oculta respuestas", "挡住答案", "itinatago ang sagot", "giấu đáp án", "masque les réponses", "esconde respostas", "يخفي الإجابات"],
-      "cover_dark": ["Cover: dark gray", "Tapar: gris oscuro", "遮盖：深灰", "Takip: madilim na abo", "Che: xám đậm", "Cacher : gris foncé", "Cobrir: cinza escuro", "تغطية: رمادي داكن"],
       "cover_light": ["Cover: light gray", "Tapar: gris claro", "遮盖：浅灰", "Takip: mapusyaw na abo", "Che: xám nhạt", "Cacher : gris clair", "Cobrir: cinza claro", "تغطية: رمادي فاتح"],
       "settings": ["Settings", "Ajustes", "设置", "Settings", "Cài đặt", "Réglages", "Ajustes", "الإعدادات"],
       "done": ["Done", "Listo", "完成", "Tapos", "Xong", "OK", "Pronto", "تم"],
@@ -1018,6 +1355,39 @@
       "embed_6": ["This browser can't keep saving into a file, so you get a one-time download, <b class=\"name\">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.", "Este navegador no puede seguir guardando en un archivo, así que recibes una descarga única, <b class=\"name\">Name_board.pdf</b>. Chrome o Edge pueden mantenerlo guardado automáticamente.", "此浏览器无法持续保存到文件，所以你会得到一次性下载的 <b class=\"name\">Name_board.pdf</b>。Chrome 或 Edge 可以自动保持保存。", "Hindi kayang patuloy na mag-save sa file ng browser na ito, kaya isang beses mo itong mada-download, <b class=\"name\">Name_board.pdf</b>. Kaya ng Chrome o Edge na awtomatikong i-save ito.", "Trình duyệt này không thể lưu liên tục vào tệp, nên bạn sẽ tải về một lần, <b class=\"name\">Name_board.pdf</b>. Chrome hoặc Edge có thể tự động lưu liên tục.", "Ce navigateur ne peut pas continuer à enregistrer dans un fichier : vous obtenez un téléchargement unique, <b class=\"name\">Name_board.pdf</b>. Chrome ou Edge peuvent l'enregistrer automatiquement.", "Este navegador não consegue continuar salvando num arquivo, então você recebe um download único, <b class=\"name\">Name_board.pdf</b>. O Chrome ou o Edge podem manter salvo automaticamente.", "لا يستطيع هذا المتصفح مواصلة الحفظ في ملف، لذا ستحصل على تنزيل لمرة واحدة، <b class=\"name\">Name_board.pdf</b>. يمكن لـ Chrome أو Edge الحفظ تلقائيًا."],
       "embed_off": ["Leave it off and nothing changes: ink still saves in this browser.", "Si lo dejas desactivado, nada cambia: la tinta se sigue guardando en este navegador.", "保持关闭则一切照旧：笔迹仍保存在此浏览器中。", "Kapag naka-off, walang magbabago: nase-save pa rin ang tinta sa browser na ito.", "Để tắt thì không có gì thay đổi: nét mực vẫn được lưu trong trình duyệt này.", "Laissez désactivé et rien ne change : l'encre reste enregistrée dans ce navigateur.", "Deixe desligado e nada muda: a tinta continua salva neste navegador.", "اتركه متوقفًا ولن يتغير شيء: لا يزال الحبر يُحفظ في هذا المتصفح."],
       "cancel": ["Cancel", "Cancelar", "取消", "Kanselahin", "Hủy", "Annuler", "Cancelar", "إلغاء"],
+      "timer_btn": ["⏱ Timer", "⏱ Temporizador", "⏱ 计时器", "⏱ Timer", "⏱ Hẹn giờ", "⏱ Minuteur", "⏱ Temporizador", "⏱ المؤقت"],
+      "timer_tip": ["A big countdown for the class, with a sound at zero", "Una cuenta atrás grande para la clase, con un sonido al llegar a cero", "给全班看的大号倒计时，到零时响铃", "Malaking countdown para sa klase, may tunog pagdating sa zero", "Đồng hồ đếm ngược lớn cho cả lớp, có âm báo khi về 0", "Un grand compte à rebours pour la classe, avec un son à zéro", "Uma contagem regressiva grande para a turma, com um som no zero", "عدّ تنازلي كبير للصف، مع صوت عند الصفر"],
+      "timer": ["Timer", "Temporizador", "计时器", "Timer", "Hẹn giờ", "Minuteur", "Temporizador", "المؤقت"],
+      "n_min": ["{n} min", "{n} min", "{n} 分钟", "{n} min", "{n} phút", "{n} min", "{n} min", "{n} دقيقة"],
+      "timer_less": ["One minute less", "Un minuto menos", "减少一分钟", "Bawasan ng isang minuto", "Bớt một phút", "Une minute de moins", "Um minuto a menos", "دقيقة أقل"],
+      "timer_more": ["One minute more", "Un minuto más", "增加一分钟", "Dagdagan ng isang minuto", "Thêm một phút", "Une minute de plus", "Um minuto a mais", "دقيقة أكثر"],
+      "timer_start": ["Start", "Iniciar", "开始", "Simulan", "Bắt đầu", "Démarrer", "Iniciar", "ابدأ"],
+      "timer_pause": ["Pause", "Pausar", "暂停", "I-pause", "Tạm dừng", "Pause", "Pausar", "إيقاف مؤقت"],
+      "timer_resume": ["Resume", "Seguir", "继续", "Ituloy", "Tiếp tục", "Reprendre", "Continuar", "استئناف"],
+      "timer_pause_tip": ["Pause the countdown, or start it again", "Pausa la cuenta atrás, o sigue con ella", "暂停倒计时，或继续", "I-pause ang countdown, o ituloy ito", "Tạm dừng hoặc tiếp tục đếm ngược", "Mettre le compte à rebours en pause, ou le reprendre", "Pausar a contagem, ou continuar", "أوقف العدّ التنازلي مؤقتًا أو تابعه"],
+      "timer_reset": ["Reset", "Reiniciar", "重置", "I-reset", "Đặt lại", "Réinitialiser", "Reiniciar", "إعادة الضبط"],
+      "timer_reset_tip": ["Back to the start time (paused)", "Volver al tiempo inicial (en pausa)", "回到开始的时间（暂停）", "Bumalik sa simulang oras (naka-pause)", "Về lại thời gian ban đầu (tạm dừng)", "Revenir au temps de départ (en pause)", "Voltar ao tempo inicial (pausado)", "العودة إلى وقت البداية (متوقف مؤقتًا)"],
+      "timer_plus": ["Add a minute", "Añadir un minuto", "加一分钟", "Magdagdag ng isang minuto", "Thêm một phút", "Ajouter une minute", "Adicionar um minuto", "أضف دقيقة"],
+      "timer_small": ["Make the timer small", "Hacer pequeño el temporizador", "把计时器缩小", "Paliitin ang timer", "Thu nhỏ đồng hồ", "Réduire le minuteur", "Diminuir o temporizador", "صغّر المؤقت"],
+      "timer_small_tip": ["Shrink the timer out of the way; tap it to make it big again", "Hazlo pequeño para que no estorbe; tócalo para agrandarlo otra vez", "缩小计时器以免挡住；点一下即可再放大", "Paliitin para hindi nakaharang; i-tap para lumaki ulit", "Thu nhỏ cho đỡ vướng; chạm vào để phóng to lại", "Le réduire pour qu'il ne gêne pas ; touchez-le pour l'agrandir", "Diminua para não atrapalhar; toque para aumentar de novo", "صغّره حتى لا يعيق؛ المسه ليكبر من جديد"],
+      "timer_close": ["Close the timer", "Cerrar el temporizador", "关闭计时器", "Isara ang timer", "Đóng đồng hồ", "Fermer le minuteur", "Fechar o temporizador", "أغلق المؤقت"],
+      "timer_close_tip": ["Close the timer (tap twice while it's running)", "Cerrar el temporizador (toca dos veces si está en marcha)", "关闭计时器（运行中需点两次）", "Isara ang timer (i-tap nang dalawang beses kapag tumatakbo)", "Đóng đồng hồ (chạm hai lần khi đang chạy)", "Fermer le minuteur (touchez deux fois s'il tourne)", "Fechar o temporizador (toque duas vezes se estiver rodando)", "أغلق المؤقت (المس مرتين أثناء تشغيله)"],
+      "timer_drag": ["Drag to move the timer. When it's small, tap to make it big.", "Arrastra para mover el temporizador. Si está pequeño, tócalo para agrandarlo.", "拖动可移动计时器。缩小时点一下可放大。", "I-drag para ilipat ang timer. Kapag maliit, i-tap para lumaki.", "Kéo để di chuyển đồng hồ. Khi đang nhỏ, chạm để phóng to.", "Faites glisser pour déplacer le minuteur. S'il est petit, touchez-le pour l'agrandir.", "Arraste para mover o temporizador. Se estiver pequeno, toque para aumentar.", "اسحب لتحريك المؤقت. عندما يكون صغيرًا، المسه ليكبر."],
+      "times_up": ["Time's up!", "¡Se acabó el tiempo!", "时间到！", "Tapos na ang oras!", "Hết giờ!", "Temps écoulé !", "Acabou o tempo!", "انتهى الوقت!"],
+      "timer_sound": ["Timer sound", "Sonido del temporizador", "计时器声音", "Tunog ng timer", "Âm báo hẹn giờ", "Son du minuteur", "Som do temporizador", "صوت المؤقت"],
+      "sound_now": ["At zero it plays: {name}", "Al llegar a cero suena: {name}", "到零时播放：{name}", "Pagdating sa zero, tutunog ang: {name}", "Khi về 0 sẽ phát: {name}", "À zéro, il joue : {name}", "No zero, toca: {name}", "عند الصفر يُشغَّل: {name}"],
+      "chime": ["the built-in chime", "la campanilla incluida", "内置铃声", "ang kasamang chime", "chuông có sẵn", "le carillon intégré", "o sino embutido", "الجرس المدمج"],
+      "test_sound": ["▶ Test sound", "▶ Probar sonido", "▶ 试听", "▶ Subukan ang tunog", "▶ Nghe thử", "▶ Tester le son", "▶ Testar som", "▶ جرّب الصوت"],
+      "choose_sound": ["Choose a sound…", "Elegir un sonido…", "选择声音…", "Pumili ng tunog…", "Chọn âm thanh…", "Choisir un son…", "Escolher um som…", "اختر صوتًا…"],
+      "use_chime": ["Back to the built-in chime", "Volver a la campanilla incluida", "改回内置铃声", "Bumalik sa kasamang chime", "Quay lại chuông có sẵn", "Revenir au carillon intégré", "Voltar ao sino embutido", "العودة إلى الجرس المدمج"],
+      "sound_hint": ["Your own sound: a .wav or .mp3 file, up to 5 MB. It stays in this browser.", "Tu propio sonido: un archivo .wav o .mp3 de hasta 5 MB. Se queda en este navegador.", "你自己的声音：.wav 或 .mp3 文件，最大 5 MB。只保存在这个浏览器里。", "Sariling tunog: .wav o .mp3 na file, hanggang 5 MB. Mananatili ito sa browser na ito.", "Âm thanh của bạn: tệp .wav hoặc .mp3, tối đa 5 MB. Chỉ lưu trong trình duyệt này.", "Votre propre son : un fichier .wav ou .mp3, 5 Mo maximum. Il reste dans ce navigateur.", "Seu próprio som: um arquivo .wav ou .mp3 de até 5 MB. Ele fica neste navegador.", "صوتك الخاص: ملف ‎.wav أو ‎.mp3 حتى 5 ميغابايت. يبقى في هذا المتصفح."],
+      "sound_too_big": ["That file is over 5 MB. Pick a shorter sound.", "Ese archivo pasa de 5 MB. Elige un sonido más corto.", "这个文件超过 5 MB。请选一个更短的声音。", "Lampas 5 MB ang file na iyan. Pumili ng mas maikling tunog.", "Tệp đó lớn hơn 5 MB. Hãy chọn âm thanh ngắn hơn.", "Ce fichier dépasse 5 Mo. Choisissez un son plus court.", "Esse arquivo tem mais de 5 MB. Escolha um som mais curto.", "هذا الملف أكبر من 5 ميغابايت. اختر صوتًا أقصر."],
+      "sound_bad": ["That file can't be played. Pick a .wav or .mp3.", "Ese archivo no se puede reproducir. Elige un .wav o .mp3.", "这个文件无法播放。请选 .wav 或 .mp3。", "Hindi mapatugtog ang file na iyan. Pumili ng .wav o .mp3.", "Không phát được tệp đó. Hãy chọn tệp .wav hoặc .mp3.", "Ce fichier ne peut pas être lu. Choisissez un .wav ou un .mp3.", "Esse arquivo não toca. Escolha um .wav ou .mp3.", "لا يمكن تشغيل هذا الملف. اختر ‎.wav أو ‎.mp3."],
+      "sound_save_fail": ["This browser couldn't keep the sound.", "Este navegador no pudo guardar el sonido.", "这个浏览器无法保存该声音。", "Hindi naitago ng browser na ito ang tunog.", "Trình duyệt này không lưu được âm thanh.", "Ce navigateur n'a pas pu garder le son.", "Este navegador não conseguiu guardar o som.", "تعذّر على هذا المتصفح حفظ الصوت."],
+      "cover_white": ["Cover: white", "Tapar: blanco", "遮盖：白色", "Takip: puti", "Che: trắng", "Cacher : blanc", "Cobrir: branco", "تغطية: أبيض"],
+      "cover_yellow": ["Cover: yellow", "Tapar: amarillo", "遮盖：黄色", "Takip: dilaw", "Che: vàng", "Cacher : jaune", "Cobrir: amarelo", "تغطية: أصفر"],
+      "cover_pink": ["Cover: pink", "Tapar: rosa", "遮盖：粉色", "Takip: rosas", "Che: hồng", "Cacher : rose", "Cobrir: rosa", "تغطية: وردي"],
+      "cover_any": ["Cover: any color…", "Tapar: otro color…", "遮盖：任意颜色…", "Takip: kahit anong kulay…", "Che: màu bất kỳ…", "Cacher : autre couleur…", "Cobrir: outra cor…", "تغطية: أي لون…"],
       "cw_h": ["Covered answers can still be copied from this PDF", "Las respuestas tapadas aún se pueden copiar de este PDF", "被遮盖的答案仍可从此 PDF 中复制", "Makokopya pa rin sa PDF na ito ang mga natakpang sagot", "Đáp án bị che vẫn có thể sao chép từ PDF này", "Les réponses cachées peuvent encore être copiées depuis ce PDF", "As respostas cobertas ainda podem ser copiadas deste PDF", "لا يزال من الممكن نسخ الإجابات المغطاة من ملف PDF هذا"],
       "cw_1": ["The covers look the same in the PDF: answers are hidden on screen and on paper.", "Las tapas se ven igual en el PDF: las respuestas quedan ocultas en pantalla y en papel.", "遮盖在 PDF 中看起来一样：答案在屏幕上和纸上都看不见。", "Pareho ang hitsura ng mga takip sa PDF: nakatago ang mga sagot sa screen at sa papel.", "Phần che trong PDF trông giống hệt: đáp án bị giấu trên màn hình và trên giấy.", "Les caches sont identiques dans le PDF : les réponses sont cachées à l'écran et sur papier.", "As coberturas ficam iguais no PDF: as respostas ficam escondidas na tela e no papel.", "تبدو الأغطية كما هي في ملف PDF: الإجابات مخفية على الشاشة وعلى الورق."],
       "cw_2": ["<b>But the text under a cover is still in the file.</b> Anyone with the PDF can select, copy or search it.", "<b>Pero el texto bajo una tapa sigue en el archivo.</b> Cualquiera con el PDF puede seleccionarlo, copiarlo o buscarlo.", "<b>但遮盖下的文字仍在文件中。</b>拿到 PDF 的人都能选中、复制或搜索。", "<b>Pero nasa file pa rin ang teksto sa ilalim ng takip.</b> Mapipili, makokopya o mahahanap ito ng sinumang may PDF.", "<b>Nhưng chữ dưới phần che vẫn nằm trong tệp.</b> Ai có PDF cũng chọn, sao chép hoặc tìm được.", "<b>Mais le texte sous un cache est toujours dans le fichier.</b> Toute personne qui a le PDF peut le sélectionner, le copier ou le rechercher.", "<b>Mas o texto embaixo de uma cobertura continua no arquivo.</b> Qualquer pessoa com o PDF pode selecioná-lo, copiá-lo ou pesquisá-lo.", "<b>لكن النص تحت الغطاء لا يزال في الملف.</b> يمكن لأي شخص لديه ملف PDF تحديده أو نسخه أو البحث فيه."],
@@ -1508,6 +1878,7 @@
   /* ---------- toolbar ---------- */
   function isPreset(c){ return !!bar.querySelector('[data-color="' + c + '"]'); }
   function refresh(){
+    setPalette(bar, hiliting ? (HL.covering ? 'cover' : 'hl') : 'pen', tr);   // the swatches change with the tool
     [].forEach.call(bar.querySelectorAll('[data-color]'), function(b){ b.classList.toggle('on', !erasing && b.dataset.color === color); });
     bar.querySelector('[data-act="custom"]').classList.toggle('on', !erasing && !!customColor && color === customColor && !isPreset(color));
     customFill.style.background = customColor || 'transparent';
@@ -1606,6 +1977,7 @@
         if (FSA) explainPick(b, true); else saveFile(true);
         break;
       case 'settings': settings.show(true); break;
+      case 'timer': closeMenus(); timer.open(); break;
       case 'report': window.open(REPORT_URL + '?from=overlay&ov=' + overlayVersion() + '&lang=' + tr.lang, '_blank'); break;
       case 'prev': jump(-1); break;
       case 'next': jump(1); break;
@@ -1632,10 +2004,17 @@
     while ((n = w.nextNode())) { var m = /INK OVERLAY START \((v\d+)\)/.exec(n.nodeValue); if (m) return m[1]; }
     return '';
   }
+  /* ---------- ⏱ Timer (shared with the PDF app). Its own sound (Settings ▸ Timer sound) is kept beside the ink. ---------- */
+  var SOUND_KEY = 'ob-timer-sound';
+  var timer = makeTimer({
+    t: function(){ return tr; }, bar: bar, btn: bar.querySelector('[data-act="timer"]'),
+    loadSound: function(){ return inkTx('readonly', function(st){ return st.get(SOUND_KEY); }).then(function(r){ return r.ok ? r.val : null; }); },
+    saveSound: function(rec){ return inkTx('readwrite', function(st){ return rec ? st.put(rec, SOUND_KEY) : st.delete(SOUND_KEY); }).then(function(r){ return r.ok; }); }
+  });
   /* ---------- File ▸ Settings… (shared with the PDF app) ---------- */
   var settings = makeSettings({
-    defaults: PERIODS, pen: PEN_COLOR,
-    colors: [].map.call(bar.querySelectorAll('[data-color]'), function(b){ return [b.dataset.color, b.title, b.dataset.ta]; }),
+    defaults: PERIODS, pen: PEN_COLOR, extra: timer.soundEl,
+    colors: paletteColors('pen').map(function(c){ return [c[0], c[2], c[1]]; }),
     langs: obLangs(), setLang: setLang, t: function(){ return tr; },
     periods: function(){ return Object.keys(D.periods); },
     applyPeriods: function(names){
@@ -1655,13 +2034,13 @@
       bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
       color = toolColor(); refresh();
     },
-    onOpen: function(){ closeMenus(); }
+    onOpen: function(){ closeMenus(); timer.syncSound(); }
   });
   /* Settings ▸ Language: remember the choice and put the new words everywhere at once (no reload) */
-  function translateAll(){ [bar, fileMenu.el, hlm.el, periodPicker.el, settings.el, showBtn].forEach(function(el){ obTranslate(el, tr); }); }
+  function translateAll(){ [bar, fileMenu.el, hlm.el, periodPicker.el, settings.el, showBtn].concat(timer.els).forEach(function(el){ obTranslate(el, tr); }); }
   function setLang(code){
     try { localStorage.setItem('ob-lang', code); } catch(e){}
-    tr = obT(code); translateAll(); refresh(); layoutClear(); renderPeriods();
+    tr = obT(code); translateAll(); refresh(); layoutClear(); renderPeriods(); timer.refresh();
     if (zoomFit) fitBtn.textContent = tr('fit');
     fitToolbar(); setStatus(tr('st_ready', { p: D.active }));
   }
@@ -1683,6 +2062,7 @@
     fitTools(bar, [fileMenu.el, hlm.el, periodPicker.el], 1 / Z);
     settings.el.style.zoom = Z === 1 ? '' : String(1 / Z);   // the page zoom doesn't change the Settings box
     showBtn.style.zoom = Z === 1 ? '' : String(1 / Z);
+    if (timer) timer.els.forEach(function(el){ el.style.zoom = Z === 1 ? '' : String(1 / Z); });   // nor the timer
   }
 
   /* ---------- zoom (− / Fit / +), like the PDF app: the worksheet zooms, the toolbar stays the same size ----------
