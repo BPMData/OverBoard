@@ -151,10 +151,11 @@ function hlInk(color, strength){ return tint(color, 1 - strength / 100); }
 
 /* put a popout beside the toolbar, next to btn (alignTop: tops line up; otherwise bottoms) */
 function placeMenu(menu, btn, bar, alignTop){
-  var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = menu.offsetHeight;
-  menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) + 'px';
-  if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) + 'px'; }
-  else { menu.style.right = ''; menu.style.left = (b.right + 8) + 'px'; }
+  var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), m = menu.getBoundingClientRect();
+  var k = menu.offsetWidth ? m.width / menu.offsetWidth : 1, h = m.height;   // the menu may be zoomed (fitTools): its px are k screen px
+  menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) / k + 'px';
+  if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) / k + 'px'; }
+  else { menu.style.right = ''; menu.style.left = (b.right + 8) / k + 'px'; }
 }
 
 /* The ▾ beside the Highlighter button opens this menu. It stays open until a choice is tapped, a tap lands
@@ -218,6 +219,25 @@ function makePopMenu(menu, btn, bar, onOpen){
   return { el: menu, show: show, place: place };
 }
 
+/* Shrink the toolbar (and its popouts) to fit a short window, such as a laptop screen, instead of making it
+   scroll. base is the zoom that shows them at normal size: 1, or 1/Z in the overlay while the page is zoomed.
+   Call it after the window, the zoom or the toolbar's contents change. Returns the scale used (1 = full size). */
+function fitTools(bar, popouts, base){
+  var els = [bar].concat(popouts.filter(Boolean)), s = 1;
+  els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
+  bar.style.maxHeight = 'none';
+  if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
+  var room = innerHeight * 0.96;
+  for (var i = 0; i < 2; i++) {   // text doesn't shrink exactly in proportion, so check once more after scaling
+    var h = bar.getBoundingClientRect().height;
+    if (h <= room + 0.5 && i === 0) break;
+    s = Math.min(1, s * room / h);
+    els.forEach(function(el){ el.style.zoom = String(base * s); });
+  }
+  if (s >= 0.999) bar.style.maxHeight = '';
+  return s;
+}
+
 /* Keyboard history keys, the same in the PDF app and the overlay:
    Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
    is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -232,4 +252,4 @@ function historyKey(e) {
   return null;
 }
 
-export { makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

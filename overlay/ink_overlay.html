@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v18) =====
+<!-- ===== INK OVERLAY START (v19) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -58,8 +58,9 @@
 :is(#ob-filemenu,#ob-clearmenu) button:disabled{opacity:.4;cursor:default}
 #ob-clearmenu p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
 #ink-bar button[aria-expanded="true"]{background:#fff;color:#000}
-#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:44px 1fr 44px;gap:8px}
-#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:15px}
+#ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:40px 1fr 40px;gap:6px}
+#ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:14px;letter-spacing:-.02em;text-overflow:clip}
+#ink-bar [hidden]{display:none!important}
 #ink-bar #ob-zoom button[data-act="zoom-in"],#ink-bar #ob-zoom button[data-act="zoom-out"]{font-size:28px;line-height:1;padding:0}
 #ink-bar button:disabled{opacity:.4;cursor:default}
 #ink-undo{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -112,7 +113,8 @@
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing">&minus;</button><div class="val"><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing">+</button></div>
   <button data-act="erase">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" disabled>&#8631;</button></div>
-  <button data-act="clear" class="wide" aria-haspopup="true" aria-expanded="false" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
+  <button data-act="clear-page" title="Clear the ink on the page in the middle of the screen (Undo brings it back)">Clear page</button>
+  <button data-act="clear-all" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)">Clear all</button>
   <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out">&minus;</button><button data-act="zoom-fit" class="sm" title="Fit the page to the screen">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in">+</button></div>
   <button data-act="file" aria-haspopup="true" aria-expanded="false" title="Save PDF, save ink into the file, clear all ink, move the toolbar">File &#9656;</button>
   <button data-act="hide">Hide</button>
@@ -122,13 +124,7 @@
   <button data-act="print" class="wide" title="Save or print a PDF of the worksheet with the current period's ink">Save PDF</button>
   <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
   <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
-  <button data-act="clear-all" class="sm wide" title="Clear the ink on every page, in this class period (Undo brings it back)">Clear all ink</button>
   <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
-</div>
-<div id="ob-clearmenu" role="menu" aria-label="Clear ink" hidden>
-  <button data-act="clear-page" class="wide" title="Clear the ink on the page you are looking at">This page</button>
-  <button data-act="clear-all" class="wide" title="Clear the ink on every page (tap twice)">All pages</button>
-  <p>This class period only. Undo brings it back.</p>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
 <script id="ink-script">
@@ -289,10 +285,11 @@
 
   /* put a popout beside the toolbar, next to btn (alignTop: tops line up; otherwise bottoms) */
   function placeMenu(menu, btn, bar, alignTop){
-    var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), h = menu.offsetHeight;
-    menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) + 'px';
-    if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) + 'px'; }
-    else { menu.style.right = ''; menu.style.left = (b.right + 8) + 'px'; }
+    var r = btn.getBoundingClientRect(), b = bar.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    var k = menu.offsetWidth ? m.width / menu.offsetWidth : 1, h = m.height;   // the menu may be zoomed (fitTools): its px are k screen px
+    menu.style.top = Math.max(10, Math.min(alignTop ? r.top : r.bottom - h, innerHeight - h - 10)) / k + 'px';
+    if (bar.classList.contains('right')) { menu.style.left = ''; menu.style.right = (innerWidth - b.left + 8) / k + 'px'; }
+    else { menu.style.right = ''; menu.style.left = (b.right + 8) / k + 'px'; }
   }
 
   /* The ▾ beside the Highlighter button opens this menu. It stays open until a choice is tapped, a tap lands
@@ -356,6 +353,25 @@
     return { el: menu, show: show, place: place };
   }
 
+  /* Shrink the toolbar (and its popouts) to fit a short window, such as a laptop screen, instead of making it
+     scroll. base is the zoom that shows them at normal size: 1, or 1/Z in the overlay while the page is zoomed.
+     Call it after the window, the zoom or the toolbar's contents change. Returns the scale used (1 = full size). */
+  function fitTools(bar, popouts, base){
+    var els = [bar].concat(popouts.filter(Boolean)), s = 1;
+    els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
+    bar.style.maxHeight = 'none';
+    if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
+    var room = innerHeight * 0.96;
+    for (var i = 0; i < 2; i++) {   // text doesn't shrink exactly in proportion, so check once more after scaling
+      var h = bar.getBoundingClientRect().height;
+      if (h <= room + 0.5 && i === 0) break;
+      s = Math.min(1, s * room / h);
+      els.forEach(function(el){ el.style.zoom = String(base * s); });
+    }
+    if (s >= 0.999) bar.style.maxHeight = '';
+    return s;
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -410,7 +426,7 @@
   HL.covering = getLS('ink-hl-mode') === 'cover';
   var cc = getLS('ink-custom'); if (/^#[0-9a-f]{6}$/i.test(cc || '')) customColor = cc;
   var showBtn = document.getElementById('ink-show');   // little round button left behind when the toolbar is hidden
-  showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); if (zoomFit) setZoom('fit'); });
+  showBtn.addEventListener('click', function(){ bar.style.display = ''; showBtn.classList.remove('show'); fitToolbar(); if (zoomFit) setZoom('fit'); });
   var sizeNum = document.querySelector('#ink-size .num'), sizeDot = document.querySelector('#ink-size .dot');
   var smooth = SMOOTHING, smoothNum = document.querySelector('#ink-smooth .num');
   var sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) smooth = +sl;
@@ -773,11 +789,8 @@
         break;
       case 'undo': undo(); break;
       case 'redo': redo(); break;
-      case 'clear':   // a worksheet with pages: this page or all pages; otherwise it just clears (tap twice)
-        if (pages().length > 1) { clearMenu.show(clearMenu.el.hidden); return; }
-        confirmTap(b, clearAll); break;
       case 'clear-page': clearPage(); break;
-      case 'clear-all': confirmTap(b, function(){ clearAll(); closeMenus(); }); break;
+      case 'clear-all': confirmTap(b, clearAll); break;   // tap twice
       case 'file': fileMenu.show(fileMenu.el.hidden); return;
       case 'zoom-in': case 'zoom-out':
         if (e.detail === 0) setZoom(Z * (b.dataset.act === 'zoom-in' ? 1.1 : 1 / 1.1));   // keyboard only; taps are handled on pointerdown
@@ -801,32 +814,39 @@
   }
   bar.addEventListener('click', onBarClick);
 
-  /* ---------- File ▸ and Clear ▸ popouts (shared with the PDF app) ---------- */
+  /* ---------- File ▸ popout (shared with the PDF app) ---------- */
   var fileMenu = makePopMenu(document.getElementById('ob-filemenu'), bar.querySelector('[data-act="file"]'), bar, function(){ closeMenus('file'); });
-  var clearMenu = makePopMenu(document.getElementById('ob-clearmenu'), bar.querySelector('[data-act="clear"]'), bar, function(){ closeMenus('clear'); });
   function closeMenus(except){   // only one popout at a time
     if (except !== 'file') fileMenu.show(false);
-    if (except !== 'clear') clearMenu.show(false);
     if (except !== 'hl') hlm.show(false);
   }
-  [fileMenu.el, clearMenu.el].forEach(function(m){
-    m.addEventListener('click', function(e){
-      var b = e.target.closest('button'); if (!b) return;
-      onBarClick(e);
-      // keep it open while a two-tap confirm is waiting, or after moving the toolbar
-      if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
-    });
+  fileMenu.el.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    onBarClick(e);
+    // keep it open while a two-tap confirm is waiting, or after moving the toolbar
+    if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
   });
+  /* Clear page | Clear all; a worksheet without pages gets one Clear button */
+  function layoutClear(){
+    var many = pages().length > 1, all = bar.querySelector('[data-act="clear-all"]');
+    bar.querySelector('[data-act="clear-page"]').hidden = !many;
+    all.classList.toggle('wide', !many);
+    if (!all.classList.contains('warn')) all.textContent = many ? 'Clear all' : 'Clear';
+  }
+  /* the toolbar and its popouts shrink to fit a short window (a laptop) and undo the page zoom */
+  function fitToolbar(){
+    fitTools(bar, [fileMenu.el, hlm.el], 1 / Z);
+    showBtn.style.zoom = Z === 1 ? '' : String(1 / Z);
+  }
 
   /* ---------- zoom (− / Fit / +), like the PDF app: the worksheet zooms, the toolbar stays the same size ----------
      CSS zoom on the page, undone on the toolbar and its popouts. Ink is stored in the worksheet's own px, so
      zooming never moves it; pt() and size() divide by Z. Fit fits the widest .page beside the toolbar. */
   var zoomFit = false, fitBtn = bar.querySelector('[data-act="zoom-fit"]');
-  var UNZOOMED = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu'];
   function fitZoom(){
     var w = 0; pages().forEach(function(pg){ if (pg.offsetWidth > w) w = pg.offsetWidth; });
     if (!w) return 1;
-    var side = bar.style.display === 'none' ? 16 : bar.offsetWidth + 20;
+    var side = bar.style.display === 'none' ? 16 : bar.getBoundingClientRect().width + 20;
     return (document.documentElement.clientWidth - 2 * side) / w;
   }
   function setZoom(z){
@@ -836,7 +856,7 @@
       var cx = (window.pageXOffset + innerWidth / 2) / Z, cy = (window.pageYOffset + innerHeight / 2) / Z;   // keep the middle of the screen in place
       Z = Math.abs(nz - 1) < 1e-3 ? 1 : nz;
       document.documentElement.style.zoom = Z === 1 ? '' : String(Z);
-      UNZOOMED.forEach(function(id){ var el = document.getElementById(id); if (el) el.style.zoom = Z === 1 ? '' : String(1 / Z); });
+      fitToolbar();
       size();
       window.scrollTo(cx * Z - innerWidth / 2, cy * Z - innerHeight / 2);
     }
@@ -849,7 +869,7 @@
     e.preventDefault();
     setZoom(Z * Math.exp(-e.deltaY * 0.01));
   }, { passive: false });
-  window.addEventListener('resize', function(){ if (zoomFit) setZoom('fit'); });
+  window.addEventListener('resize', function(){ fitToolbar(); if (zoomFit) setZoom('fit'); });
   // The browser can only write into a file you point it at, and the Mac's picker window always says "Open".
   // So the first tap explains that, and the second tap opens the picker.
   function explainPick(btn, forcePick){
@@ -901,7 +921,7 @@
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true); });
 
   /* ---------- start ---------- */
-  var src = load(); size(); renderPeriods(); refresh(); setMode('write');
+  var src = load(); size(); renderPeriods(); refresh(); setMode('write'); layoutClear(); fitToolbar();
   window.addEventListener('resize', size);
   window.addEventListener('load', size);
   if (window.ResizeObserver) new ResizeObserver(size).observe(body);

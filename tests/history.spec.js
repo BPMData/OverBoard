@@ -45,8 +45,7 @@ test.describe('PDF app', () => {
 
   test('Redo after undoing Clear page clears it again; switching period forgets redo', async ({ page }) => {
     await draw(page, 1, line(100, 200, 300, 200));
-    await page.click('[data-act="clear"]');
-    await page.click('#ob-clearmenu [data-act="clear-page"]');
+    await page.click('[data-act="clear-page"]');
     await page.click('[data-act="undo"]');
     expect(await strokes(page)).toHaveLength(1);
     await page.click('[data-act="redo"]');
@@ -110,9 +109,8 @@ test.describe('HTML overlay', () => {
     await page.keyboard.press('Control+y');
     expect(await count(page)).toBe(2);
     // Clear, Undo, Redo clears again
-    await page.click('[data-act="clear"]');
-    await page.click('#ob-clearmenu [data-act="clear-all"]');
-    await page.click('#ob-clearmenu [data-act="clear-all"]');   // "Sure?"
+    await page.click('[data-act="clear-all"]');
+    await page.click('[data-act="clear-all"]');   // "Sure?"
     await page.click('[data-act="undo"]');
     expect(await count(page)).toBe(2);
     await page.click('[data-act="redo"]');

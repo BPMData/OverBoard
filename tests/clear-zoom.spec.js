@@ -9,18 +9,46 @@ const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 
 const menuOpen = (page, id) => page.locator('#' + id).isVisible();
 
 test.describe('PDF app', () => {
-  test.beforeEach(async ({ page }) => { await openApp(page); await openPdf(page, 'worksheet.pdf'); });
   const drawOn = async (page, n, y) => {
     await page.evaluate((n) => __overboard.viewer.goTo(n), n);
     await page.waitForTimeout(300);
     await page.evaluate(([n, y]) => __t.stroke(n, __t.line(100, y, 300, y)), [n, y]);
   };
-  const pagesWithInk = async (page) => [...new Set((await strokes(page)).map((s) => s.page))].sort();
+  const pagesWithInk = async (page) => [...new Set((await strokes(page)).map((s) => s.page))].sort((a, b) => a - b);
+  const shown = (page) => page.evaluate(() => [...document.querySelectorAll('#ink-bar button')].filter((b) => !b.hidden && b.offsetParent).map((b) => b.dataset.act).filter((a) => /^(toc|clear)/.test(a)));
 
-  test('Clear ▸ This page clears only the page on screen; All pages asks first; Undo / Redo both', async ({ page }) => {
+  test('no chapters: Clear page | Clear all, like the HTML overlay; Clear all asks first; Undo / Redo', async ({ page }) => {
+    await openApp(page); await openPdf(page, 'worksheet.pdf');
+    expect(await shown(page)).toEqual(['clear-page', 'clear-all']);
     await drawOn(page, 1, 200);
     await drawOn(page, 2, 200);
     const before = await strokes(page);
+    await page.evaluate(() => __overboard.viewer.goTo(1));
+    await page.waitForTimeout(300);
+    await page.click('#ink-bar [data-act="clear-page"]');            // one tap; Undo brings it back
+    expect(await pagesWithInk(page)).toEqual([2]);
+    await page.click('[data-act="undo"]');
+    expect(await strokes(page)).toEqual(before);                    // back in its old place
+    await page.click('#ink-bar [data-act="clear-all"]');
+    await expect(page.locator('#ink-bar [data-act="clear-all"]')).toHaveText('Sure?');
+    expect(await strokes(page)).toHaveLength(2);
+    await page.click('#ink-bar [data-act="clear-all"]');
+    expect(await strokes(page)).toHaveLength(0);
+    await page.click('[data-act="undo"]');
+    expect(await strokes(page)).toEqual(before);
+    await page.click('[data-act="redo"]');
+    expect(await strokes(page)).toHaveLength(0);
+    await page.click('[data-act="file"]');
+    await expect(page.locator('#ob-filemenu [data-act="clear-all"]')).toHaveCount(0);   // not in File any more
+  });
+
+  test('with chapters: Chapters | Clear ▸, Clear on the side its menu opens; This page / All pages', async ({ page }) => {
+    await openApp(page); await openPdf(page, 'book.pdf');
+    await expect.poll(() => shown(page)).toEqual(['toc', 'clear']);
+    const box = (sel) => page.locator(sel).boundingBox();
+    expect((await box('[data-act="clear"]')).x).toBeGreaterThan((await box('[data-act="toc"]')).x);
+    await drawOn(page, 1, 200);
+    await drawOn(page, 2, 200);
     await page.evaluate(() => __overboard.viewer.goTo(1));
     await page.waitForTimeout(300);
     await page.click('[data-act="clear"]');
@@ -29,34 +57,20 @@ test.describe('PDF app', () => {
     expect(await pagesWithInk(page)).toEqual([2]);
     expect(await menuOpen(page, 'ob-clearmenu')).toBe(false);
     await page.click('[data-act="undo"]');
-    expect(await pagesWithInk(page)).toEqual([1, 2]);
-
     await page.click('[data-act="clear"]');
-    await page.click('#ob-clearmenu [data-act="clear-all"]');      // "Sure?"
-    expect(await strokes(page)).toHaveLength(2);
+    await page.click('#ob-clearmenu [data-act="clear-all"]');      // "Sure?" keeps the menu open
     expect(await menuOpen(page, 'ob-clearmenu')).toBe(true);
     await page.click('#ob-clearmenu [data-act="clear-all"]');
     expect(await strokes(page)).toHaveLength(0);
-    expect(await menuOpen(page, 'ob-clearmenu')).toBe(false);
     await page.click('[data-act="undo"]');
-    expect(await strokes(page)).toEqual(before);                    // every page back, same order
-    await page.click('[data-act="redo"]');
-    expect(await strokes(page)).toHaveLength(0);
-    await page.click('[data-act="undo"]');
-    expect(await strokes(page)).toEqual(before);
-  });
-
-  test('File ▸ Clear all ink clears every page after a second tap', async ({ page }) => {
-    await drawOn(page, 1, 200);
-    await drawOn(page, 3, 200);
+    expect(await pagesWithInk(page)).toEqual([1, 2]);
+    // toolbar on the right: the menu opens to the left, so Clear moves left of Chapters
     await page.click('[data-act="file"]');
-    await page.click('#ob-filemenu [data-act="clear-all"]');
-    expect(await strokes(page)).toHaveLength(2);
-    await page.click('#ob-filemenu [data-act="clear-all"]');
-    expect(await strokes(page)).toHaveLength(0);
-    expect(await menuOpen(page, 'ob-filemenu')).toBe(false);
-    await page.click('[data-act="undo"]');
-    expect(await strokes(page)).toHaveLength(2);
+    await page.click('#ob-filemenu [data-act="side"]');
+    await page.keyboard.press('Escape');
+    expect((await box('[data-act="clear"]')).x).toBeLessThan((await box('[data-act="toc"]')).x);
+    await page.click('[data-act="clear"]');
+    expect((await box('#ob-clearmenu')).x + (await box('#ob-clearmenu')).width).toBeLessThan((await box('[data-act="clear"]')).x);
   });
 });
 
@@ -74,7 +88,7 @@ test.describe('HTML overlay', () => {
   const pageBox = (page, i) => page.locator('.page').nth(i).boundingBox();
   const centerPage = (page, i) => page.evaluate((i) => { const p = document.querySelectorAll('.page')[i], r = p.getBoundingClientRect(); scrollBy(0, r.top + r.height / 2 - innerHeight / 2); }, i);
 
-  test('Clear ▸ This page clears only the page in the middle of the screen; Undo / Redo', async ({ page }) => {
+  test('Clear page clears only the page in the middle of the screen; Clear all asks first; Undo / Redo', async ({ page }) => {
     let b = await pageBox(page, 0);
     await stroke(page, line(b.x + 100, b.y + 300, b.x + 400, b.y + 300));
     await centerPage(page, 1);
@@ -82,37 +96,33 @@ test.describe('HTML overlay', () => {
     await stroke(page, line(b.x + 100, b.y + 300, b.x + 400, b.y + 300));
     const both = await ink(page);
     expect(both).toHaveLength(2);
-    await page.click('[data-act="clear"]');
-    await page.click('#ob-clearmenu [data-act="clear-page"]');
+    await page.click('[data-act="clear-page"]');
     expect(await ink(page)).toEqual([both[0]]);                    // page 2's stroke is gone, page 1's stays
     await page.click('[data-act="undo"]');
     expect(await ink(page)).toEqual(both);
     await page.click('[data-act="redo"]');
     expect(await ink(page)).toEqual([both[0]]);
     await page.click('[data-act="undo"]');
-    // All pages, and File ▸ Clear all ink, ask first
-    await page.click('[data-act="clear"]');
-    await page.click('#ob-clearmenu [data-act="clear-all"]');
+    await page.click('[data-act="clear-all"]');
+    await expect(page.locator('[data-act="clear-all"]')).toHaveText('Sure?');
     expect(await ink(page)).toHaveLength(2);
-    await page.click('#ob-clearmenu [data-act="clear-all"]');
+    await page.click('[data-act="clear-all"]');
     expect(await ink(page)).toHaveLength(0);
     await page.click('[data-act="undo"]');
-    await page.click('[data-act="file"]');
-    await page.click('#ob-filemenu [data-act="clear-all"]');
-    await page.click('#ob-filemenu [data-act="clear-all"]');
-    expect(await ink(page)).toHaveLength(0);
-    expect(await menuOpen(page, 'ob-filemenu')).toBe(false);
+    expect(await ink(page)).toEqual(both);
   });
 
-  test('a worksheet without pages: Clear just clears (tap twice), no menu', async ({ page }) => {
+  test('a worksheet without pages: one Clear button (tap twice)', async ({ page }) => {
     const block = fs.readFileSync(path.join(__dirname, '..', 'overlay', 'ink_overlay.html'), 'utf8');
     await page.route('**/nopages.html', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>No pages</title><body><p style="height:1500px">Notes</p>' + block + '</body>' }));
     await page.goto('nopages.html');
     await stroke(page, line(500, 300, 800, 300));
-    await page.click('[data-act="clear"]');
-    await expect(page.locator('[data-act="clear"]')).toHaveText('Sure?');
-    expect(await menuOpen(page, 'ob-clearmenu')).toBe(false);
-    await page.click('[data-act="clear"]');
+    await expect(page.locator('[data-act="clear-page"]')).toBeHidden();
+    const clear = page.locator('[data-act="clear-all"]');
+    await expect(clear).toHaveText('Clear');
+    await clear.click();
+    await expect(clear).toHaveText('Sure?');
+    await clear.click();
     expect(await ink(page)).toHaveLength(0);
   });
 
@@ -122,7 +132,8 @@ test.describe('HTML overlay', () => {
     expect(bar.scroll).toBeLessThanOrEqual(bar.client);
     for (const act of ['print', 'savefile', 'pickfile', 'side']) await expect(page.locator(`#ink-bar [data-act="${act}"]`)).toHaveCount(0);
     await page.click('[data-act="file"]');
-    for (const act of ['print', 'savefile', 'pickfile', 'clear-all', 'side']) await expect(page.locator(`#ob-filemenu [data-act="${act}"]`)).toBeVisible();
+    for (const act of ['print', 'savefile', 'pickfile', 'side']) await expect(page.locator(`#ob-filemenu [data-act="${act}"]`)).toBeVisible();
+    await expect(page.locator('#ob-filemenu [data-act="clear-all"]')).toHaveCount(0);
     const m = await page.locator('#ob-filemenu').boundingBox(), t = await page.locator('#ink-bar').boundingBox();
     expect(m.x).toBeGreaterThan(t.x + t.width);
     await page.click('#ob-filemenu [data-act="side"]');                  // Move toolbar: menu stays open and follows
@@ -136,6 +147,7 @@ test.describe('HTML overlay', () => {
   test('zoom − / Fit / +: the worksheet zooms, the toolbar does not, and ink stays on the same spot', async ({ page }) => {
     const fit = page.locator('[data-act="zoom-fit"]');
     await expect(fit).toHaveText('100%');
+    const barW = (await page.locator('#ink-bar').boundingBox()).width;
     let b = await pageBox(page, 0);
     await stroke(page, line(b.x + 100, b.y + 200, b.x + 300, b.y + 200));
     const at100 = (await ink(page))[0].p;
@@ -146,7 +158,7 @@ test.describe('HTML overlay', () => {
     const z = 1.1 ** 3;
     b = await pageBox(page, 0);
     expect(b.width).toBeCloseTo(816 * z, 0);
-    expect((await page.locator('#ink-bar').boundingBox()).width).toBe(176);   // the toolbar keeps its size
+    expect((await page.locator('#ink-bar').boundingBox()).width).toBeCloseTo(barW, 0);   // the toolbar keeps its size
     // the same spot on the page, now further from the corner on screen, stores the same ink coordinates
     await stroke(page, line(b.x + 100 * z, b.y + 200 * z, b.x + 300 * z, b.y + 200 * z));
     const at133 = (await ink(page))[0].p;
@@ -160,7 +172,7 @@ test.describe('HTML overlay', () => {
     await fit.click();                                                         // Fit: the page fills the space beside the toolbar
     await expect(fit).toHaveText('Fit');
     b = await pageBox(page, 0);
-    expect(b.width).toBeCloseTo(await page.evaluate(() => document.documentElement.clientWidth - 2 * (176 + 20)), 0);
+    expect(b.width).toBeCloseTo(await page.evaluate((w) => document.documentElement.clientWidth - 2 * (w + 20), barW), 0);
     // printing happens at 100%, then the zoom comes back
     await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
     expect(await page.evaluate(() => document.documentElement.style.zoom)).toBe('');
@@ -175,3 +187,27 @@ test.describe('HTML overlay', () => {
     await expect(fit).not.toHaveText('Fit');
   });
 });
+
+/* a laptop screen: the toolbar shrinks to fit instead of scrolling, and the zoom number isn't cut off */
+for (const where of ['PDF app', 'HTML overlay']) {
+  test(`${where}: on a short screen the toolbar shrinks to fit, with every button and the zoom % readable`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 700 });
+    if (where === 'PDF app') { await openApp(page); await openPdf(page, 'book.pdf'); } else await page.goto('./');
+    const check = () => page.evaluate(() => {
+      const b = document.getElementById('ink-bar'), r = b.getBoundingClientRect(), z = b.querySelector('[data-act="zoom-fit"]');
+      return { scrolls: b.scrollHeight > b.clientHeight + 1, top: r.top, bottom: r.bottom, label: z.textContent, cut: z.scrollWidth > z.clientWidth };
+    });
+    let c = await check();
+    expect(c.scrolls).toBe(false);
+    expect(c.top).toBeGreaterThanOrEqual(0);
+    expect(c.bottom).toBeLessThanOrEqual(700);
+    expect(c.cut).toBe(false);
+    await page.click('[data-act="zoom-in"]');
+    c = await check();
+    expect(c.label).toMatch(/%$/);
+    expect(c.cut).toBe(false);
+    // a full-height window: full size again
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await expect.poll(() => page.evaluate(() => document.getElementById('ink-bar').getBoundingClientRect().width)).toBe(176);
+  });
+}
