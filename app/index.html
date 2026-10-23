@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="ff99de348036">
+<meta name="ob-version" content="cff8089342ce">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -74,7 +74,7 @@
     <div class="cwrap"><button data-act="custom" aria-label="Pick any color" title="Pick any color" data-ta="custom_color" data-tt="custom_color"><span class="fill"></span></button><input type="color" id="ink-picker" tabindex="-1" aria-hidden="true"></div>
   </div>
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
-  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines that trail a little behind the pen. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
+  <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines, but may cause some lag in detecting and displaying the ink you draw. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="toc" data-t="chapters" data-tt="chapters_tip" title="Chapters of this PDF">Chapters</button>

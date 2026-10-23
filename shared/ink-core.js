@@ -242,10 +242,10 @@ function fitTools(bar, popouts, base){
   els.forEach(function(el){ el.style.zoom = base === 1 ? '' : String(base); });
   bar.style.maxHeight = 'none';
   if (bar.hidden || bar.style.display === 'none') { bar.style.maxHeight = ''; return 1; }
-  var room = innerHeight * 0.96;
+  var room = Math.floor(innerHeight * 0.96) - 1;   // whole pixels, with 1px to spare: a toolbar a fraction of a pixel too tall would scroll
   for (var i = 0; i < 2; i++) {   // text doesn't shrink exactly in proportion, so check once more after scaling
     var h = bar.getBoundingClientRect().height;
-    if (h <= room + 0.5 && i === 0) break;
+    if (h <= room && i === 0) break;
     s = Math.min(1, s * room / h);
     els.forEach(function(el){ el.style.zoom = String(base * s); });
   }
