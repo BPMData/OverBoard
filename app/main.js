@@ -22,6 +22,7 @@ const SMOOTHING = 3;              // starting level 0-8
 const HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
 const HIGHLIGHT_W = 22;           // starting highlighter width; the - / + buttons change it while the highlighter is on
 const HIGHLIGHT_STRENGTH = 50;    // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
+const PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board); the palette changes it
 const COVER_COLOR = '#111111';    // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
 
@@ -39,8 +40,8 @@ const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 /* ---------- tool state (read by the ink layer) ---------- */
 const T = {
   mode: 'write', erasing: false, hiliting: false, covering: false,   // covering: the highlighter is in Cover mode
-  penColor: '#111111', hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
-  color: '#111111', width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
+  penColor: PEN_COLOR, hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
+  color: PEN_COLOR, width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
   customColor: '', PALM_ERASER_W, ERASER_W,
   hlStrength: HIGHLIGHT_STRENGTH,
   hlInk() { return hlInk(this.color, this.hlStrength); },   // mixed toward white; it multiplies, so text stays black

@@ -121,3 +121,14 @@ test.describe('HTML overlay', () => {
     expect(await stopped(page, ['F5', 'Control+Shift+R', 'Control+r'])).toEqual(['F5', 'R+shift', 'r']);
   });
 });
+
+/* the pen starts Barbie pink in both apps (high visibility on the board) */
+test('the pen starts Barbie pink, in the PDF app and the HTML overlay', async ({ page }) => {
+  await openApp(page); await openPdf(page, 'worksheet.pdf');
+  await expect(page.locator('#ink-colors button.on')).toHaveAttribute('data-color', '#e0218a');
+  await draw(page, 1, line(100, 200, 300, 200));
+  expect((await strokes(page))[0].c).toBe('#e0218a');
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('./');
+  await expect(page.locator('#ink-colors button.on')).toHaveAttribute('data-color', '#e0218a');
+});

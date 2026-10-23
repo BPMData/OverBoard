@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v19) =====
+<!-- ===== INK OVERLAY START (v20) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -450,6 +450,7 @@
   var FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. false = finger draws too. The toolbar button flips this (remembered per browser).
   var PALM_ERASER_W = 92;         // eraser size (px) when you wipe with your palm, fist or side of hand
   var SMOOTHING = 3;              // starting level 0-8 (toolbar buttons change it, remembered per browser). 0 = off. 3-6 = steadier, rounder lines. 7-8 lag behind the pen.
+  var PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board); the palette changes it
   var HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
   var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
   var HIGHLIGHT_STRENGTH = 50;    // starting highlight strength in % (10-100; the ▾ slider changes it, remembered per browser). 100 = full color, 50 = halfway to white
@@ -469,7 +470,7 @@
   var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
   var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
   var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
-  var penColor = '#111111';   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
+  var penColor = PEN_COLOR;   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
   var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
