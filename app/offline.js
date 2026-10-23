@@ -22,7 +22,7 @@ export function setupOffline(openFile) {
   if ('launchQueue' in window) {
     window.launchQueue.setConsumer(async (params) => {
       const handle = params.files && params.files[0];
-      if (handle) openFile(await handle.getFile());
+      if (handle) openFile(await handle.getFile(), Promise.resolve(handle));   // the handle: save windows start in its folder
     });
   }
 }
