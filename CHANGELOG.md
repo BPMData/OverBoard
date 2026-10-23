@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **HTML overlay v21: no more 5 MB limit on ink saved in the browser.** The overlay now keeps ink in the browser's database (IndexedDB), like the PDF app, instead of the small shared space (localStorage) that every worksheet used to share. Ink saved by older versions moves over by itself the first time a worksheet opens. Closing the tab right after writing still keeps the last strokes. Rerun the installer (or the PDF app's HTML option) on existing board copies to upgrade them; their ink is kept.
 - **Save windows open next to the original** (Chrome/Edge): the HTML board copy and Save ink into PDF now start in the folder of the file you dropped, chose by tapping the drop box, or opened from Finder, instead of the last folder used. Tapping the drop box now uses Chrome's own file chooser, which tells OverBoard where the file is.
 - **The pen starts Barbie pink** (PDF app and HTML overlay v20), for high visibility on the board. Tap any color to change it; `PEN_COLOR` at the top of `app/main.js` and of the overlay sets the starting color.
 - **PDF text is selectable and links work** (in Scroll mode): copy text, follow contents-page links, open web links. Write mode is unchanged. Exports keep the original text.

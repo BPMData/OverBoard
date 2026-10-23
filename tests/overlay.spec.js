@@ -2,10 +2,11 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
+const { openOverlay, overlayReady, savedInk } = require('./support/overlay');
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto('./');
+  await openOverlay(page);
 });
 
 async function stroke(page, pts, o = {}) {
@@ -59,8 +60,7 @@ test('holding + keeps stepping, and ink saves in the browser', async ({ page }) 
   await stroke(page, line(500, 400, 800, 400));
   await stroke(page, line(500, 450, 800, 450));
   await page.click('[data-act="undo"]');
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  const n = await page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')))).periods.P1.length);
+  const n = (await savedInk(page)).periods.P1.length;
   expect(n).toBe(1);
 });
 
@@ -85,8 +85,7 @@ test('Cover: the ▾ menu works with pen and finger taps; covers are opaque on t
   await stroke(page, line(650, 360, 650, 440), { buttons: 32 });   // palm reveals
   expect(await alpha(page, 650, 400)).toBe(0);
   expect(await alpha(page, 550, 400)).toBe(255);
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  const s = await page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')))).periods.P1);
+  const s = (await savedInk(page)).periods.P1;
   expect(s[0]).toMatchObject({ h: 1, o: 1, c: '#111111' });
 
   // strength slider: full-strength yellow on the multiply layer
@@ -126,4 +125,56 @@ test('Save PDF with covers: the teacher is told the text can still be copied; co
   expect(layers).toEqual(['']);                                  // no highlights: one layer, covers on it
   expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([95, 95, 95, 255]);
   await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+});
+
+/* ---- v21: the overlay keeps its ink in IndexedDB (no 5 MB localStorage limit) ---- */
+const lsKeys = (page) => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('ink-v2:')));
+
+test('ink comes back after a reload right after writing, and no copy is left in localStorage', async ({ page }) => {
+  await stroke(page, line(500, 400, 800, 400));
+  await page.reload();                                           // well inside the 5 s save wait
+  await overlayReady(page);
+  expect(await alpha(page, 650, 400)).toBeGreaterThan(200);
+  await expect(page.locator('#ink-status')).toContainText('ink restored from this browser');
+  expect((await savedInk(page)).periods.P1).toHaveLength(1);
+  expect(await lsKeys(page)).toEqual([]);
+});
+
+test('if the database save is cut off as the tab closes, the localStorage backup keeps the stroke', async ({ page }) => {
+  await stroke(page, line(500, 400, 800, 400));
+  await page.evaluate(() => { IDBObjectStore.prototype.put = () => { throw new Error('cut off'); }; });
+  await page.reload();
+  await overlayReady(page);
+  expect(await alpha(page, 650, 400)).toBeGreaterThan(200);
+  expect((await savedInk(page)).periods.P1).toHaveLength(1);    // moved into IndexedDB on opening
+  expect(await lsKeys(page)).toEqual([]);
+});
+
+test('ink saved in localStorage by v20 and older moves to IndexedDB', async ({ page }) => {
+  const old = { v: 2, t: Date.now(), active: 'P2', periods: { P1: [], P2: [{ c: '#1565c0', w: 4, p: [300, 400, 700, 400] }], P3: [], P4: [] } };
+  await page.evaluate((old) => localStorage.setItem('ink-v2:' + location.pathname + ':' + document.title, JSON.stringify(old)), old);
+  await page.reload();
+  await overlayReady(page);
+  await expect(page.locator('#ink-status')).toContainText('P2 · ink restored from this browser');
+  await expect(page.locator('[data-period="P2"]')).toHaveClass(/on/);
+  await expect.poll(() => lsKeys(page)).toEqual([]);
+  expect((await savedInk(page)).periods.P2).toEqual(old.periods.P2);
+});
+
+test('more ink than localStorage could hold (about 8 MB) still saves', async ({ page }) => {
+  const n = 10000;
+  await page.evaluate(async (n) => {
+    const key = 'ink-v2:' + location.pathname + ':' + document.title, p = [];
+    for (let j = 0; j < 80; j++) p.push(3000 + j * 0.7, 5000.3 + j);   // off to the side, out of the way
+    const D = { v: 2, t: Date.now(), active: 'P1', periods: { P1: Array.from({ length: n }, () => ({ c: '#111111', w: 2.5, p })), P2: [], P3: [], P4: [] } };
+    if (JSON.stringify(D).length < 7e6) throw new Error('test ink too small');
+    const db = await new Promise((res) => { const rq = indexedDB.open('ink-data'); rq.onsuccess = () => res(rq.result); });
+    await new Promise((res) => { const tx = db.transaction('ink', 'readwrite'); tx.objectStore('ink').put(D, key); tx.oncomplete = res; });
+    db.close();
+  }, n);
+  await page.reload();
+  await overlayReady(page);
+  await stroke(page, line(500, 400, 800, 400));
+  expect((await savedInk(page)).periods.P1).toHaveLength(n + 1);
+  await expect(page.locator('#ink-status')).not.toContainText('blocked');
 });

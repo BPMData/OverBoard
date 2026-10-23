@@ -3,6 +3,7 @@
 // A reload (from the browser's button) never loses ink and reopens the PDF.
 const { test } = require('@playwright/test');
 const { expect, openApp, openPdf, strokes } = require('./support/app');
+const { openOverlay, savedInk } = require('./support/overlay');
 
 const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
 const draw = (page, n, pts) => page.evaluate(([n, pts]) => __t.stroke(n, pts), [n, pts]);
@@ -83,7 +84,7 @@ test.describe('PDF app', () => {
 });
 
 test.describe('HTML overlay', () => {
-  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await page.goto('./'); });
+  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await openOverlay(page); });
   const ostroke = (page, pts) => page.evaluate((pts) => new Promise(async (res) => {
     const c = document.getElementById('ink-canvas');
     const ev = (t, x, y) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y }));
@@ -92,7 +93,7 @@ test.describe('HTML overlay', () => {
     await new Promise((r) => setTimeout(r, 20));
     ev('pointerup', ...pts[pts.length - 1]); res();
   }), pts);
-  const count = (page) => page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); const k = Object.keys(localStorage).find((k) => k.startsWith('ink-v2:')); const d = JSON.parse(localStorage.getItem(k)); return d.periods[d.active].length; });
+  const count = async (page) => { const d = await savedInk(page); return d.periods[d.active].length; };
 
   test('the same Undo / Redo button and keys', async ({ page }) => {
     await expect(redo(page)).toBeDisabled();

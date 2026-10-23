@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v20) =====
+<!-- ===== INK OVERLAY START (v21) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -509,8 +509,43 @@
     D.periods = np;
     return changed;
   }
+  /* ---------- browser copy of the ink ----------
+     The ink lives in IndexedDB, which has room for years of worksheets. localStorage (about 5 MB shared
+     by every worksheet) only holds a quick backup taken as the tab is hidden or closed, in case the
+     IndexedDB save can't finish in time; it is removed once IndexedDB has the ink. Ink saved in
+     localStorage by v20 and older moves over the first time the worksheet opens. */
+  var inkDb = null, ready = false, lsCopy = null;   // ready: the browser copy has been read; until then drawing waits
+  function openInk(){
+    if (!inkDb) inkDb = new Promise(function(resolve){
+      try {
+        var rq = indexedDB.open('ink-data', 1);
+        rq.onupgradeneeded = function(){ rq.result.createObjectStore('ink'); };
+        rq.onsuccess = function(){ var db = rq.result; db.onversionchange = function(){ db.close(); inkDb = null; }; resolve(db); };
+        rq.onerror = function(){ resolve(null); };
+      } catch(e){ resolve(null); }
+    });
+    return inkDb;
+  }
+  function inkTx(mode, fn){   // { ok, val }: ok is false when IndexedDB can't be used
+    return openInk().then(function(db){
+      return new Promise(function(resolve){
+        if (!db) return resolve({ ok: false });
+        try {
+          var tx = db.transaction('ink', mode), req = fn(tx.objectStore('ink')), val;
+          req.onsuccess = function(){ val = req.result; };
+          tx.oncomplete = function(){ resolve({ ok: true, val: val }); };
+          tx.onerror = tx.onabort = function(){ resolve({ ok: false }); };
+        } catch(e){ resolve({ ok: false }); }
+      });
+    });
+  }
+  function dropLS(t){   // remove the localStorage backup once IndexedDB holds ink at least as new
+    var s = getLS(KEY); if (s === null) return;
+    var o = parse(s);
+    if (!o || (o.t || 0) <= t) { try { localStorage.removeItem(KEY); } catch(e){} }
+  }
   function load(){
-    var emb = dataEl ? parse(dataEl.textContent) : null, loc = parse(getLS(KEY)), src = '';
+    var emb = dataEl ? parse(dataEl.textContent) : null, loc = lsCopy = parse(getLS(KEY)), src = '';
     if (loc && (!emb || (loc.t || 0) > (emb.t || 0))) { D = loc; src = 'browser'; }   // newest copy wins; a tie goes to the file
     else if (emb) { D = emb; src = 'file'; }
     else {
@@ -526,17 +561,43 @@
     strokes = D.periods[D.active];
     return src;
   }
+  function loadDb(){   // then the IndexedDB copy, if it is newer than what's on screen
+    return inkTx('readonly', function(st){ return st.get(KEY); }).then(function(r){
+      var got = r.ok && r.val && r.val.periods && typeof r.val.periods === 'object' ? r.val : null, src = '';
+      if (got && (got.t || 0) > (D.t || 0)) {
+        D = got; shortNames();
+        if (!Object.keys(D.periods).length) D = fresh();
+        if (!D.periods[D.active]) D.active = Object.keys(D.periods)[0];
+        strokes = D.periods[D.active];
+        src = 'browser';
+      }
+      ready = true;
+      if (r.ok && lsCopy) {   // a localStorage copy: drop it if IndexedDB is already as new, else move the ink over
+        if (got && (got.t || 0) >= (lsCopy.t || 0)) dropLS(got.t || 0);
+        else { dirty = true; writeLocal(true, false, true); }
+      }
+      lsCopy = null;
+      return src;
+    });
+  }
   function save(){   // mark changed; the real write waits until you pause (SAVE_DELAY_MS) so writing never stutters
     D.t = Date.now(); dirty = true;
     setStatus(D.active + ' · saving…');
     clearTimeout(saveTimer); saveTimer = setTimeout(function(){ writeLocal(false); }, SAVE_DELAY_MS);
   }
-  function writeLocal(skipFile){
+  function writeLS(){ try { localStorage.setItem(KEY, JSON.stringify(D)); return true; } catch(e){ return false; } }
+  function writeLocal(skipFile, closing, quiet){   // closing: the tab is being hidden or closed, so also keep a quick localStorage backup; quiet: leave the status line alone
     clearTimeout(saveTimer); saveTimer = null;
-    if (!dirty) return;
+    if (!dirty || !ready) return;
     dirty = false;
-    try { localStorage.setItem(KEY, JSON.stringify(D)); setStatus(D.active + ' · saved in browser'); }
-    catch(e){ setStatus('Browser blocked storage. Use File ▸ Save ink into file.'); }
+    var t = D.t, backedUp = closing && writeLS();
+    inkTx('readwrite', function(st){ return st.put(D, KEY); }).then(function(r){
+      var ok = r.ok;
+      if (ok) dropLS(t);
+      else if (!backedUp) ok = writeLS();   // no IndexedDB: localStorage, as before v21
+      if (dirty || (quiet && ok)) return;   // newer ink is waiting to be saved (that save sets the status), or a quiet save worked
+      setStatus(ok || backedUp ? D.active + ' · saved in browser' : 'Browser blocked storage. Use File ▸ Save ink into file.');
+    });
     if (fileHandle && !skipFile) writeFile(false);
   }
 
@@ -578,7 +639,7 @@
     return [Math.round(((e.clientX - r.left) / Z - OX) * 10) / 10, Math.round((e.clientY - r.top) / Z * 10) / 10];
   }
   canvas.addEventListener('pointerdown', function(e){
-    if (active !== null) return;
+    if (active !== null || !ready) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     // SMART board: pen tip = "pen"; palm/fist/side of hand = "pen" with the eraser button (32); finger and round pen end = "mouse"
     var kind = pointerKind(e), palm = kind === 'palm', finger = kind === 'finger';
@@ -822,6 +883,7 @@
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
   function onBarClick(e){   // the toolbar, the File menu and the Clear menu
+    if (!ready) return;
     var b = e.target.closest('button'); if (!b) return;
     if (b.dataset.color) pickColor(b.dataset.color);
     else if (b.dataset.period !== undefined) switchTo(b.dataset.period);
@@ -944,7 +1006,7 @@
     var h = historyKey(e), t = document.activeElement;   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
     if (!h || (h !== 'block' && t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;   // text boxes keep their own undo
     e.preventDefault();
-    if (h !== 'block') (h === 'undo' ? undo : redo)();
+    if (h !== 'block' && ready) (h === 'undo' ? undo : redo)();
   });
 
   /* ---------- print / Save PDF: redraw the current period's ink onto each page at print sharpness ---------- */
@@ -974,15 +1036,21 @@
   window.addEventListener('afterprint', function(){ clearPrint(); if (printZoom !== 1) setZoom(printZoom); });
 
   /* ---------- never lose the last few seconds of ink ---------- */
-  window.addEventListener('pagehide', function(){ writeLocal(true); });
-  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true); });
+  window.addEventListener('pagehide', function(){ writeLocal(true, true); });
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true, true); });
 
   /* ---------- start ---------- */
   var src = load(); size(); renderPeriods(); refresh(); setMode('write'); layoutClear(); fitToolbar();
   window.addEventListener('resize', size);
   window.addEventListener('load', size);
   if (window.ResizeObserver) new ResizeObserver(size).observe(body);
-  setStatus(D.active + ' · ' + (src === 'file' ? 'ink loaded from file' : src === 'browser' ? 'ink restored from this browser' : src === 'old' ? 'earlier ink carried over' : 'ready'));
+  function started(src){ setStatus(D.active + ' · ' + (src === 'file' ? 'ink loaded from file' : src === 'browser' ? 'ink restored from this browser' : src === 'old' ? 'earlier ink carried over' : 'ready')); }
+  setStatus(D.active + ' · loading ink…');
+  loadDb().then(function(s){
+    if (s) { redraw(); renderPeriods(); refresh(); layoutClear(); }
+    started(s || src);
+    bar.dataset.ready = '1';   // tests wait for this
+  });
   if (FSA) idb('readonly', function(st){ return st.get(KEY); }).then(function(h){
     if (!h) return;
     fileHandle = h;
