@@ -66,3 +66,37 @@
 #ob-hl-strength::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;margin-top:-11px;border-radius:50%;background:#fff;border:4px solid #ffd400;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 #ob-hl-strength::-moz-range-track{height:14px;border-radius:7px;background:linear-gradient(90deg,#fff,var(--fill,#feec9a))}
 #ob-hl-strength::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid #ffd400}
+/* Class period: a "P5 ▾" button and its list when the periods don't fit as buttons (makePeriodPicker) */
+#ink-periods.menu{grid-template-columns:1fr}
+#ink-bar #ink-periods button{min-width:0}
+#ink-bar #ink-periods button[aria-expanded="true"]{background:#fff;color:#000}
+#ob-permenu{position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:240px;max-height:90vh;overflow-y:auto;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#ob-permenu[hidden]{display:none}
+#ob-permenu button{min-height:52px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ob-permenu button.on{background:#fff;color:#000;border-color:#ffd400}
+/* File ▸ Settings… (makeSettings): a box in the middle of the screen */
+#ob-settings{position:fixed;inset:0;z-index:102;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
+#ob-settings[hidden]{display:none}
+#ob-settings .ob-box{width:min(440px,94vw);max-height:92vh;overflow-y:auto;box-sizing:border-box;padding:16px 18px 18px;background:#1f1f1f;color:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+#ob-settings .ob-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ob-settings .ob-head strong{font-size:20px}
+#ob-settings h3{margin:16px 0 8px;color:#bbb;font:700 12px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+#ob-settings button{min-height:48px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 14px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 10px}
+#ob-settings button.on{border-color:#ffd400}
+#ob-settings button:disabled{opacity:.35;cursor:default}
+#ob-settings button.warn{background:#c62828}
+#ob-settings [data-s="done"]{min-width:96px;background:#ffd400;color:#000}
+#ob-settings .ob-count{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center;text-align:center;font-weight:700}
+#ob-settings .ob-count button{font-size:26px;line-height:1;padding:0}
+#ob-settings .ob-styles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#ob-settings .ob-names{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#ob-settings input{min-width:0;height:44px;box-sizing:border-box;padding:0 10px;border:2px solid #555;border-radius:10px;background:#fff;color:#000;font:600 16px Inter,system-ui,sans-serif;user-select:text;-webkit-user-select:text}
+#ob-settings input:focus{outline:none;border-color:#ffd400;box-shadow:0 0 0 2px #ffd400}
+#ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
+#ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
+#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings .ob-pens button{min-height:40px;padding:0}
+#ob-settings .ob-pens button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
+#ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}
+#ob-settings .ob-tools .ob-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;box-shadow:0 0 0 1px #fff}
+#ob-settings .ob-reset{width:100%;margin-top:10px}

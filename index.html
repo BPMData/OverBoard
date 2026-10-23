@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v22) =====
+<!-- ===== INK OVERLAY START (v23) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -140,8 +140,42 @@
 #ob-hl-strength::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;margin-top:-11px;border-radius:50%;background:#fff;border:4px solid #ffd400;box-shadow:0 1px 4px rgba(0,0,0,.5)}
 #ob-hl-strength::-moz-range-track{height:14px;border-radius:7px;background:linear-gradient(90deg,#fff,var(--fill,#feec9a))}
 #ob-hl-strength::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid #ffd400}
+/* Class period: a "P5 ▾" button and its list when the periods don't fit as buttons (makePeriodPicker) */
+#ink-periods.menu{grid-template-columns:1fr}
+#ink-bar #ink-periods button{min-width:0}
+#ink-bar #ink-periods button[aria-expanded="true"]{background:#fff;color:#000}
+#ob-permenu{position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:240px;max-height:90vh;overflow-y:auto;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#ob-permenu[hidden]{display:none}
+#ob-permenu button{min-height:52px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ob-permenu button.on{background:#fff;color:#000;border-color:#ffd400}
+/* File ▸ Settings… (makeSettings): a box in the middle of the screen */
+#ob-settings{position:fixed;inset:0;z-index:102;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font-family:Inter,system-ui,sans-serif;touch-action:manipulation}
+#ob-settings[hidden]{display:none}
+#ob-settings .ob-box{width:min(440px,94vw);max-height:92vh;overflow-y:auto;box-sizing:border-box;padding:16px 18px 18px;background:#1f1f1f;color:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none}
+#ob-settings .ob-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ob-settings .ob-head strong{font-size:20px}
+#ob-settings h3{margin:16px 0 8px;color:#bbb;font:700 12px Inter,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+#ob-settings button{min-height:48px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 14px Inter,system-ui,sans-serif;cursor:pointer;padding:4px 10px}
+#ob-settings button.on{border-color:#ffd400}
+#ob-settings button:disabled{opacity:.35;cursor:default}
+#ob-settings button.warn{background:#c62828}
+#ob-settings [data-s="done"]{min-width:96px;background:#ffd400;color:#000}
+#ob-settings .ob-count{display:grid;grid-template-columns:56px 1fr 56px;gap:8px;align-items:center;text-align:center;font-weight:700}
+#ob-settings .ob-count button{font-size:26px;line-height:1;padding:0}
+#ob-settings .ob-styles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#ob-settings .ob-names{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#ob-settings input{min-width:0;height:44px;box-sizing:border-box;padding:0 10px;border:2px solid #555;border-radius:10px;background:#fff;color:#000;font:600 16px Inter,system-ui,sans-serif;user-select:text;-webkit-user-select:text}
+#ob-settings input:focus{outline:none;border-color:#ffd400;box-shadow:0 0 0 2px #ffd400}
+#ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
+#ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
+#ob-settings .ob-pens{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+#ob-settings .ob-pens button{min-height:40px;padding:0}
+#ob-settings .ob-pens button.on{border-color:#fff;box-shadow:0 0 0 3px #ffd400}
+#ob-settings .ob-tools{margin:0;font-size:14px;line-height:1.5}
+#ob-settings .ob-tools .ob-sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;box-shadow:0 0 0 1px #fff}
+#ob-settings .ob-reset{width:100%;margin-top:10px}
 /* ===== END SHARED TOOLBAR CSS ===== */
-@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu{display:none!important}}
+@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings{display:none!important}}
 </style>
 <canvas id="ink-hl"></canvas>
 <canvas id="ink-canvas"></canvas>
@@ -181,6 +215,7 @@
   <button data-act="savefile" class="sm wide" title="Ink already saves in this browser. This also saves it inside the .html file.">Save ink into file</button>
   <button data-act="pickfile" class="sm wide" title="Choose which .html file the ink saves into">Change linked file</button>
   <button data-act="side" class="sm wide" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
+  <button data-act="settings" class="sm wide" title="Class periods, the pen color at start, and resetting the tools">Settings…</button>
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools">&#9998;</button>
 <script id="ink-script">
@@ -428,6 +463,208 @@
     return s;
   }
 
+  /* ---- class periods and File ▸ Settings…, the same in the PDF app and the overlay ----
+     Saved per browser (localStorage), so every worksheet and PDF opened in this browser shares them. */
+
+  /* tap-only name styles for n periods */
+  function periodPreset(style, n){
+    var out = [], half = Math.ceil(n / 2);
+    for (var i = 0; i < n; i++) {
+      if (style === 'period') out.push('Period ' + (i + 1));
+      else if (style === 'block') out.push('Block ' + String.fromCharCode(65 + i));
+      else if (style === 'ab') out.push(i < half ? 'A' + (i + 1) : 'B' + (i - half + 1));   // A/B day schedules
+      else out.push('P' + (i + 1));
+    }
+    return out;
+  }
+  function periodStyles(){ return [['p', 'P1, P2…'], ['period', 'Period 1, 2…'], ['block', 'Block A, B…'], ['ab', 'A1… B1… (A/B days)']]; }
+
+  /* trimmed, not empty, all different, at most 20 characters; null if the list can't be used */
+  function cleanPeriods(list){
+    if (!list || !list.length || list.length > 12) return null;
+    var seen = {}, out = [];
+    for (var i = 0; i < list.length; i++) {
+      var n = String(list[i] == null ? '' : list[i]).replace(/\s+/g, ' ').trim().slice(0, 20), k = n.toLowerCase();
+      if (!n || seen[k]) return null;
+      seen[k] = 1; out.push(n);
+    }
+    return out;
+  }
+  /* the period list new documents start with (def until the teacher sets one) */
+  function loadPeriods(def){
+    try { return cleanPeriods(JSON.parse(localStorage.getItem('ob-periods'))) || def.slice(); } catch(e){ return def.slice(); }
+  }
+  /* the pen color each document starts with */
+  function startPen(def){
+    var c = null; try { c = localStorage.getItem('ob-pen-color'); } catch(e){}
+    return /^#[0-9a-f]{6}$/i.test(c || '') ? c : def;
+  }
+
+  /* Give a document a new period list. Names replace the document's periods in order, keeping their ink
+     (so renaming never loses ink); periods past the end of the list are removed. Returns
+     { periods, active, lost, same }: lost = removed periods that had ink; same = nothing would change. */
+  function remapPeriods(periods, active, names){
+    var old = Object.keys(periods), out = {}, lost = [], act = names[0], i;
+    for (i = 0; i < names.length; i++) {
+      out[names[i]] = i < old.length ? periods[old[i]] : [];
+      if (i < old.length && old[i] === active) act = names[i];
+    }
+    for (i = names.length; i < old.length; i++) if (periods[old[i]].length) lost.push(old[i]);
+    return { periods: out, active: act, lost: lost, same: old.join('\n') === names.join('\n') };
+  }
+
+  /* The Class period row on the toolbar: one button per period when they fit (up to 4 short names), otherwise
+     one wide "P5 ▾" button that opens a list beside the toolbar. Period buttons carry data-period, so the
+     toolbar's own click handler switches; buttons in the list call onPick(name). onOpen() closes other popouts.
+     Returns { el, render(names, active), show(open) }. */
+  function makePeriodPicker(bar, row, onPick, onOpen){
+    var m = document.createElement('div'), toggle = null;
+    m.id = 'ob-permenu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Class period'); m.hidden = true;
+    document.body.appendChild(m);
+    function show(open){
+      if (open && !toggle) return;
+      m.hidden = !open;
+      if (toggle) toggle.setAttribute('aria-expanded', String(open));
+      if (open) { if (onOpen) onOpen(); placeMenu(m, toggle, bar, true); }
+    }
+    function periodBtn(name, on){
+      var b = document.createElement('button');
+      b.className = 'sm' + (on ? ' on' : ''); b.dataset.period = name; b.textContent = name; b.title = name;
+      return b;
+    }
+    function render(names, active){
+      row.textContent = ''; m.textContent = ''; toggle = null;
+      var fits = names.length <= 4;
+      for (var i = 0; i < names.length; i++) if (names[i].length > 4) fits = false;
+      row.classList.toggle('menu', !fits);
+      row.style.gridTemplateColumns = fits ? 'repeat(' + names.length + ',1fr)' : '';
+      if (fits) {
+        for (i = 0; i < names.length; i++) row.appendChild(periodBtn(names[i], names[i] === active));
+        m.hidden = true;
+        return;
+      }
+      toggle = document.createElement('button');
+      toggle.className = 'sm'; toggle.dataset.act = 'period-menu';
+      toggle.setAttribute('aria-haspopup', 'true'); toggle.setAttribute('aria-expanded', String(!m.hidden));
+      toggle.textContent = active + ' ▾'; toggle.title = 'Class period: ' + active + ' (tap to change)';
+      row.appendChild(toggle);
+      for (i = 0; i < names.length; i++) m.appendChild(periodBtn(names[i], names[i] === active));
+    }
+    row.addEventListener('click', function(e){ if (toggle && toggle.contains(e.target)) show(m.hidden); });
+    m.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      show(false); onPick(b.dataset.period);
+    });
+    document.addEventListener('pointerdown', function(e){ if (!m.hidden && !m.contains(e.target) && !(toggle && toggle.contains(e.target))) show(false); }, true);
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !m.hidden) show(false); });
+    return { el: m, render: render, show: show };
+  }
+
+  /* File ▸ Settings…: class periods, the pen color at start, and the tool settings the toolbar remembers.
+     Typing is only needed for custom period names; everything else is taps.
+     O = { defaults: ['P1', …], colors: [[hex, name], …], pen: the pen color before one is picked here,
+           periods(): the open document's period names (or null),
+           applyPeriods(names): use them on the open document; return false if the teacher said no,
+           tools(): { finger, width, smooth, hlColor, hlStrength }, setPen(hex), resetTools(), onOpen() }
+     Returns { el, show(open) }. */
+  function makeSettings(O){
+    var el = document.createElement('div');
+    el.id = 'ob-settings'; el.hidden = true;
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Settings');
+    var styles = periodStyles(), html = '';
+    for (var i = 0; i < styles.length; i++) html += '<button data-style="' + styles[i][0] + '">' + styles[i][1] + '</button>';
+    var pens = '';
+    for (i = 0; i < O.colors.length; i++) pens += '<button data-pen="' + O.colors[i][0] + '" style="background:' + O.colors[i][0] + '" aria-label="' + O.colors[i][1] + '" title="' + O.colors[i][1] + '"></button>';
+    el.innerHTML = '<div class="ob-box">' +
+      '<div class="ob-head"><strong>Settings</strong><button data-s="done">Done</button></div>' +
+      '<h3>Class periods</h3>' +
+      '<div class="ob-count"><button data-s="fewer" aria-label="Fewer periods">&minus;</button><span><b></b></span><button data-s="more" aria-label="More periods">+</button></div>' +
+      '<div class="ob-styles">' + html + '</div>' +
+      '<div class="ob-names"></div>' +
+      '<p class="ob-hint">Tap a name to type your own. Renaming keeps the ink. New worksheets and PDFs start with these, and Done uses them on this one too.</p>' +
+      '<p class="ob-err" role="alert" hidden></p>' +
+      '<h3>Pen color at start</h3><div class="ob-pens">' + pens + '</div>' +
+      '<h3>Toolbar settings</h3><p class="ob-tools"></p>' +
+      '<p class="ob-hint">The toolbar remembers these when you change them.</p>' +
+      '<button data-s="reset" class="ob-reset">Reset tools to defaults</button>' +
+      '</div>';
+    document.body.appendChild(el);
+    var namesEl = el.querySelector('.ob-names'), err = el.querySelector('.ob-err');
+    var names = [], touched = false;
+    function draw(){
+      el.querySelector('.ob-count b').textContent = names.length + (names.length === 1 ? ' period' : ' periods');
+      el.querySelector('[data-s="fewer"]').disabled = names.length <= 1;
+      el.querySelector('[data-s="more"]').disabled = names.length >= 12;
+      var bs = el.querySelectorAll('[data-style]');
+      for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', periodPreset(bs[i].dataset.style, names.length).join('\n') === names.join('\n'));
+      namesEl.textContent = '';
+      for (i = 0; i < names.length; i++) {
+        var f = document.createElement('input');
+        f.type = 'text'; f.value = names[i]; f.maxLength = 20; f.dataset.i = i;
+        f.setAttribute('aria-label', 'Name of period ' + (i + 1)); f.setAttribute('enterkeyhint', 'done');
+        f.autocomplete = 'off'; f.spellcheck = false;
+        namesEl.appendChild(f);
+      }
+    }
+    function drawTools(){
+      var t = O.tools(), pen = startPen(O.pen), ps = el.querySelectorAll('[data-pen]');
+      for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('on', ps[i].dataset.pen === pen);
+      el.querySelector('.ob-tools').innerHTML = 'Finger ' + (t.finger ? 'scrolls' : 'draws') + ' · Pen size ' + t.width +
+        ' · Smoothing ' + (t.smooth || 'off') + ' · Highlighter <span class="ob-sw" style="background:' + t.hlColor + '"></span> ' + t.hlStrength + '%';
+    }
+    function show(open){
+      if (open) {
+        names = (O.periods && O.periods()) || loadPeriods(O.defaults);
+        touched = false; err.hidden = true;
+        draw(); drawTools();
+        if (O.onOpen) O.onOpen();
+      }
+      el.hidden = !open;
+    }
+    function done(){
+      if (touched) {
+        var clean = cleanPeriods(names);
+        if (!clean) { err.textContent = 'Each period needs a name, and no two can be the same.'; err.hidden = false; return; }
+        if (O.applyPeriods(clean) === false) return;
+        try { localStorage.setItem('ob-periods', JSON.stringify(clean)); } catch(e){}
+      }
+      if (document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
+      show(false);
+    }
+    function change(next){ names = next; touched = true; err.hidden = true; draw(); }
+    el.addEventListener('click', function(e){
+      if (e.target === el) return done();   // a tap outside the box
+      var b = e.target.closest('button'); if (!b) return;
+      var s = b.dataset.s;
+      if (s === 'done') done();
+      else if (s === 'fewer' && names.length > 1) change(names.slice(0, -1));
+      else if (s === 'more' && names.length < 12) {
+        var style = null, bs = el.querySelectorAll('[data-style].on');
+        if (bs.length) style = bs[0].dataset.style;
+        if (style) change(periodPreset(style, names.length + 1));
+        else { var k = names.length + 1; while (names.indexOf('P' + k) >= 0) k++; change(names.concat('P' + k)); }
+      }
+      else if (b.dataset.style) change(periodPreset(b.dataset.style, names.length));
+      else if (b.dataset.pen) {
+        try { localStorage.setItem('ob-pen-color', b.dataset.pen); } catch(e2){}
+        O.setPen(b.dataset.pen); drawTools();
+      }
+      else if (s === 'reset') confirmTap(b, function(){
+        ['ink-width', 'ink-hl-width', 'ink-hl-color', 'ink-custom', 'ink-hl-mode', 'ink-hl-strength', 'ink-cover-color', 'ink-smooth', 'ink-finger', 'ob-pen-color']
+          .forEach(function(k){ try { localStorage.removeItem(k); } catch(e3){} });
+        O.resetTools(); drawTools();
+      });
+    });
+    namesEl.addEventListener('input', function(e){
+      var i = +e.target.dataset.i; names = names.slice(); names[i] = e.target.value; touched = true; err.hidden = true;
+      var bs = el.querySelectorAll('[data-style]');   // a typed name means none of the styles any more (redrawing would drop the keyboard)
+      for (var j = 0; j < bs.length; j++) bs[j].classList.toggle('on', periodPreset(bs[j].dataset.style, names.length).join('\n') === names.join('\n'));
+    });
+    namesEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });   // closes the on-screen keyboard
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !el.hidden) done(); });
+    return { el: el, show: show };
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -444,13 +681,13 @@
   /* ===== END SHARED CORE ===== */
 
   /* ===== SETTINGS ===== */
-  var PERIODS = ['P1', 'P2', 'P3', 'P4'];  // the period tabs; used only until ink has been saved once ("Period 1" etc. from older versions become "P1")
+  var PERIODS = ['P1', 'P2', 'P3', 'P4'];  // the period tabs, until a list is set in File ▸ Settings…; a worksheet keeps its list once ink has been saved ("Period 1" etc. from older versions become "P1")
   var PRINT_INK_BLACK = false;    // false = Save PDF keeps pen colors (smartboard use). true = all ink prints black and highlights are left out (low-toner copier).
   var SAVE_DELAY_MS = 5000;       // after you stop writing, wait this long, then save (browser + linked file). Also saves if you close the tab.
   var FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. false = finger draws too. The toolbar button flips this (remembered per browser).
   var PALM_ERASER_W = 92;         // eraser size (px) when you wipe with your palm, fist or side of hand
   var SMOOTHING = 3;              // starting level 0-8 (toolbar buttons change it, remembered per browser). 0 = off. 3-6 = steadier, rounder lines. 7-8 lag behind the pen.
-  var PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board); the palette changes it
+  var PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
   var HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
   var HIGHLIGHT_W = 22;           // starting highlighter width (px); the - / + buttons change it while the highlighter is on
   var HIGHLIGHT_STRENGTH = 50;    // starting highlight strength in % (10-100; the ▾ slider changes it, remembered per browser). 100 = full color, 50 = halfway to white
@@ -470,7 +707,7 @@
   var picker = document.getElementById('ink-picker'), customFill = bar.querySelector('[data-act="custom"] .fill');
   var KEY = 'ink-v2:' + location.pathname + ':' + document.title;
   var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
-  var penColor = PEN_COLOR;   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
+  var penColor = startPen(PEN_COLOR);   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
   var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
@@ -497,12 +734,12 @@
 
   /* ---------- data: { v, t, active, periods: { name: [strokes] } }   stroke: { c, w, e: eraser, h: highlight, o: cover, p: [x,y,...] } ---------- */
   function parse(s){ try { var o = JSON.parse(s); if (o && o.periods && typeof o.periods === 'object') return o; } catch(e){} return null; }
-  function fresh(){ var p = {}; PERIODS.forEach(function(n){ p[n] = []; }); return { v: 2, t: 0, active: PERIODS[0], periods: p }; }
+  function fresh(){ var names = loadPeriods(PERIODS), p = {}; names.forEach(function(n){ p[n] = []; }); return { v: 2, t: 0, active: names[0], periods: p }; }
   function setStrokes(a){ strokes = D.periods[D.active] = a; }
-  function shortNames(){   // "Period 1" -> "P1"
-    var np = {}, changed = false;
+  function shortNames(){   // "Period 1" -> "P1" (from older versions), unless Settings chose "Period 1" names
+    var np = {}, changed = false, mine = loadPeriods([]);
     Object.keys(D.periods).forEach(function(k){
-      var m = /^Period\s*(\d+)$/i.exec(k), n = m ? 'P' + m[1] : k;
+      var m = mine.indexOf(k) < 0 && /^Period\s*(\d+)$/i.exec(k), n = m ? 'P' + m[1] : k;
       if (n !== k && !D.periods[n]) { changed = true; if (D.active === k) D.active = n; } else n = k;
       np[n] = D.periods[k];
     });
@@ -715,15 +952,9 @@
   }
 
   /* ---------- class periods ---------- */
-  function renderPeriods(){
-    periodsEl.textContent = '';
-    Object.keys(D.periods).forEach(function(n){
-      var b = document.createElement('button');
-      b.className = 'sm' + (n === D.active ? ' on' : '');
-      b.dataset.period = n; b.textContent = n; b.title = n;
-      periodsEl.appendChild(b);
-    });
-  }
+  // one button per period, or a "P5 ▾" list when they don't fit (shared with the PDF app)
+  var periodPicker = makePeriodPicker(bar, periodsEl, function(name){ if (ready) switchTo(name); }, function(){ closeMenus('periods'); });
+  function renderPeriods(){ periodPicker.render(Object.keys(D.periods), D.active); }
   function switchTo(name){
     if (!D.periods[name] || name === D.active) return;
     D.active = name; strokes = D.periods[name]; lastCleared = null; redos = []; refreshRedo();
@@ -921,6 +1152,7 @@
       case 'pickfile':
         if (FSA) explainPick(b, true); else saveFile(true);
         break;
+      case 'settings': settings.show(true); break;
       case 'prev': jump(-1); break;
       case 'next': jump(1); break;
       case 'side': bar.classList.toggle('right'); fileMenu.place(); break;
@@ -938,7 +1170,32 @@
   function closeMenus(except){   // only one popout at a time
     if (except !== 'file') fileMenu.show(false);
     if (except !== 'hl') hlm.show(false);
+    if (except !== 'periods') periodPicker.show(false);
   }
+  /* ---------- File ▸ Settings… (shared with the PDF app) ---------- */
+  var settings = makeSettings({
+    defaults: PERIODS, pen: PEN_COLOR,
+    colors: [].map.call(bar.querySelectorAll('[data-color]'), function(b){ return [b.dataset.color, b.title]; }),
+    periods: function(){ return Object.keys(D.periods); },
+    applyPeriods: function(names){
+      var r = remapPeriods(D.periods, D.active, names);
+      if (r.same) return true;
+      if (r.lost.length && !confirm('Remove ' + r.lost.join(', ') + ' and its ink from this worksheet?\n\nUndo can\'t bring it back.')) return false;
+      D.periods = r.periods; D.active = r.active; strokes = D.periods[D.active];
+      lastCleared = null; redos = []; refreshRedo(); redraw(); renderPeriods(); save();
+      setStatus(D.active + ' · class periods changed');
+      return true;
+    },
+    tools: function(){ return { finger: fingerScrolls, width: width, smooth: smooth, hlColor: HL.hlColor, hlStrength: HL.hlStrength }; },
+    setPen: function(c){ penColor = c; if (!hiliting) color = c; erasing = false; setMode('write'); refresh(); },
+    resetTools: function(){
+      width = 2.5; hlWidth = HIGHLIGHT_W; customColor = ''; smooth = SMOOTHING; fingerScrolls = FINGER_SCROLLS; penColor = PEN_COLOR; erasing = false;
+      HL.hlColor = HIGHLIGHT_COLOR; HL.coverColor = '#111111'; HL.hlStrength = HIGHLIGHT_STRENGTH; HL.covering = false;
+      bar.querySelector('[data-act="finger"]').textContent = 'Finger: ' + (fingerScrolls ? 'scrolls' : 'draws');
+      color = toolColor(); refresh();
+    },
+    onOpen: function(){ closeMenus(); }
+  });
   fileMenu.el.addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
     onBarClick(e);
@@ -954,7 +1211,8 @@
   }
   /* the toolbar and its popouts shrink to fit a short window (a laptop) and undo the page zoom */
   function fitToolbar(){
-    fitTools(bar, [fileMenu.el, hlm.el], 1 / Z);
+    fitTools(bar, [fileMenu.el, hlm.el, periodPicker.el], 1 / Z);
+    settings.el.style.zoom = Z === 1 ? '' : String(1 / Z);   // the page zoom doesn't change the Settings box
     showBtn.style.zoom = Z === 1 ? '' : String(1 / Z);
   }
 

@@ -270,5 +270,11 @@ export class Ink {
     return true;
   }
 
+  setPeriods(periods, active) {   // File ▸ Settings… changed the class periods (renamed ones keep their ink)
+    this.D.periods = periods; this.D.active = active;
+    this.lastCleared = null; this.redos = [];
+    this.reindex(); this.onChange();
+  }
+
   count() { return this.strokes.length; }
 }

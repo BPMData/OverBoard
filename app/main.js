@@ -1,7 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn } from '../shared/ink-core.js';
+import { fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink } from './ink.js';
@@ -12,7 +12,7 @@ import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from '
 import { setupOffline } from './offline.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
-const PERIODS = ['P1', 'P2', 'P3', 'P4'];
+const PERIODS = ['P1', 'P2', 'P3', 'P4'];   // until a list is set in File ▸ Settings… (shared with the overlay)
 const SAVE_DELAY_MS = 3000;       // after you stop writing, wait this long, then save. Also saves when the tab is hidden or closed.
 const PDF_SAVE_DELAY_MS = 8000;   // "Save ink into PDF" (when on) writes the file this long after you stop writing
 const FINGER_SCROLLS = true;      // true = finger scrolls, pen writes. The toolbar button flips this (remembered per browser).
@@ -22,7 +22,7 @@ const SMOOTHING = 3;              // starting level 0-8
 const HIGHLIGHT_COLOR = '#fdd835';   // highlighter starts yellow; after that it remembers the last highlighter color you picked
 const HIGHLIGHT_W = 22;           // starting highlighter width; the - / + buttons change it while the highlighter is on
 const HIGHLIGHT_STRENGTH = 50;    // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
-const PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board); the palette changes it
+const PEN_COLOR = '#e0218a';      // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
 const COVER_COLOR = '#111111';    // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
 
@@ -56,6 +56,7 @@ const T = {
   const kc = getLS('ink-cover-color'); if (isHex(kc)) T.coverColor = kc;
   const sl = getLS('ink-smooth'); if (sl !== null && +sl >= 0 && +sl <= 8) T.smooth = +sl;
   const fm = getLS('ink-finger'); if (fm) T.fingerScrolls = fm === 'scroll';
+  T.penColor = T.color = startPen(PEN_COLOR);
 }
 
 /* ---------- the open document ---------- */
@@ -72,7 +73,7 @@ ink.attach(pagesEl);
 window.__overboard = { viewer, ink, get doc() { return doc; }, get data() { return D; }, flush: () => writeNow() };   // for tests and the curious
 
 function setStatus(t) { statusEl.textContent = t; }
-function fresh() { const p = {}; PERIODS.forEach((n) => { p[n] = []; }); return { v: 3, t: 0, active: PERIODS[0], at: 1, periods: p }; }
+function fresh() { const names = loadPeriods(PERIODS), p = {}; names.forEach((n) => { p[n] = []; }); return { v: 3, t: 0, active: names[0], at: 1, periods: p }; }
 function validData(o) {
   if (!o || !o.periods || typeof o.periods !== 'object' || !Object.keys(o.periods).length) return null;
   if (!o.periods[o.active]) o.active = Object.keys(o.periods)[0];
@@ -385,7 +386,7 @@ function layoutClear() {
   if (!menu) clearMenu.show(false);
 }
 /* the toolbar and its popouts shrink to fit a short window, such as a laptop screen */
-const fitToolbar = () => fitTools(bar, [fileMenu, clearMenu.el, hlMenu.el], 1);
+const fitToolbar = () => fitTools(bar, [fileMenu, clearMenu.el, hlMenu.el, periodPicker.el], 1);
 
 /* ---------- chapters (PDF outline) ---------- */
 let outline = [];   // flat [{ button, page }] for marking the current chapter
@@ -481,15 +482,33 @@ window.addEventListener('resize', () => {
 });
 
 /* ---------- class periods ---------- */
-function renderPeriods() {
-  periodsEl.textContent = '';
-  for (const n of Object.keys(D.periods)) {
-    const b = document.createElement('button');
-    b.className = 'sm' + (n === D.active ? ' on' : '');
-    b.dataset.period = n; b.textContent = n; b.title = n;
-    periodsEl.appendChild(b);
-  }
-}
+// one button per period, or a "P5 ▾" list when they don't fit (shared with the overlay)
+const periodPicker = makePeriodPicker(bar, periodsEl, (name) => { if (ink.switchTo(name)) renderPeriods(); refresh(); }, () => closeMenus('periods'));
+function renderPeriods() { periodPicker.render(Object.keys(D.periods), D.active); }
+
+/* ---------- File ▸ Settings… (shared with the overlay) ---------- */
+const settings = makeSettings({
+  defaults: PERIODS, pen: PEN_COLOR,
+  colors: [...bar.querySelectorAll('[data-color]')].map((b) => [b.dataset.color, b.title]),
+  periods: () => (D ? Object.keys(D.periods) : null),
+  applyPeriods(names) {
+    if (!D) return true;
+    const r = remapPeriods(D.periods, D.active, names);
+    if (r.same) return true;
+    if (r.lost.length && !confirm('Remove ' + r.lost.join(', ') + ' and its ink from this PDF?\n\nUndo can\'t bring it back.')) return false;
+    ink.setPeriods(r.periods, r.active); renderPeriods(); refreshRedo();
+    setStatus(D.active + ' · class periods changed');
+    return true;
+  },
+  tools: () => ({ finger: T.fingerScrolls, width: T.width, smooth: T.smooth, hlColor: T.hlColor, hlStrength: T.hlStrength }),
+  setPen(c) { T.penColor = c; if (!T.hiliting) T.color = c; T.erasing = false; setMode('write'); refresh(); },
+  resetTools() {
+    Object.assign(T, { width: 2.5, hlWidth: HIGHLIGHT_W, hlColor: HIGHLIGHT_COLOR, customColor: '', covering: false, hlStrength: HIGHLIGHT_STRENGTH,
+      coverColor: COVER_COLOR, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS, penColor: PEN_COLOR, erasing: false });
+    T.color = toolColor(); refresh();
+  },
+  onOpen: () => closeMenus(),
+});
 
 /* ---------- toolbar ---------- */
 const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
@@ -557,6 +576,7 @@ function closeMenus(except) {   // only one popout at a time
   if (except !== 'file') file.show(false);
   if (except !== 'clear') clearMenu.show(false);
   if (except !== 'hl') hlMenu.show(false);
+  if (except !== 'periods') periodPicker.show(false);
 }
 // Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
 // A choice, or moving the slider, turns the highlighter on in that mode.
@@ -620,6 +640,7 @@ function onToolbarClick(e) {
     case 'pdf-link': onLinkButton(b); return;
     case 'ink-load': $('#ob-inkfile').click(); break;
     case 'close': closeDoc(true); break;
+    case 'settings': settings.show(true); break;
     case 'side':
       bar.classList.toggle('right');
       toc.classList.toggle('left', bar.classList.contains('right'));
