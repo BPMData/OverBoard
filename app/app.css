@@ -22,15 +22,16 @@ body:not(.start) #ob-start { display: none; }
 #ob-install[hidden] { display: none; }
 #ob-install button { flex: none; min-height: 52px; padding: 0 20px; border: 0; border-radius: 12px; background: #111; color: #ffd400; font: 700 16px Inter, system-ui, sans-serif; cursor: pointer; }
 #ob-recent h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 22px 0 8px; }
-#ob-recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#ob-recent ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }   /* long file names shorten with … instead of widening the card */
 #ob-recent li { display: flex; gap: 8px; }
 #ob-recent button { font: inherit; border: 0; border-radius: 10px; cursor: pointer; min-height: 52px; }
-#ob-recent .open { flex: 1; text-align: left; background: #f1f0ec; padding: 6px 14px; overflow: hidden; }
+#ob-recent .open { flex: 1; min-width: 0; text-align: left; background: #f1f0ec; padding: 6px 14px; overflow: hidden; }
 #ob-recent .open b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #ob-recent .open small { color: var(--mute); }
 #ob-recent .open:hover { background: #e6e4dc; }
-#ob-recent .forget { width: 52px; background: transparent; color: var(--mute); font-size: 22px; }
+#ob-recent .forget { flex: none; width: 52px; background: transparent; color: var(--mute); font-size: 22px; }
 #ob-recent .forget:hover { background: #ffebee; color: #b71c1c; }
+#ob-release { color: var(--mute); font-size: 12px; }   /* the version number, so you can tell the newest app loaded */
 .note { font-size: 13px; color: var(--mute); margin: 22px 0 0; }
 .note a { color: #1565c0; }
 
