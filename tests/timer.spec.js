@@ -216,9 +216,9 @@ test.describe('HTML overlay', () => {
   test('a sound file that is too big, or not a sound, is refused with a message', async ({ page }) => {
     await openSettings(page);
     await page.setInputFiles(soundInput, { name: 'long.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
-    await expect(page.locator('#ob-settings .ob-tm-sound .ob-err')).toHaveText('That file is over 5 MB. Pick a shorter sound.');
+    await expect(page.locator('#ob-settings .ob-tm-sound .ob-snd-err')).toHaveText('That file is over 5 MB. Pick a shorter sound.');
     await page.setInputFiles(soundInput, { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
-    await expect(page.locator('#ob-settings .ob-tm-sound .ob-err')).toHaveText("That file can't be played. Pick a .wav or .mp3.");
+    await expect(page.locator('#ob-settings .ob-tm-sound .ob-snd-err')).toHaveText("That file can't be played. Pick a .wav or .mp3.");
     await expect(soundNow(page)).toHaveText('At zero it plays: the built-in chime');
     expect(await keptSound(page, 'ink-data')).toBeUndefined();
   });

@@ -123,7 +123,7 @@ test('Save PDF with covers: the teacher is told the text can still be copied; co
   await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
   const layers = await page.evaluate(() => [...document.querySelectorAll('.page')[0].querySelectorAll('canvas.ink-print')].map((c) => c.style.mixBlendMode));
   expect(layers).toEqual(['']);                                  // no highlights: one layer, covers on it
-  expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([95, 95, 95, 255]);
+  expect(await rgba(page, x0 + 150, y + 60, '.page canvas.ink-print')).toEqual([166, 166, 166, 255]);   // light gray
   await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
 });
 

@@ -728,9 +728,9 @@ function makeTimer(O){
     '<div class="ob-tm-sbtns"><button data-snd="test" data-t="test_sound">&#9654; Test sound</button><button data-snd="pick" data-t="choose_sound">Choose a sound…</button></div>' +
     '<button data-snd="chime" class="ob-tm-chime" data-t="use_chime" hidden>Back to the built-in chime</button>' +
     '<p class="ob-hint" data-t="sound_hint">Your own sound: a .wav or .mp3 file, up to 5 MB. It stays in this browser.</p>' +
-    '<p class="ob-err" role="alert" hidden></p>' +
+    '<p class="ob-snd-err" role="alert" hidden></p>' +
     '<input type="file" accept=".wav,.mp3,audio/wav,audio/x-wav,audio/wave,audio/mpeg" hidden>';
-  var now = snd.querySelector('.ob-tm-now'), err = snd.querySelector('.ob-err'), file = snd.querySelector('input');
+  var now = snd.querySelector('.ob-tm-now'), err = snd.querySelector('.ob-snd-err'), file = snd.querySelector('input');
   function syncSound(){
     return getRec().then(function(r){
       now.textContent = tr('sound_now', { name: r ? r.name : tr('chime') });

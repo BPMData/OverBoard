@@ -94,7 +94,7 @@
 #ob-settings input{min-width:0;height:44px;box-sizing:border-box;padding:0 10px;border:2px solid #555;border-radius:10px;background:#fff;color:#000;font:600 16px Inter,system-ui,sans-serif;user-select:text;-webkit-user-select:text}
 #ob-settings input:focus{outline:none;border-color:#ffd400;box-shadow:0 0 0 2px #ffd400}
 #ob-settings .ob-hint{margin:8px 0 0;color:#bbb;font-size:12px;line-height:1.4}
-#ob-settings .ob-err{margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
+#ob-settings :is(.ob-err,.ob-snd-err){margin:8px 0 0;color:#ff8a80;font-size:13px;font-weight:700}
 #ob-settings .ob-pens{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 #ob-settings .ob-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 /* Settings & help ▸ (data-act="file"): two short lines in a half-width cell */
