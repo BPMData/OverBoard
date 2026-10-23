@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **File ▸ Settings…** (PDF app and HTML overlay v23), for teachers at other schools:
+  - **Class periods:** 1–12 periods with any names. Tap a style (*P1, P2…*, *Period 1, 2…*, *Block A, B…*, *A1… B1…* for A/B days) or type your own. New worksheets and PDFs start with this list, and **Done** uses it on the one you have open. Renaming keeps the ink; removing a period that has ink asks first.
+  - **Pen color at start**, so the pen doesn't always start pink.
+  - The tool settings the toolbar remembers (finger, pen size, smoothing, highlighter), with **Reset tools to defaults**.
+  - Saved in the browser, so all worksheets on one computer share them. The website and worksheets opened from your computer keep separate settings.
+- **More than 4 periods, or long names,** show as one **"P5 ▾"** button on the toolbar that opens a list, so the toolbar still fits a 1080p board.
 - **Version number on the start screen** (v22): a small grey **v22** at the bottom of the PDF app's start screen, so you can tell the newest version loaded. It goes up with every change. The HTML overlay's number (first line of the overlay) is the same number.
 - **Long file names in Open again** now shorten with … instead of pushing the list past the edge of the card.
 - **HTML overlay v21: no more 5 MB limit on ink saved in the browser.** The overlay now keeps ink in the browser's database (IndexedDB), like the PDF app, instead of the small shared space (localStorage) that every worksheet used to share. Ink saved by older versions moves over by itself the first time a worksheet opens. Closing the tab right after writing still keeps the last strokes. Rerun the installer (or the PDF app's HTML option) on existing board copies to upgrade them; their ink is kept.

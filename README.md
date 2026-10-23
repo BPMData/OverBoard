@@ -24,7 +24,8 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Cover**: tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them. The same menu sets **highlight strength** (10–100%)
 - **Undo and Redo** (↶ ↷ on the toolbar, or Ctrl/⌘+Z and Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z). Reloading from the keyboard is turned off, so a slip can't throw away the page
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
-- **Separate ink for each class period** (P1–P4) on the same worksheet
+- **Separate ink for each class period** on the same worksheet: P1–P4 to start, or set your own in **File ▸ Settings…** (1–12 periods, any names)
+- **File ▸ Settings…**: class periods (tap a style such as *Block A, B…* or *A1… B1…* for A/B days, or type your own names), the pen color at start, and **Reset tools to defaults**. Saved in the browser, so every worksheet and PDF on that computer uses them. The website and worksheets opened from your computer keep separate settings.
 - **Save PDF** with crisp ink, page by page
 - **Clear page / Clear all** (Undo brings either back), and **− / Fit / +** zoom that keeps the toolbar the same size, on PDFs and HTML worksheets alike. On a small screen (a laptop) the toolbar shrinks to fit instead of scrolling
 - **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
@@ -37,7 +38,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 
 Open **[bpmdata.github.io/OverBoard/app](https://bpmdata.github.io/OverBoard/app/)** and drop in a PDF (or tap to choose one). The PDF opens in the browser; nothing is uploaded.
 
-- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods P1–P4, undo and redo, Clear page / Clear all, zoom and File ▸.
+- **Same toolbar** as the HTML overlay: pen, highlighter, palm eraser, finger scrolls, colors, size, smoothing, class periods, undo and redo, Clear page / Clear all, zoom and File ▸.
 - **Cover answers**: tap **▾** next to Highlighter and choose **Cover** (black, dark gray or light gray). It draws a solid bar over the page, text included; wipe it with your palm or the eraser to reveal the answer, or Undo. Tap ▾ ▸ **Highlight** to go back to the see-through highlighter; the **Highlight strength** slider there (10–100%) makes highlights lighter or bolder, and printed text stays black at any strength. Covers export as solid bars, but the text under them is still in the exported PDF (anyone can copy it), so OverBoard tells you when you export.
 - **Clear page** clears the page you're looking at; **Clear all** clears every page (tap twice). A PDF with a chapter list has **Chapters** in that row instead, and **Clear ▸** opens the same two choices beside it. Both clear only the current class period, and Undo brings it back. A one-page PDF just has **Clear** (tap twice).
 - **Big books are fine.** Only the pages near the screen are drawn, so a 600-page textbook scrolls smoothly. Type a page number in the box, or tap **Chapters** if the PDF has a table of contents.
