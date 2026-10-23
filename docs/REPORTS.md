@@ -59,7 +59,7 @@ Edit the code, save, then **Deploy ▸ Manage deployments ▸ ✏️ (edit) ▸ 
 
 ## Good to know
 
-- **Limits.** At most 20 reports an hour are accepted; more than that is a robot. A gmail.com account can send about 100 emails a day.
+- **Limits.** A gmail.com account can send about 100 emails a day, so the script keeps well under that even if a robot floods it: at most 20 reports an hour and 40 a day (more is turned away, and the page offers Download / Copy instead), at most 25 thank-you emails a day, and only one thank-you per email address a week. A teacher who sends a second report that week still gets the follow-up when it's fixed. The counts are kept in Script properties as `day:…` and `thanked:…` (a scrambled form of the address); the daily check deletes old ones. To change a limit, edit the numbers near the top of the script.
 - **Spam.** The page has a hidden box that people never see and robots fill in. Reports with it filled are thrown away (the robot is told it worked). The email address is in the page, so the inbox may get some ordinary spam.
 - **Teachers' addresses** are kept only in the script's settings (Project Settings ▸ Script properties, as `contact:12` and so on), until their report is closed, or for a year at most. You can delete one there to stop its follow-up.
 - **When the token expires,** issues stop being made but the emails still arrive, each saying why the issue failed. Make a new token (step 1) and replace `GITHUB_TOKEN` (step 2.4). No new deployment is needed.
