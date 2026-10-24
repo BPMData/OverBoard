@@ -51,7 +51,7 @@ function obTranslate(root, t){
     }
   }
   var tag = { zh: 'zh-CN', pt: 'pt-BR', tl: 'fil' }[t.lang] || t.lang;
-  var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-timer', 'ob-timerset', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
+  var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-pagemenu', 'ob-addpage', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-timer', 'ob-timerset', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
   for (i = 0; i < boxes.length; i++) {
     var b = document.getElementById(boxes[i]); if (!b) continue;
     b.setAttribute('lang', tag);
@@ -114,6 +114,26 @@ function obStrings(){
     "this_page": ["This page", "Esta página", "本页", "Pahinang ito", "Trang này", "Cette page", "Esta página", "هذه الصفحة"],
     "all_pages": ["All pages", "Todas las páginas", "所有页面", "Lahat ng pahina", "Mọi trang", "Toutes les pages", "Todas as páginas", "كل الصفحات"],
     "clear_note": ["This class period only. Undo brings it back.", "Solo esta clase. Deshacer la recupera.", "仅限本班级。撤销可恢复。", "Sa klaseng ito lang. Maibabalik ng Undo.", "Chỉ lớp này. Hoàn tác để lấy lại.", "Cette classe seulement. Annuler la fait revenir.", "Só esta turma. Desfazer traz de volta.", "هذه الحصة فقط. التراجع يعيده."],
+    "start_blank": ["Or start with a blank page:", "O empieza con una página en blanco:", "或从空白页开始：", "O magsimula sa blangkong pahina:", "Hoặc bắt đầu với một trang trắng:", "Ou commencez avec une page vierge :", "Ou comece com uma página em branco:", "أو ابدأ بصفحة فارغة:"],
+    "paper_blank": ["Blank", "En blanco", "空白", "Blangko", "Trắng", "Vierge", "Em branco", "فارغة"],
+    "paper_lined": ["Lined", "Rayado", "横线", "May linya", "Kẻ dòng", "Lignes", "Pautado", "مسطّرة"],
+    "paper_graph": ["Graph", "Cuadriculado", "方格", "Graph", "Ô vuông", "Quadrillé", "Quadriculado", "مربعات"],
+    "paper_dots": ["Dots", "Puntos", "点阵", "Tuldok", "Chấm", "Pointillé", "Pontos", "نقاط"],
+    "paper_blank_tip": ["A plain white page", "Una página blanca, sin líneas", "一张白纸，没有线条", "Isang puting pahina, walang linya", "Một trang trắng, không có dòng kẻ", "Une page blanche, sans lignes", "Uma página branca, sem linhas", "صفحة بيضاء بلا خطوط"],
+    "paper_lined_tip": ["Lined paper, like a notebook", "Papel rayado, como un cuaderno", "横线纸，像笔记本一样", "Papel na may linya, gaya ng kuwaderno", "Giấy kẻ dòng, như vở viết", "Papier ligné, comme un cahier", "Papel pautado, como um caderno", "ورق مسطّر مثل الدفتر"],
+    "paper_graph_tip": ["Graph paper (¼-inch squares)", "Papel cuadriculado (cuadros de ¼ de pulgada)", "方格纸（¼ 英寸方格）", "Graph paper (¼-pulgadang kahon)", "Giấy ô vuông (ô ¼ inch)", "Papier quadrillé (carreaux de ¼ de pouce)", "Papel quadriculado (quadrados de ¼ de polegada)", "ورق مربعات (مربعات ¼ بوصة)"],
+    "paper_dots_tip": ["Dot paper (a dot every ¼ inch)", "Papel de puntos (un punto cada ¼ de pulgada)", "点阵纸（每 ¼ 英寸一个点）", "Papel na may tuldok (isang tuldok bawat ¼ pulgada)", "Giấy chấm (mỗi ¼ inch một chấm)", "Papier pointillé (un point tous les ¼ de pouce)", "Papel pontilhado (um ponto a cada ¼ de polegada)", "ورق منقّط (نقطة كل ¼ بوصة)"],
+    "pages": ["Pages", "Páginas", "页面", "Pahina", "Trang", "Pages", "Páginas", "الصفحات"],
+    "pages_tip": ["Add a page (blank, lined, graph or dots), or remove this one", "Añade una página (en blanco, rayada, cuadriculada o de puntos) o quita esta", "添加一页（空白、横线、方格或点阵），或删除本页", "Magdagdag ng pahina (blangko, may linya, graph o tuldok), o alisin ito", "Thêm một trang (trắng, kẻ dòng, ô vuông hoặc chấm), hoặc xóa trang này", "Ajouter une page (vierge, lignée, quadrillée ou pointillée), ou supprimer celle-ci", "Adicionar uma página (em branco, pautada, quadriculada ou pontilhada), ou remover esta", "أضف صفحة (فارغة أو مسطّرة أو مربعات أو نقاط)، أو احذف هذه الصفحة"],
+    "add_after": ["Add a page after this one:", "Añadir una página después de esta:", "在本页之后添加一页：", "Magdagdag ng pahina pagkatapos nito:", "Thêm một trang sau trang này:", "Ajouter une page après celle-ci :", "Adicionar uma página depois desta:", "أضف صفحة بعد هذه الصفحة:"],
+    "add_page": ["Add a page:", "Añadir una página:", "添加一页：", "Magdagdag ng pahina:", "Thêm một trang:", "Ajouter une page :", "Adicionar uma página:", "أضف صفحة:"],
+    "remove_page": ["Remove this page", "Quitar esta página", "删除本页", "Alisin ang pahinang ito", "Xóa trang này", "Supprimer cette page", "Remover esta página", "احذف هذه الصفحة"],
+    "remove_page_tip": ["Remove the page you are looking at, with its ink in every class period (tap twice)", "Quita la página que estás viendo, con su tinta de todas las clases (toca dos veces)", "删除当前页面及其在所有班级中的笔迹（点按两次）", "Alisin ang pahinang tinitingnan mo, kasama ang tinta nito sa bawat klase (i-tap nang dalawang beses)", "Xóa trang bạn đang xem, cùng nét mực của mọi lớp trên trang đó (chạm hai lần)", "Supprime la page affichée, avec son encre dans toutes les classes (touchez deux fois)", "Remove a página que você está vendo, com a tinta de todas as turmas (toque duas vezes)", "يحذف الصفحة التي تراها مع حبرها في كل الحصص (اضغط مرتين)"],
+    "notebook": ["Notebook", "Cuaderno", "笔记本", "Kuwaderno", "Vở", "Cahier", "Caderno", "دفتر"],
+    "st_page_added": ["Page {n} added", "Página {n} añadida", "已添加第 {n} 页", "Naidagdag ang pahina {n}", "Đã thêm trang {n}", "Page {n} ajoutée", "Página {n} adicionada", "تمت إضافة الصفحة {n}"],
+    "st_page_removed": ["Page {n} removed", "Página {n} quitada", "已删除第 {n} 页", "Naalis ang pahina {n}", "Đã xóa trang {n}", "Page {n} supprimée", "Página {n} removida", "تم حذف الصفحة {n}"],
+    "st_last_page": ["A notebook needs at least one page", "Un cuaderno necesita al menos una página", "笔记本至少需要一页", "Kailangan ng kuwaderno ng kahit isang pahina", "Vở cần ít nhất một trang", "Un cahier doit avoir au moins une page", "Um caderno precisa de pelo menos uma página", "يحتاج الدفتر إلى صفحة واحدة على الأقل"],
+    "st_could_not_pages": ["Could not change the pages: {e}", "No se pudieron cambiar las páginas: {e}", "无法更改页面：{e}", "Hindi mabago ang mga pahina: {e}", "Không thể thay đổi trang: {e}", "Impossible de modifier les pages : {e}", "Não foi possível alterar as páginas: {e}", "تعذّر تغيير الصفحات: {e}"],
     "chapters": ["Chapters", "Capítulos", "章节", "Kabanata", "Chương", "Chapitres", "Capítulos", "الفصول"],
     "chapters_tip": ["Chapters of this PDF", "Capítulos de este PDF", "此 PDF 的章节", "Mga kabanata ng PDF na ito", "Các chương của PDF này", "Chapitres de ce PDF", "Capítulos deste PDF", "فصول ملف PDF هذا"],
     "zoom_out": ["Zoom out", "Alejar", "缩小", "Paliitin", "Thu nhỏ", "Zoom arrière", "Diminuir zoom", "تصغير"],

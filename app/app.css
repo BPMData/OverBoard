@@ -31,6 +31,18 @@ body:not(.start) #ob-start { display: none; }
 #ob-recent .open:hover { background: #e6e4dc; }
 #ob-recent .forget { flex: none; width: 52px; background: transparent; color: var(--mute); font-size: 22px; }
 #ob-recent .forget:hover { background: #ffebee; color: #b71c1c; }
+/* blank notebooks: the paper buttons on the start screen and under a notebook's last page */
+:is(#ob-blank, #ob-addpage) h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); margin: 18px 0 8px; }
+.ob-papers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ob-papers button { display: grid; justify-items: center; gap: 6px; min-height: 52px; padding: 10px 4px; border: 0; border-radius: 12px; background: #f1f0ec; color: var(--ink); font: 600 15px Inter, system-ui, sans-serif; cursor: pointer; overflow-wrap: anywhere; }
+.ob-papers button:hover, .ob-papers button:focus-visible { background: #e6e4dc; }
+.ob-papers button:disabled { opacity: .5; cursor: progress; }
+.ob-papers i { width: 46px; height: 60px; border-radius: 2px; box-shadow: 0 1px 4px rgba(0,0,0,.3); background: #fff; }
+.ob-papers [data-paper="lined"] i { background: linear-gradient(90deg, transparent 8px, #e57373 8px 9px, transparent 9px), repeating-linear-gradient(#fff 0 5px, #9ec5e8 5px 6px); }
+.ob-papers [data-paper="graph"] i { background: linear-gradient(#c3d8ec 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, #c3d8ec 1px, transparent 1px) 0 0 / 6px 6px, #fff; }
+.ob-papers [data-paper="dots"] i { background: radial-gradient(circle, #8a9bb0 1.1px, transparent 1.5px) 3px 3px / 6px 6px, #fff; }
+body.notebook #ob-pages { padding-bottom: 0; }
+#ob-addpage { width: min(560px, calc(100vw - 32px)); margin: 16px auto 50vh; padding: 4px 16px 16px; background: #fff; border-radius: 14px; box-shadow: 0 2px 14px rgba(0,0,0,.15); font-family: Inter, system-ui, sans-serif; }
 #ob-release { color: var(--mute); font-size: 12px; }   /* the version number, so you can tell the newest app loaded */
 .note { font-size: 13px; color: var(--mute); margin: 22px 0 0; }
 .note a { color: #1565c0; }

@@ -11,6 +11,7 @@ import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
 import { setupOffline } from './offline.js';
+import { NB_RE, newNotebook, addPage, removePage, shiftInk } from './notebook.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
 const PERIODS = ['P1', 'P2', 'P3', 'P4'];   // until a list is set in File ▸ Settings… (shared with the overlay)
@@ -33,6 +34,7 @@ const bar = $('#ink-bar'), showBtn = $('#ink-show'), statusEl = $('#ink-status')
 const pagesEl = $('#ob-pages'), pageInput = $('#ob-page'), pagesTotal = $('#ob-pages-total');
 const picker = $('#ink-picker'), customFill = $('[data-act="custom"] .fill', bar);
 const sizeNum = $('#ink-size .num'), sizeDot = $('#ink-size .dot'), smoothNum = $('#ink-smooth .num');
+const pagesBtn = $('[data-act="pages"]', bar), addPageEl = $('#ob-addpage');
 const toc = $('#ob-toc'), tocBtn = $('[data-act="toc"]', bar), fitBtn = $('[data-act="zoom-fit"]', bar);
 
 function getLS(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -62,7 +64,7 @@ const T = {
 }
 
 /* ---------- the open document ---------- */
-let doc = null;       // { hash, name, pages, file, pdf }
+let doc = null;       // { hash, name, pages, file, pdf, notebook }
 let D = null;         // ink data: { v: 3, t, active, at, periods: { P1: [strokes] } }
 let saveTimer = null, dirty = false;
 
@@ -243,6 +245,7 @@ async function reconnectLink() {   // a file chosen on an earlier visit
 }
 
 /* ---------- opening a PDF ---------- */
+const PDF_OPTS = { cMapUrl: PDFJS_CMAPS_URL, cMapPacked: true, standardFontDataUrl: PDFJS_FONTS_URL, isEvalSupported: false };
 const errorEl = $('#ob-error');
 function showError(msg) { errorEl.textContent = msg; errorEl.hidden = !msg; }
 
@@ -282,14 +285,18 @@ async function openFile(file, handlePromise) {
     if (doc) await closeDoc(false);
     const buf = await file.arrayBuffer();
     const base = findBase(new Uint8Array(buf));   // a PDF OverBoard saved ink into: the original bytes come first
-    const hash = await store.hashBytes(new Uint8Array(buf, 0, base));
+    let hash = await store.hashBytes(new Uint8Array(buf, 0, base));
     const lib = await loadPdfjs();
-    const task = lib.getDocument({ data: new Uint8Array(buf), cMapUrl: PDFJS_CMAPS_URL, cMapPacked: true, standardFontDataUrl: PDFJS_FONTS_URL, isEvalSupported: false });
+    const task = lib.getDocument({ data: new Uint8Array(buf), ...PDF_OPTS });
     task.onPassword = (give, reason) => {
       const pw = prompt(reason === 2 ? 'Wrong password. Try again:' : 'This PDF has a password:');
       if (pw === null) task.destroy(); else give(pw);
     };
     const pdf = await task.promise;
+    // a blank notebook OverBoard made: its ink is kept under the notebook's ID, which stays the same as pages are added
+    let nb = null;
+    try { nb = NB_RE.exec(((await pdf.getMetadata()).info || {}).Keywords || ''); } catch (e) { /* no metadata */ }
+    if (nb) hash = 'notebook-' + nb[1];
     let saved = validData(await store.loadInk(hash).catch(() => null));
     const backup = readBackup(hash);   // ink from a reload that cut off the last save
     const fromBackup = !!backup && (!saved || (backup.t || 0) > (saved.t || 0));
@@ -298,7 +305,9 @@ async function openFile(file, handlePromise) {
     try { const txt = await readEmbeddedInk(pdf); if (txt) inPdf = store.parseSidecar(txt).data; } catch (e) { /* not ours */ }
     const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
     D = fromPdf ? inPdf : saved || fresh();
-    doc = { hash, base, name: file.name, pages: pdf.numPages, file, pdf, link: null, linkOn: false, info: null };
+    doc = { hash, base, name: file.name, pages: pdf.numPages, file, pdf, link: null, linkOn: false, info: null, notebook: !!nb };
+    document.body.classList.toggle('notebook', doc.notebook);
+    addPageEl.hidden = !doc.notebook;
     store.rememberFile(hash, { name: file.name, pages: pdf.numPages }, file).catch(() => setStatus(tr('st_too_big_keep')));
     store.askPersistent();
     document.body.classList.remove('start');
@@ -321,7 +330,7 @@ async function openFile(file, handlePromise) {
   } catch (e) {
     console.error(e);
     doc = null; D = null;
-    document.body.classList.add('start'); bar.hidden = true;
+    document.body.classList.add('start'); bar.hidden = true; addPageEl.hidden = true;
     showError(e && e.name === 'PasswordException' ? tr('err_password') :
       e && /fetch|import|module/i.test(String(e.message)) ? tr('err_pdf_reader') :
       tr('err_could_not_open', { f: file.name, e: (e && e.message) || e }));
@@ -336,6 +345,7 @@ async function closeDoc(showStart = true) {
   try { await doc.pdf.destroy(); } catch (e) { /* already gone */ }
   doc = null; D = null;
   toc.hidden = true; outline = []; hasChapters = false;
+  addPageEl.hidden = true; pageMenu.show(false); document.body.classList.remove('notebook');
   finder.close(); finder.reset();
   if (showStart) {
     if (inPdfStep() && !stepBack) history.replaceState(null, '');
@@ -406,22 +416,28 @@ async function renderRecent() {
 
 /* ---------- the Clear buttons ----------
    A PDF with chapters: Chapters | Clear ▸ (a menu: this page or all pages), with Clear on the side the menu
-   opens. Without chapters: Clear page | Clear all, like the HTML overlay. One page: just Clear. */
+   opens. A blank notebook: Pages ▸ | Clear ▸ the same way. Without chapters: Clear page | Clear all, like the
+   HTML overlay. One page: just Clear (beside Pages ▸ in a notebook). */
 let hasChapters = false;
 function layoutClear() {
-  const many = !!doc && doc.pages > 1, menu = hasChapters && many;
+  const nb = !!doc && doc.notebook, many = !!doc && doc.pages > 1, menu = (hasChapters || nb) && many;
   const menuBtn = $('[data-act="clear"]', bar), pageBtn = $('[data-act="clear-page"]', bar), allBtn = $('[data-act="clear-all"]', bar);
+  const partner = nb ? pagesBtn : tocBtn;
   tocBtn.hidden = !hasChapters;
+  pagesBtn.hidden = !nb;
   menuBtn.hidden = !menu;
   pageBtn.hidden = menu || !many;
   allBtn.hidden = menu;
-  allBtn.classList.toggle('wide', !hasChapters && !many);
+  allBtn.classList.toggle('wide', !hasChapters && !nb && !many);
   if (!allBtn.classList.contains('warn')) allBtn.textContent = tr(many ? 'clear_all' : 'clear');
-  if (bar.classList.contains('right')) tocBtn.before(menuBtn); else tocBtn.after(menuBtn);
+  const right = bar.classList.contains('right');
+  if (right) partner.before(menuBtn); else partner.after(menuBtn);
+  (right ? partner : menuBtn).after(pageBtn, allBtn);
   if (!menu) clearMenu.show(false);
+  if (!nb) pageMenu.show(false);
 }
 /* the toolbar and its popouts shrink to fit a short window, such as a laptop screen */
-const fitToolbar = () => fitTools(bar, [fileMenu, clearMenu.el, hlMenu.el, periodPicker.el], 1);
+const fitToolbar = () => fitTools(bar, [fileMenu, clearMenu.el, pageMenu.el, hlMenu.el, periodPicker.el], 1);
 
 /* ---------- chapters (PDF outline) ---------- */
 let outline = [];   // flat [{ button, page }] for marking the current chapter
@@ -561,6 +577,7 @@ langPick.addEventListener('change', () => setLang(langPick.value));
 function translateAll() {
   obTranslate(document.body, tr);   // everything marked data-t / data-th / data-tt / data-ta / data-tp
   $('[data-act="clear"]', bar).textContent = tr('clear') + ' ▸';
+  pagesBtn.textContent = tr('pages') + ' ▸';
   langPick.value = tr.lang;
   $('#ob-start a[href^="report/"]').href = 'report/?from=start&lang=' + tr.lang;
 }
@@ -634,11 +651,13 @@ picker.addEventListener('input', () => { T.customColor = picker.value; setLS('in
 /* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
    anywhere else, or Escape. Lifting the pen or finger never closes them. */
 const fileMenu = $('#ob-filemenu'), clearMenu = makePopMenu($('#ob-clearmenu'), $('[data-act="clear"]', bar), bar, () => closeMenus('clear'));
+const pageMenu = makePopMenu($('#ob-pagemenu'), pagesBtn, bar, () => closeMenus('pages'));
 const file = makePopMenu(fileMenu, $('[data-act="file"]', bar), bar, () => closeMenus('file'));
 const placeFileMenu = file.place, showFileMenu = file.show;
 function closeMenus(except) {   // only one popout at a time
   if (except !== 'file') file.show(false);
   if (except !== 'clear') clearMenu.show(false);
+  if (except !== 'pages') pageMenu.show(false);
   if (except !== 'hl') hlMenu.show(false);
   if (except !== 'periods') periodPicker.show(false);
 }
@@ -684,7 +703,8 @@ function onToolbarClick(e) {
       break;
     case 'zoom-fit': viewer.setZoom('fit'); break;
     case 'undo': case 'redo': historyStep(b.dataset.act); break;
-    case 'clear': clearMenu.show(clearMenu.el.hidden); return;   // only shown beside Chapters: this page or all pages
+    case 'clear': clearMenu.show(clearMenu.el.hidden); return;
+    case 'pages': pageMenu.show(pageMenu.el.hidden); return;   // only shown beside Chapters: this page or all pages
     case 'clear-page': {
       const n = viewer.currentPage();
       if (!ink.pageList(n).length) setStatus(tr('st_page_no_ink', { n, p: D.active }));
@@ -753,6 +773,77 @@ function isOnScreen(n) {
   const r = viewer.pages[n - 1].el.getBoundingClientRect();
   return r.bottom > 0 && r.top < window.innerHeight;
 }
+
+/* ---------- blank notebooks (app/notebook.js) ---------- */
+// Start screen: a new one-page notebook. Under the last page: add a page at the end. Pages ▸: add one after
+// the page you are on, or remove that page. Every change makes a new PDF and keeps the ink on its own page.
+function notebookName() {
+  const d = new Date();
+  const when = d.toLocaleDateString(tr.lang, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(tr.lang, { hour: 'numeric', minute: '2-digit' });
+  return (tr('notebook') + ' ' + when).replace(/[\\/:*?"<>|]+/g, '.').replace(/\s+/g, ' ') + '.pdf';
+}
+async function startBlank(paper, btns) {
+  btns.forEach((b) => { b.disabled = true; });
+  try {
+    const name = notebookName();
+    const bytes = await newNotebook(paper, name.replace(/\.pdf$/, ''));
+    await openFile(new File([bytes], name, { type: 'application/pdf' }));
+  } catch (e) {
+    showError(tr('err_could_not_open', { f: tr('notebook'), e: (e && e.message) || e }));
+  } finally { btns.forEach((b) => { b.disabled = false; }); }
+}
+const blankBtns = [...document.querySelectorAll('#ob-blank [data-paper]')];
+for (const b of blankBtns) b.addEventListener('click', () => startBlank(b.dataset.paper, blankBtns));
+
+let paging = false;   // one page change at a time
+/* change(bytes) -> new bytes; ink is moved with shiftInk(at, by); then show page `show` */
+async function changePages(change, at, by, show, msg) {
+  if (!doc || !doc.notebook || paging) return;
+  paging = true;
+  const d = doc, y = window.scrollY;
+  try {
+    const bytes = await change(new Uint8Array(await baseBlob().arrayBuffer()));
+    const lib = await loadPdfjs();
+    const pdf = await lib.getDocument({ data: bytes.slice(), ...PDF_OPTS }).promise;
+    if (doc !== d) { pdf.destroy(); return; }   // closed in the meantime
+    const old = d.pdf;
+    d.file = new File([bytes], d.name, { type: 'application/pdf' });
+    d.base = d.file.size; d.info = null; d.pdf = pdf; d.pages = pdf.numPages;
+    shiftInk(D.periods, at, by);
+    finder.close(); finder.reset();
+    await viewer.open(pdf);
+    old.destroy().catch(() => {});
+    ink.setData(D); refreshRedo();   // Undo starts fresh: its steps point at the old page numbers
+    window.scrollTo(0, y);
+    pagesTotal.textContent = tr('of_n', { n: d.pages });
+    layoutClear(); fitToolbar();
+    store.rememberFile(d.hash, { name: d.name, pages: d.pages }, d.file).catch(() => setStatus(tr('st_too_big_keep')));
+    markDirty();   // saves the ink (and the linked PDF file, if Save ink into PDF is on)
+    viewer.goTo(show, true);
+    pageInput.value = show;
+    setStatus(msg);
+  } catch (e) {
+    console.error(e);
+    setStatus(tr('st_could_not_pages', { e: (e && e.message) || e }));
+  } finally { paging = false; }
+}
+function addPageAfter(paper, after) {
+  changePages((bytes) => addPage(bytes, paper, after), after + 1, 1, after + 1, tr('st_page_added', { n: after + 1 }));
+}
+function removeThisPage() {
+  if (doc.pages <= 1) { setStatus(tr('st_last_page')); return; }
+  const n = viewer.currentPage();
+  changePages((bytes) => removePage(bytes, n), n, -1, Math.min(n, doc.pages - 1), tr('st_page_removed', { n }));
+}
+for (const b of addPageEl.querySelectorAll('[data-paper]')) b.addEventListener('click', () => { if (doc) addPageAfter(b.dataset.paper, doc.pages); });
+pageMenu.el.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !doc) return;
+  if (b.dataset.paper) { pageMenu.show(false); addPageAfter(b.dataset.paper, viewer.currentPage()); }
+  else if (b.dataset.act === 'remove-page') {
+    if (doc.pages <= 1) { setStatus(tr('st_last_page')); flashBtn(b, tr('st_last_page'), 'warn'); return; }
+    confirmTap(b, () => { pageMenu.show(false); removeThisPage(); }, tr('sure'));
+  }
+});
 
 /* ---------- export annotated PDF ---------- */
 const baseName = () => doc.name.replace(/\.pdf$/i, '');

@@ -4,6 +4,7 @@
 
 import { loadPdfLib } from './libs.js';
 import { seeThrough } from '../shared/ink-core.js';
+import { NB_RE } from './notebook.js';
 
 /* The PDF has no "eraser". Apply erasers geometrically: drop the sample points of earlier strokes that the
    eraser passed over, and split those strokes where the gap is. Returns highlight and pen strokes in order. */
@@ -101,6 +102,7 @@ export function hasCovers(byPage) {
 export async function exportAnnotatedPdf(bytes, pdf, byPage, onProgress) {
   const L = await loadPdfLib();
   const out = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  if (NB_RE.test(out.getKeywords() || '')) out.setKeywords([]);   // an exported notebook is a plain PDF, not the notebook itself
   const pages = out.getPages();
   let done = 0;
   for (const [n, list] of byPage) {
