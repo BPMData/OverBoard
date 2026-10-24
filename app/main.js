@@ -868,7 +868,8 @@ async function exportPdf(btn) {
   if (!doc) return;
   let covered = false;
   await writeNow();
-  if (!ink.count()) { flashBtn(btn, tr('no_ink_yet'), 'warn'); setStatus(tr('st_no_ink_export', { p: D.active })); return; }
+  // an empty notebook still exports: printable paper
+  if (!ink.count() && !doc.notebook) { flashBtn(btn, tr('no_ink_yet'), 'warn'); setStatus(tr('st_no_ink_export', { p: D.active })); return; }
   btn.disabled = true;
   setStatus(tr('st_making_pdf'));
   try {

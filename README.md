@@ -31,7 +31,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Save PDF** with crisp ink, page by page
 - **Clear page / Clear all** (Undo brings either back), and **− / Fit / +** zoom that keeps the toolbar the same size, on PDFs and HTML worksheets alike. On a small screen (a laptop) the toolbar shrinks to fit instead of scrolling
 - **PDFs too**: worksheets or whole textbooks, with a chapter list, page jump, and **Export PDF** with your ink drawn in
-- **Start from a blank page**: blank, lined, graph or dot paper, and add or remove pages as you go
+- **Start from a blank page**: blank, lined, graph, dot or isometric paper, and add or remove pages as you go
 - **The PDF's text stays text**: select and copy it, follow its links, and search the whole book (great with OCR'd scans). Exports keep it.
 - **Autosave** in the browser, plus optional **save ink into the .html file** itself (Chrome/Edge)
 - **Hide the toolbar** down to a small button when you want the whole screen
@@ -59,11 +59,11 @@ Word files: in Word, choose File → Save as PDF, then open the PDF.
 
 ### Start from a blank page
 
-No PDF? Under the drop box, tap **Blank**, **Lined**, **Graph** or **Dots** to start a one-page notebook on that paper (US Letter; lined is wide ruled with a red margin; graph and dots are ¼ inch apart).
+No PDF? Under the drop box, tap **Blank**, **Lined**, **Graph**, **Dots** or **Isometric** to start a one-page notebook on that paper (US Letter; lined is wide ruled with a red margin; graph, dots and isometric triangles are ¼ inch apart).
 
 - **Add a page**: scroll past the last page and tap a paper to add a page at the end, or tap **Pages ▸** on the toolbar to add one right after the page you're on. Each new page can be a different paper.
 - **Remove a page**: **Pages ▸ Remove this page** (tap twice). Its ink goes with it, in every class period; ink on the other pages stays where it was. Undo can't bring a removed page back.
-- A notebook has **Pages ▸ | Clear ▸** where a book has Chapters. Everything else works the same: it's under **Open again**, Export PDF prints the paper with your ink, and Save ink into PDF keeps the whole notebook in one file you can open on another computer.
+- A notebook has **Pages ▸ | Clear ▸** where a book has Chapters. Everything else works the same: it's under **Open again**, **Export PDF** (Settings & help ▸) saves it as a normal PDF with the paper and the current period's ink drawn in (an empty notebook exports too, as printable paper), and Save ink into PDF keeps the whole notebook in one file you can open on another computer.
 
 ### Install it (works offline)
 

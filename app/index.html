@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="233dcc78018f">
+<meta name="ob-version" content="ac761cce4e61">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -31,6 +31,7 @@
         <button type="button" data-paper="lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook"><i></i><span data-t="paper_lined">Lined</span></button>
         <button type="button" data-paper="graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)"><i></i><span data-t="paper_graph">Graph</span></button>
         <button type="button" data-paper="dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)"><i></i><span data-t="paper_dots">Dots</span></button>
+        <button type="button" data-paper="iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)"><i></i><span data-t="paper_iso">Isometric</span></button>
       </div>
     </section>
     <p id="ob-error" role="alert" hidden></p>
@@ -57,6 +58,7 @@
     <button type="button" data-paper="lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook"><i></i><span data-t="paper_lined">Lined</span></button>
     <button type="button" data-paper="graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)"><i></i><span data-t="paper_graph">Graph</span></button>
     <button type="button" data-paper="dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)"><i></i><span data-t="paper_dots">Dots</span></button>
+    <button type="button" data-paper="iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)"><i></i><span data-t="paper_iso">Isometric</span></button>
   </div>
 </section>
 
@@ -93,7 +95,7 @@
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="toc" data-t="chapters" data-tt="chapters_tip" title="Chapters of this PDF">Chapters</button>
-  <button data-act="pages" aria-haspopup="true" aria-expanded="false" data-tt="pages_tip" title="Add a page (blank, lined, graph or dots), or remove this one" hidden>Pages &#9656;</button>
+  <button data-act="pages" aria-haspopup="true" aria-expanded="false" data-tt="pages_tip" title="Add a page (any paper), or remove this one" hidden>Pages &#9656;</button>
   <button data-act="clear" aria-haspopup="true" aria-expanded="false" data-tt="clear_menu_tip" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)" hidden>Clear page</button>
   <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)" hidden>Clear all</button>
@@ -121,6 +123,7 @@
   <button data-paper="lined" data-t="paper_lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook">Lined</button>
   <button data-paper="graph" data-t="paper_graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)">Graph</button>
   <button data-paper="dots" data-t="paper_dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)">Dots</button>
+  <button data-paper="iso" class="wide" data-t="paper_iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)">Isometric</button>
   <button data-act="remove-page" class="wide" data-t="remove_page" data-tt="remove_page_tip" title="Remove the page you are looking at, with its ink in every class period (tap twice)">Remove this page</button>
 </div>
 <div id="ob-clearmenu" role="menu" aria-label="Clear ink" hidden>

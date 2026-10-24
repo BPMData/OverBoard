@@ -7,7 +7,7 @@
 
 import { loadPdfLib } from './libs.js';
 
-export const PAPERS = ['blank', 'lined', 'graph', 'dots'];
+export const PAPERS = ['blank', 'lined', 'graph', 'dots', 'iso'];
 export const NB_RE = /overboard-notebook-([0-9a-f]{16})/;   // in the PDF's Keywords
 const W = 612, H = 792;            // US Letter, portrait, in points (72 per inch)
 const STEP = 18;                   // graph squares and dot spacing: 1/4 inch
@@ -35,6 +35,12 @@ function paperOps(L, paper) {
       for (let i = 1; i * STEP < H; i++) if ((i % 4 === 0) === major) seg(0, H - i * STEP, W, H - i * STEP);
       ops.push(L.stroke());
     }
+  } else if (paper === 'iso') {   // isometric: triangles 1/4 inch on a side (vertical lines and lines at ±30°)
+    const s = STEP, h = s * Math.sqrt(3) / 2, rise = W / Math.sqrt(3);
+    pen('#b0c9e3', 0.5);
+    for (let x = h; x < W; x += h) seg(x, 0, x, H);
+    for (let c = -Math.ceil(rise / s) * s; c <= H + rise; c += s) { seg(0, c, W, c + rise); seg(0, c, W, c - rise); }
+    ops.push(L.stroke());
   } else if (paper === 'dots') {
     pen('#8a9bb0', 2.4);
     ops.push(L.setLineCap(L.LineCapStyle.Round));   // a zero-length line with a round cap is a dot
