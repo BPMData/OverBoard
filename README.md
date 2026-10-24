@@ -63,7 +63,7 @@ No PDF? Under the drop box, tap **Blank**, **Lined**, **Graph**, **Dots** or **I
 
 - **Add a page**: scroll past the last page and tap a paper to add a page at the end, or tap **Pages ▸** on the toolbar to add one right after the page you're on. Each new page can be a different paper.
 - **Remove a page**: **Pages ▸ Remove this page** (tap twice). Its ink goes with it, in every class period; ink on the other pages stays where it was. Undo can't bring a removed page back.
-- A notebook has **Pages ▸ | Clear ▸** where a book has Chapters. Everything else works the same: it's under **Open again**, **Export PDF** (Settings & help ▸) saves it as a normal PDF with the paper and the current period's ink drawn in (an empty notebook exports too, as printable paper), and Save ink into PDF keeps the whole notebook in one file you can open on another computer.
+- A notebook has **Pages ▸ | Clear ▸** where a book has Chapters. Everything else works the same: it's under **Open again** (which keeps your 12 latest PDFs and, separately, your 12 latest notebooks, so notebooks never push PDFs off the list), **Export PDF** (Settings & help ▸) saves it as a normal PDF with the paper and the current period's ink drawn in (an empty notebook exports too, as printable paper), and Save ink into PDF keeps the whole notebook in one file you can open on another computer.
 
 ### Install it (works offline)
 

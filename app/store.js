@@ -3,7 +3,9 @@
 
 const DB_NAME = 'overboard';
 const DB_VERSION = 2;
-const MAX_RECENT = 12;          // PDFs kept for one-tap reopening (ink is kept even after a PDF is dropped from this list)
+const MAX_RECENT = 12;          // PDFs kept for one-tap reopening (ink is kept even after a PDF is dropped from this list).
+                                // Blank notebooks get their own 12, so starting lots of them never pushes PDFs off the list.
+const isNotebook = (hash) => String(hash).startsWith('notebook-');   // see app/notebook.js
 
 let dbPromise = null;
 function db() {
@@ -53,7 +55,8 @@ export async function rememberFile(hash, info, blob) {
   const rec = { hash, name: info.name, size: blob.size, pages: info.pages, opened: Date.now(), blob };
   await run('files', 'readwrite', (s) => s.put(rec, hash));
   const all = await listFiles();
-  for (const old of all.slice(MAX_RECENT)) await forgetFile(old.hash);
+  const same = all.filter((r) => isNotebook(r.hash) === isNotebook(hash));
+  for (const old of same.slice(MAX_RECENT)) await forgetFile(old.hash);
 }
 
 export async function listFiles() {   // newest first, without the PDF bytes

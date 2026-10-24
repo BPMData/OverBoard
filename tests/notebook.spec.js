@@ -133,3 +133,18 @@ test('the last page cannot be removed; Export PDF gives a plain PDF with the ink
   expect(r.px[0][0]).toBeGreaterThan(r.px[0][1] + 60);   // the pink pen line, drawn into the PDF
   expect(r.px[1].every((v) => v > 245)).toBe(true);
 });
+
+test('Open again keeps 12 PDFs and 12 notebooks: notebooks never push PDFs off the list', async ({ page }) => {
+  const left = await page.evaluate(async () => {
+    const store = await import(new URL('/app/store.js', location.href).href);
+    const blob = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+    for (let i = 0; i < 14; i++) await store.rememberFile('pdf' + i, { name: 'p' + i + '.pdf', pages: 1 }, blob);
+    for (let i = 0; i < 14; i++) await store.rememberFile('notebook-' + String(i).padStart(16, '0'), { name: 'n' + i + '.pdf', pages: 1 }, blob);
+    const all = await store.listFiles();
+    return { pdfs: all.filter((r) => !r.hash.startsWith('notebook-')).map((r) => r.name), notebooks: all.filter((r) => r.hash.startsWith('notebook-')).length };
+  });
+  expect(left.notebooks).toBe(12);
+  expect(left.pdfs).toHaveLength(12);
+  expect(left.pdfs).not.toContain('p0.pdf');   // the oldest PDFs go first, only because of other PDFs
+  expect(left.pdfs).toContain('p13.pdf');
+});
