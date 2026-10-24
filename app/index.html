@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="60e570cd6664">
+<meta name="ob-version" content="ac761cce4e61">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -24,6 +24,16 @@
       <strong data-t="drop_title">Drop a PDF here</strong>
       <span data-t="drop_sub">or an HTML worksheet, or tap to choose a file</span>
     </label>
+    <section id="ob-blank">
+      <h2 data-t="start_blank">Or start with a blank page:</h2>
+      <div class="ob-papers">
+        <button type="button" data-paper="blank" data-tt="paper_blank_tip" title="A plain white page"><i></i><span data-t="paper_blank">Blank</span></button>
+        <button type="button" data-paper="lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook"><i></i><span data-t="paper_lined">Lined</span></button>
+        <button type="button" data-paper="graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)"><i></i><span data-t="paper_graph">Graph</span></button>
+        <button type="button" data-paper="dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)"><i></i><span data-t="paper_dots">Dots</span></button>
+        <button type="button" data-paper="iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)"><i></i><span data-t="paper_iso">Isometric</span></button>
+      </div>
+    </section>
     <p id="ob-error" role="alert" hidden></p>
     <p id="ob-msg" role="status" hidden></p>
     <p id="ob-install" hidden><button type="button" data-t="install_app">Install app</button>
@@ -35,12 +45,22 @@
     <p class="note"><span data-th="start_note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
       Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here.
       Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.</span>
-      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v27</span></p>
+      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v28</span></p>
     <p class="note ob-langpick"><label><span aria-hidden="true">🌐</span> <select id="ob-lang" aria-label="Language" data-ta="language" data-tt="language" title="Language"></select></label></p>
   </div>
 </main>
 
 <div id="ob-pages" aria-label="PDF pages"></div>
+<section id="ob-addpage" hidden>
+  <h2 data-t="add_page">Add a page:</h2>
+  <div class="ob-papers">
+    <button type="button" data-paper="blank" data-tt="paper_blank_tip" title="A plain white page"><i></i><span data-t="paper_blank">Blank</span></button>
+    <button type="button" data-paper="lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook"><i></i><span data-t="paper_lined">Lined</span></button>
+    <button type="button" data-paper="graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)"><i></i><span data-t="paper_graph">Graph</span></button>
+    <button type="button" data-paper="dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)"><i></i><span data-t="paper_dots">Dots</span></button>
+    <button type="button" data-paper="iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)"><i></i><span data-t="paper_iso">Isometric</span></button>
+  </div>
+</section>
 
 <nav id="ob-toc" aria-label="Chapters" data-ta="chapters" hidden>
   <div class="head"><strong data-t="chapters">Chapters</strong><button data-act="toc-close" aria-label="Close chapters" data-ta="close">&times;</button></div>
@@ -75,6 +95,7 @@
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="toc" data-t="chapters" data-tt="chapters_tip" title="Chapters of this PDF">Chapters</button>
+  <button data-act="pages" aria-haspopup="true" aria-expanded="false" data-tt="pages_tip" title="Add a page (any paper), or remove this one" hidden>Pages &#9656;</button>
   <button data-act="clear" aria-haspopup="true" aria-expanded="false" data-tt="clear_menu_tip" title="Clear the ink on this page, or on every page">Clear &#9656;</button>
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)" hidden>Clear page</button>
   <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)" hidden>Clear all</button>
@@ -95,6 +116,15 @@
   <button data-act="settings" class="sm wide" data-t="settings_btn" data-tt="settings_tip" title="Language, class periods, the pen color at start, and resetting the tools">Settings…</button>
   <button data-act="side" class="sm wide" data-t="move_toolbar" data-tt="move_toolbar_tip" title="Move the toolbar to the other side of the screen">&#9664; Move toolbar &#9654;</button>
   <button data-act="report" class="sm wide" data-t="board_help" data-tt="board_help_tip" title="A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
+</div>
+<div id="ob-pagemenu" role="menu" aria-label="Pages" data-ta="pages" hidden>
+  <p data-t="add_after">Add a page after this one:</p>
+  <button data-paper="blank" data-t="paper_blank" data-tt="paper_blank_tip" title="A plain white page">Blank</button>
+  <button data-paper="lined" data-t="paper_lined" data-tt="paper_lined_tip" title="Lined paper, like a notebook">Lined</button>
+  <button data-paper="graph" data-t="paper_graph" data-tt="paper_graph_tip" title="Graph paper (¼-inch squares)">Graph</button>
+  <button data-paper="dots" data-t="paper_dots" data-tt="paper_dots_tip" title="Dot paper (a dot every ¼ inch)">Dots</button>
+  <button data-paper="iso" class="wide" data-t="paper_iso" data-tt="paper_iso_tip" title="Isometric paper (triangles, for drawing 3D shapes)">Isometric</button>
+  <button data-act="remove-page" class="wide" data-t="remove_page" data-tt="remove_page_tip" title="Remove the page you are looking at, with its ink in every class period (tap twice)">Remove this page</button>
 </div>
 <div id="ob-clearmenu" role="menu" aria-label="Clear ink" hidden>
   <button data-act="clear-page" class="wide" data-t="this_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at">This page</button>
