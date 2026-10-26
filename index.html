@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v31) =====
+<!-- ===== INK OVERLAY START (v32) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -1685,7 +1685,10 @@
 
   /* ---------- drawing ---------- */
   // pen ink and covers go on the top canvas, highlights on the layer under it, the eraser cuts through both
-  function layers(s){ return s.e ? [ctx, hctx] : seeThrough(s) ? [hctx] : [ctx]; }
+  function layers(s){ if (seeThrough(s)) showHl(true); return s.e ? [ctx, hctx] : seeThrough(s) ? [hctx] : [ctx]; }
+  // the highlighter layer is hidden while it has nothing on it, so the browser can skip blending it over the page
+  var hlShown = true;
+  function showHl(on){ if (on !== hlShown) { hlShown = on; hcan.style.visibility = on ? '' : 'hidden'; } }
   function drawStroke(s){ layers(s).forEach(function(g){ paintStroke(g, s, scale, OX * scale, -BY * scale); }); }
   // live drawing draws the same curve piece by piece as points arrive (matches paintStroke exactly)
   var live = null;
@@ -1697,7 +1700,7 @@
     return hi + s.w >= BY && lo - s.w <= BY + BH;
   }
   function redraw(){
-    clearCanvas(canvas, ctx); clearCanvas(hcan, hctx);
+    clearCanvas(canvas, ctx); clearCanvas(hcan, hctx); showHl(false);   // drawing a highlight below shows it again
     for (var i = 0; i < strokes.length; i++) if (inBand(strokes[i])) drawStroke(strokes[i]);
     if (cur) drawStroke(cur);   // a stroke still being drawn when the band moves
   }
@@ -1713,7 +1716,7 @@
   // falls back to the processor and every pen move gets slow: a 20-page worksheet on a 2x (Retina) screen ran at a few
   // frames a second.
   var FW = 0, OX = 0, BY = 0, BH = 0;   // full canvas width (CSS px) and where the page column starts inside it
-  function docTop(){ return canvas.getBoundingClientRect().top - BY * Z; }   // screen y of the worksheet's top edge
+  function docTop(r){ return (r || canvas.getBoundingClientRect()).top - BY * Z; }   // screen y of the worksheet's top edge
   function size(){
     var h = Math.ceil(body.offsetHeight), cw = calcCW();
     var fw = Math.max(cw, Math.floor(document.documentElement.clientWidth / Z));
@@ -1738,9 +1741,9 @@
     redraw();
   }
 
-  function pt(e){
-    var t = docTop(), r = canvas.getBoundingClientRect();   // screen px; ink is in the worksheet's own px, so divide by the zoom
-    return [Math.round(((e.clientX - r.left) / Z - OX) * 10) / 10, Math.round((e.clientY - t) / Z * 10) / 10];
+  function pt(e, r){   // r: the canvas's screen box, when the caller already has it
+    r = r || canvas.getBoundingClientRect();   // screen px; ink is in the worksheet's own px, so divide by the zoom
+    return [Math.round(((e.clientX - r.left) / Z - OX) * 10) / 10, Math.round((e.clientY - docTop(r)) / Z * 10) / 10];
   }
   canvas.addEventListener('pointerdown', function(e){
     if (active !== null || !ready) return;
@@ -1765,7 +1768,8 @@
     if (e.pointerId !== active || !cur) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
     if (!evs || !evs.length) evs = [e];
-    for (var i = 0; i < evs.length; i++) { var q = pt(evs[i]); liveAdd(cur, live, q[0], q[1], smooth); }   // smoothing steadies board jitter
+    var r = canvas.getBoundingClientRect();   // once for all the samples in this move
+    for (var i = 0; i < evs.length; i++) { var q = pt(evs[i], r); liveAdd(cur, live, q[0], q[1], smooth); }   // smoothing steadies board jitter
     drawPieces(cur, livePieces(cur, live));
     e.preventDefault();
   });
