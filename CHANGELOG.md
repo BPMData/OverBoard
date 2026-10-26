@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **New license: GNU AGPLv3** (v30), instead of MIT. Anyone can still use, change and share OverBoard for free, but a changed version, whether shared or run as a website, must share its source code too, so nobody can turn it into a closed product. Your worksheets, ink and saved PDFs are yours.
 - **8 languages** (v24, PDF app and HTML overlay): English, Español, 中文, Tagalog, Tiếng Việt, Français, Português (Brasil) and العربية, under **Settings… ▸ 🌐 Language** (and a 🌐 list on the PDF app's start screen). Buttons, tooltips, menus, Settings and status messages all change at once, without reloading. OverBoard starts in the browser's language when it has it. Arabic menus and Settings read right to left. A word too long for its button gets slightly smaller text, so every language fits a 1080p board.
 - **The Board not working? page speaks all 8 languages** too, with its own 🌐 list. It opens in the language OverBoard is using, and the thank-you and follow-up emails go out in that language (Claude Haiku writes its paragraph in it).
 - **File ▸ is now Settings & help ▸** (both apps), since it holds Settings, Language and Board not working? as well as saving.
