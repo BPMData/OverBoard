@@ -2,7 +2,7 @@
   "name": "overboard",
   "private": true,
   "description": "Browser tests for OverBoard. The site itself needs no build step and no npm packages.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "test": "playwright test"
   },
