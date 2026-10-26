@@ -144,4 +144,13 @@ Issues and pull requests are welcome, especially reports from boards other than 
 
 ## License
 
-[MIT](LICENSE). SMART Board is a trademark of SMART Technologies. OverBoard is an independent project and is not affiliated with or endorsed by them.
+Copyright (C) 2026 Bryan Murphy. OverBoard's code is licensed under the
+[GNU Affero General Public License v3.0](LICENSE) (AGPLv3): you may use, change and share it, but if you share a
+changed version, or run one as a website or online service, you must share its source code under AGPLv3 too. (Until
+Oct 26, 2026 it was MIT; copies taken before then keep that license.)
+
+What you make with it (your worksheets, your ink, the PDFs you save) is yours to license however you like; the code
+inside stays AGPLv3. The bundled libraries keep their own licenses (`app/vendor/*/LICENSE*`: pdf.js under Apache 2.0,
+pdf-lib under MIT).
+
+SMART Board is a trademark of SMART Technologies. OverBoard is an independent project and is not affiliated with or endorsed by them.
