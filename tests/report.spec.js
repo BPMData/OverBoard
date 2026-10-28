@@ -35,6 +35,7 @@ test('each step records what actually arrives, even the wrong input, and Next al
   await openReport(page);
   await press(page, 'start');
   await expect(page.locator('#steps .count')).toHaveText('Step 1 of 5');
+  expect(await page.evaluate(() => getComputedStyle(document.body).touchAction)).toBe('none');   // drawing steps: a finger draws
   // the finger step gets the pen (a board that reports fingers as a pen)
   await line(page, 100); await line(page, 200);
   expect(await seen(page)).toBe('✓ Got it! I saw 2 lines.');
@@ -53,6 +54,9 @@ test('each step records what actually arrives, even the wrong input, and Next al
   expect(await seen(page)).toContain('Something happened, but not a line');
   await press(page, 'next');
   await expect(page.locator('[data-screen="questions"]')).toBeVisible();
+  // the questions and Send screens scroll with a finger, so a teacher can finish at the board
+  const touchAction = () => page.evaluate(() => getComputedStyle(document.body).touchAction);
+  expect(await touchAction()).toBe('pan-y');
 
   const r = await page.evaluate(() => window.__obReport());
   const step = (id) => r.steps.find((s) => s.id === id);
