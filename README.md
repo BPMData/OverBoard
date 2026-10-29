@@ -22,6 +22,7 @@ The ink tool that ships with a lot of classroom smartboards draws on a see-throu
 - **Finger scrolls, pen writes**, with a toolbar switch if you lose the pen
 - **Highlighter** that sits behind the printed text, so words stay readable
 - **Cover**: tap the **▾** beside Highlighter and pick a cover to black out answers; wipe it away with your palm to reveal them. The same menu sets **highlight strength** (10–100%)
+- **Select**: circle ink with the pen (or tap one mark), then **send a copy to another class period**, copy and paste it onto another page, drag it somewhere else, or delete it. A dashed blue box shows what's selected, with its menu beside it (a right-click on the box opens it too)
 - **Undo and Redo** (↶ ↷ on the toolbar, or Ctrl/⌘+Z and Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z). Reloading from the keyboard is turned off, so a slip can't throw away the page
 - **8 colors + a custom color picker**, pen size and smoothing controls (hold − / + to repeat)
 - **Separate ink for each class period** on the same worksheet: P1–P4 to start, or set your own in **Settings & help ▸ Settings…** (1–12 periods, any names)

@@ -774,6 +774,328 @@ function makeTimer(O){
   };
 }
 
+/* ---- Erasers as shapes. Export PDF needs them (a PDF has no eraser), and so does Select: a copy shows the ink
+   as it looks now, so it never erases anything where it lands. ---- */
+
+function inkBox(p, pad){   // [x0, y0, x1, y1] around the points, grown by pad
+  var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (var i = 0; i < p.length; i += 2) {
+    if (p[i] < x0) x0 = p[i]; if (p[i] > x1) x1 = p[i];
+    if (p[i+1] < y0) y0 = p[i+1]; if (p[i+1] > y1) y1 = p[i+1];
+  }
+  return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+}
+function boxesMeet(a, b){ return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]; }
+function distToPath(x, y, p){
+  if (p.length < 4) return Math.hypot(x - p[0], y - p[1]);
+  var best = Infinity;
+  for (var i = 0; i + 3 < p.length; i += 2) {
+    var ax = p[i], ay = p[i+1], dx = p[i+2] - ax, dy = p[i+3] - ay, L = dx * dx + dy * dy;
+    var t = L ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L)) : 0;
+    best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+  }
+  return best;
+}
+function copyStroke(s, p){ var o = {}; for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k)) o[k] = s[k]; o.p = p; return o; }
+/* Drop the sample points of earlier strokes that an eraser passed over, and split those strokes where the gap is.
+   Returns the highlight and pen strokes, in order, without the erasers. */
+function applyErasers(list){
+  var kept = [];
+  function flush(out, k, run){ if (run.length >= 4 || (run.length === 2 && k.p.length === 2)) out.push(copyStroke(k, run)); }
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i];
+    if (!s.e) { kept.push(s); continue; }
+    var r = s.w / 2, ep = s.p, box = inkBox(ep, r), next = [];
+    for (var j = 0; j < kept.length; j++) {
+      var k = kept[j], pad = k.w / 2, run = [];
+      if (!boxesMeet(box, inkBox(k.p, pad))) { next.push(k); continue; }
+      for (var n = 0; n < k.p.length; n += 2) {
+        if (distToPath(k.p[n], k.p[n+1], ep) <= r + pad * 0.5) { flush(next, k, run); run = []; }
+        else run.push(k.p[n], k.p[n+1]);
+      }
+      flush(next, k, run);
+    }
+    kept = next;
+  }
+  return kept;
+}
+
+/* ---- Select: circle ink with the pen (or tap one mark), then send a copy to another class period, copy and
+   paste it, drag it somewhere else, or delete it. The same in the PDF app and the overlay. ---- */
+
+/* is (x, y) inside the loop [x0,y0,x1,y1,...]? (the loop closes itself) */
+function pointInLoop(x, y, q){
+  var inside = false;
+  for (var i = 0, j = q.length - 2; i < q.length; j = i, i += 2)
+    if ((q[i+1] > y) !== (q[j+1] > y) && x < (q[j] - q[i]) * (y - q[i+1]) / (q[j+1] - q[i+1]) + q[i]) inside = !inside;
+  return inside;
+}
+/* what list[i] looks like now: copies of what the erasers drawn after it left (none if it was all erased) */
+function seenNow(list, i){
+  var s = list[i], box = inkBox(s.p, s.w / 2), l = [s];
+  for (var j = i + 1; j < list.length; j++) if (list[j].e && boxesMeet(box, inkBox(list[j].p, list[j].w / 2))) l.push(list[j]);
+  return applyErasers(l).map(function(k){ return k === s ? copyStroke(s, s.p.slice()) : k; });
+}
+/* The marks a loop picks: at least half of what's left of each (after erasing) is inside it. tap: loop is one point,
+   and the top mark within tol of it is picked. list: one page's strokes in drawing order.
+   Returns [{ s: the stroke in list, pieces: what it looks like now }], in drawing order. */
+function lassoPick(list, loop, tap, tol){
+  var lb = inkBox(loop, tap ? tol : 0), out = [];
+  for (var i = list.length - 1; i >= 0; i--) {
+    var s = list[i];
+    if (s.e || !boxesMeet(lb, inkBox(s.p, s.w / 2))) continue;
+    var pieces = seenNow(list, i), n = 0, inside = 0, k, m;
+    if (!pieces.length) continue;
+    if (tap) {
+      for (k = 0; k < pieces.length; k++) if (distToPath(loop[0], loop[1], pieces[k].p) <= pieces[k].w / 2 + tol) return [{ s: s, pieces: pieces }];
+      continue;
+    }
+    for (k = 0; k < pieces.length; k++) for (m = 0; m < pieces[k].p.length; m += 2) { n++; if (pointInLoop(pieces[k].p[m], pieces[k].p[m+1], loop)) inside++; }
+    if (inside * 2 >= n) out.unshift({ s: s, pieces: pieces });
+  }
+  return out;
+}
+/* a copy of s moved by (dx, dy), on page (null: no page, as in the overlay; undefined: keep s's) */
+function movedCopy(s, dx, dy, page){
+  var p = [];
+  for (var i = 0; i < s.p.length; i += 2) p.push(Math.round((s.p[i] + dx) * 100) / 100, Math.round((s.p[i+1] + dy) * 100) / 100);
+  var o = copyStroke(s, p);
+  if (page === null) delete o.page; else if (page !== undefined) o.page = page;
+  return o;
+}
+function strokesBox(list){
+  var b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (var i = 0; i < list.length; i++) {
+    var k = inkBox(list[i].p, list[i].w / 2);
+    b = [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])];
+  }
+  return b;
+}
+
+/* The Select tool's behavior. The caller turns the tool on and off and passes it the pen on the page, in ink
+   coordinates (page: the PDF page number, or null in the overlay). A = {
+     t(): the current translator, status(msg),
+     pageList(page): that page's strokes of the active period, in drawing order; all(): every page's,
+     replace(next): make next the active period's strokes (one Undo step), addTo(period, strokes): add to another period,
+     periods(), active(): class period names,
+     preview(page, hide, add): draw page without the strokes in hide and with add (null: as it is),
+     host(page): [element to put the selection box in, css px per ink unit, x offset, y offset],
+     pastePage(page): the page Ctrl+V pastes on (page: where it was copied), onOpen(): close other popouts }
+   Returns { down, move, up, cancel, contextMenu, key, drop, layout, has(), els }. */
+function makeSelect(A){
+  var sel = null, clip = null, g = null, at = null, raf = 0;   // sel: { page, items, box }; clip: { list, box, page }; g: the pen's gesture; at: where a tap asked to paste
+  var tr = function(k, v){ return A.t()(k, v); };
+  var boxEl = document.createElement('div'); boxEl.className = 'ob-selbox';
+  var lasso = document.createElement('div'); lasso.id = 'ob-lasso'; lasso.hidden = true;
+  lasso.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg"><polyline points=""/></svg>';
+  document.body.appendChild(lasso);
+  var line = lasso.querySelector('polyline');
+  var menu = document.createElement('div');
+  menu.id = 'ob-selmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+  document.body.appendChild(menu);
+  var spot = null;   // where the menu is anchored: null = beside the selection box, else [clientX, clientY]
+
+  function say(k, v){ A.status(tr(k, v)); }
+  function count(n, one, many){ return tr(n === 1 ? one : many, { n: n }); }
+  function alive(){   // the selection still matches the ink (Undo, a period switch or new ink drops it)
+    if (!sel) return false;
+    var all = A.all();
+    for (var i = 0; i < sel.items.length; i++) if (all.indexOf(sel.items[i].s) < 0) { drop(); return false; }
+    return true;
+  }
+  function pieces(){ var out = []; sel.items.forEach(function(it){ out = out.concat(it.pieces); }); return out; }
+  function select(page, items){
+    sel = { page: page, items: items, box: null };
+    sel.box = strokesBox(pieces());
+    showBox(0, 0);
+  }
+  function drop(){ sel = null; g = null; boxEl.remove(); hideMenu(); }
+  function showBox(dx, dy){
+    if (!sel) return;
+    var h = A.host(sel.page); if (!h) return boxEl.remove();
+    var b = sel.box, pad = 6;
+    if (boxEl.parentNode !== h[0]) h[0].appendChild(boxEl);
+    boxEl.style.left = (h[2] + (b[0] + dx) * h[1] - pad) + 'px';
+    boxEl.style.top = (h[3] + (b[1] + dy) * h[1] - pad) + 'px';
+    boxEl.style.width = ((b[2] - b[0]) * h[1] + 2 * pad) + 'px';
+    boxEl.style.height = ((b[3] - b[1]) * h[1] + 2 * pad) + 'px';
+  }
+  function inBox(page, x, y){
+    if (!sel || sel.page !== page) return false;
+    var h = A.host(page), pad = h ? 12 / h[1] : 0, b = sel.box;   // a little extra room around it, for a finger
+    return x >= b[0] - pad && x <= b[2] + pad && y >= b[1] - pad && y <= b[3] + pad;
+  }
+
+  /* the menu beside the selection (or where it was right-clicked, or where a tap asked to paste) */
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function btn(attr, label, tip, cls){ return '<button ' + attr + (cls ? ' class="' + cls + '"' : '') + ' title="' + esc(tip) + '">' + esc(label) + '</button>'; }
+  function showMenu(mode, where){
+    var html;
+    if (mode === 'paste') {
+      html = '<p>' + esc(count(clip.list.length, 'paste_one', 'paste_n')) + '</p>' +
+        btn('data-sel="here"', tr('paste_here'), tr('paste_here_tip')) + btn('data-sel="same"', tr('paste_same'), tr('paste_same_tip'));
+    } else {
+      var others = A.periods().filter(function(p){ return p !== A.active(); });
+      html = '<p>' + esc(count(sel.items.length, 'sel_one', 'sel_n')) + '</p>';
+      if (others.length) {
+        html += '<p class="lbl">' + esc(tr('send_copy_to')) + '</p><div class="ob-selto">';
+        others.forEach(function(p){ html += btn('data-to="' + esc(p) + '" dir="auto"', p, tr('send_to_tip', { p: p })); });
+        html += '</div>';
+      }
+      html += btn('data-sel="copy"', tr('sel_copy'), tr('sel_copy_tip')) + btn('data-sel="delete"', tr('sel_delete'), tr('sel_delete_tip'));
+    }
+    menu.innerHTML = html;
+    menu.setAttribute('aria-label', tr(mode === 'paste' ? 'paste' : 'selected_ink'));
+    menu.dataset.mode = mode;
+    spot = where || null;
+    if (menu.hidden && A.onOpen) A.onOpen();
+    menu.hidden = false;
+    fitLabels(menu);
+    placeMenu();
+  }
+  function hideMenu(){ menu.hidden = true; spot = null; }
+  function placeMenu(){
+    if (menu.hidden) return;
+    var r = spot ? { left: spot[0], right: spot[0], top: spot[1] } : boxEl.parentNode ? boxEl.getBoundingClientRect() : null;
+    if (!r) return hideMenu();
+    var m = menu.getBoundingClientRect(), k = menu.offsetWidth ? m.width / menu.offsetWidth : 1, gap = spot ? 4 : 12;   // the menu may be zoomed (fitTools)
+    var x = r.right + gap;
+    if (x + m.width > innerWidth - 10) x = r.left - gap - m.width;   // no room on the right: the left side
+    x = Math.max(10, Math.min(x, innerWidth - m.width - 10));
+    var y = Math.max(10, Math.min(r.top, innerHeight - m.height - 10));
+    menu.style.left = x / k + 'px'; menu.style.top = y / k + 'px';
+  }
+  menu.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.to) return sendTo(b.dataset.to, b);
+    var a = b.dataset.sel;
+    if (a === 'copy') copy();
+    else if (a === 'delete') del();
+    else if (a === 'here' && at && clip) { var c = clip.box; paste(at.page, at.x - (c[0] + c[2]) / 2, at.y - (c[1] + c[3]) / 2); }
+    else if (a === 'same' && at && clip) paste(at.page, 0, 0);
+  });
+  menu.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('pointerdown', function(e){ if (!menu.hidden && !menu.contains(e.target)) hideMenu(); }, true);
+  window.addEventListener('scroll', function(){ if (!spot) placeMenu(); }, { passive: true });
+
+  /* the actions */
+  function sendTo(name, b){
+    if (!alive()) return;
+    A.addTo(name, pieces().map(function(s){ return movedCopy(s, 0, 0, sel.page); }));
+    flashBtn(b, '✓', 'good');
+    say('st_sent', { n: sel.items.length, p: name });
+  }
+  function copy(){
+    if (!alive()) return;
+    var list = pieces().map(function(s){ return movedCopy(s, 0, 0, null); });
+    clip = { list: list, box: strokesBox(list), page: sel.page };
+    hideMenu();
+    say('st_copied', { n: clip.list.length });
+  }
+  function del(){
+    if (!alive()) return;
+    var gone = sel.items.map(function(it){ return it.s; }), n = gone.length;
+    A.replace(A.all().filter(function(s){ return gone.indexOf(s) < 0; }));
+    drop();
+    say('st_sel_deleted', { n: n });
+  }
+  function paste(page, dx, dy){
+    var add = clip.list.map(function(s){ return movedCopy(s, dx, dy, page); });
+    drop();
+    A.replace(A.all().concat(add));
+    select(page, add.map(function(s){ return { s: s, pieces: [s] }; }));
+    showMenu('sel');
+    say('st_pasted', { n: add.length });
+  }
+
+  /* the pen on the page */
+  function lassoPoint(cx, cy){
+    var r = lasso.getBoundingClientRect(), k = lasso.offsetWidth ? r.width / lasso.offsetWidth : 1;   // the overlay's page zoom
+    return Math.round((cx - r.left) / k) + ',' + Math.round((cy - r.top) / k);
+  }
+  function down(page, x, y, cx, cy){
+    hideMenu(); alive();
+    if (inBox(page, x, y)) { g = { drag: true, page: page, x0: x, y0: y, cx: cx, cy: cy, dx: 0, dy: 0, moved: false }; return; }
+    var had = !!sel;   // a tap beside a selection only lets it go
+    drop();
+    g = { drag: false, page: page, pts: [x, y], cx: cx, cy: cy, far: 0, had: had };
+    lasso.hidden = false;
+    line.setAttribute('points', lassoPoint(cx, cy));
+  }
+  function move(x, y, cx, cy){
+    if (!g) return;
+    var far = Math.abs(cx - g.cx) + Math.abs(cy - g.cy);
+    if (g.drag) {
+      if (!g.moved && far < 8) return;   // a tap wobbles a little
+      g.moved = true; g.dx = x - g.x0; g.dy = y - g.y0;
+      if (!raf) raf = requestAnimationFrame(function(){
+        raf = 0; if (!g || !g.drag || !sel) return;
+        var gx = g.dx, gy = g.dy;
+        A.preview(sel.page, sel.items.map(function(it){ return it.s; }), pieces().map(function(s){ return movedCopy(s, gx, gy); }));
+        showBox(gx, gy);
+      });
+      return;
+    }
+    g.far = Math.max(g.far, far);
+    var n = g.pts.length;
+    if (Math.abs(x - g.pts[n-2]) + Math.abs(y - g.pts[n-1]) < 0.5) return;
+    g.pts.push(Math.round(x * 100) / 100, Math.round(y * 100) / 100);
+    line.setAttribute('points', line.getAttribute('points') + ' ' + lassoPoint(cx, cy));
+  }
+  function up(x, y, cx, cy){
+    var G = g; g = null;
+    if (!G) return;
+    if (G.drag) {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (!sel) return;
+      if (!G.moved) return showMenu('sel');   // a tap on the selection opens its menu again
+      var dx = x - G.x0, dy = y - G.y0, gone = sel.items.map(function(it){ return it.s; });
+      var moved = pieces().map(function(s){ return movedCopy(s, dx, dy); }), page = sel.page;
+      A.preview(null);
+      drop();
+      A.replace(A.all().filter(function(s){ return gone.indexOf(s) < 0; }).concat(moved));   // moved ink goes on top
+      select(page, moved.map(function(s){ return { s: s, pieces: [s] }; }));
+      return say('st_sel_moved');
+    }
+    lasso.hidden = true; line.setAttribute('points', '');
+    var tap = G.far < 10, h = A.host(G.page), tol = h ? 10 / h[1] : 10;
+    var items = lassoPick(A.pageList(G.page), tap ? [x, y] : G.pts, tap, tol);
+    if (items.length) {
+      select(G.page, items);
+      showMenu('sel');
+      say('st_sel_n', { n: items.length });
+    }
+    else if (tap && G.had) { /* let the selection go */ }
+    else if (tap && clip) { at = { page: G.page, x: x, y: y }; showMenu('paste', [cx, cy]); }
+    else say(tap ? 'st_sel_how' : 'st_sel_none');
+  }
+  function cancel(){
+    if (!g) return;
+    var G = g; g = null;
+    lasso.hidden = true; line.setAttribute('points', '');
+    if (G.drag) { A.preview(null); showBox(0, 0); }
+  }
+  function contextMenu(page, x, y, cx, cy){   // a right-click (mouse) on the selection opens its menu there
+    if (!alive() || !inBox(page, x, y)) return false;
+    showMenu('sel', [cx, cy]);
+    return true;
+  }
+  function key(e){   // Ctrl/⌘+C copy, Ctrl/⌘+V paste in the same spot, Delete, Escape. Returns true if used.
+    var k = (e.key || '').toLowerCase(), mod = (e.ctrlKey || e.metaKey) && !e.altKey;
+    if (mod && k === 'c' && alive()) { copy(); return true; }
+    if (mod && k === 'v' && clip) { at = { page: A.pastePage(clip.page) }; paste(at.page, 0, 0); return true; }
+    if ((k === 'delete' || k === 'backspace') && !mod && alive()) { del(); return true; }
+    if (k === 'escape' && (sel || !menu.hidden)) { drop(); return true; }
+    return false;
+  }
+  return {
+    down: down, move: move, up: up, cancel: cancel, contextMenu: contextMenu, key: key, drop: drop,
+    layout: function(){ if (sel) showBox(0, 0); placeMenu(); },
+    has: function(){ return !!sel; }, active: function(){ return !!g; },
+    els: [menu, lasso]
+  };
+}
+
 /* Keyboard history keys, the same in the PDF app and the overlay:
    Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
    is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -788,4 +1110,4 @@ function historyKey(e) {
   return null;
 }
 
-export { makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

@@ -21,12 +21,18 @@ export class Ink {
     this.active = null; this.drag = null; this.downAt = 0;
     this.lastCleared = null;       // { page, before } or { all } so Undo can bring back what Clear took
     this.redos = [];               // what Undo took back, newest last: a stroke, or { cleared: page }
+    this.sel = null;               // the Select tool (makeSelect in shared/ink-core.js), set by main.js
+    this.selP = null;              // the page a Select gesture started on
+    this.pv = null;                // { page, hide, add }: a selection being dragged, drawn in its new spot
   }
+
+  dropSel() { if (this.sel) this.sel.drop(); }
 
   get strokes() { return this.D.periods[this.D.active]; }
 
   setData(D) {
     this.D = D;
+    this.dropSel();
     this.lastCleared = null; this.redos = [];
     this.reindex();
   }
@@ -77,7 +83,25 @@ export class Ink {
 
   redraw(P) {
     for (const c of [P.ink, P.hl]) if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
-    for (const s of this.pageList(P.n)) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+    const pv = this.pv && this.pv.page === P.n ? this.pv : null;
+    for (const s of this.pageList(P.n)) if (!pv || !pv.hide.includes(s)) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+    if (pv) for (const s of pv.add) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+  }
+
+  /* Select: draw page n with a selection being dragged (null: as it is) */
+  preview(n, hide, add) {
+    const was = this.pv;
+    this.pv = n ? { page: n, hide, add } : null;
+    if (!n) { if (was) this.refreshPage(was.page); return; }
+    const P = this.P(n);
+    if (!P) return;
+    this.ensure(P, add.some(seeThrough) || this.pageList(n).some(seeThrough));
+    this.redraw(P);
+  }
+  /* where the selection box goes on page n: [element, css px per point, x offset, y offset] */
+  host(n) {
+    const P = this.P(n), z = this.v.zoom;
+    return P ? [P.el, z, GUTTER * z, 0] : null;
   }
 
   /* make a page's canvases match its ink: create, redraw or free */
@@ -98,6 +122,7 @@ export class Ink {
   resize(P) {
     for (const c of [P.ink, P.hl]) if (c) this.sizeCanvas(P, c);
     this.redraw(P);   // always: zoom changes the transform even when the pixel size stays the same
+    if (this.sel) this.sel.layout();
   }
 
   /* ---------- input ---------- */
@@ -108,7 +133,11 @@ export class Ink {
     box.addEventListener('pointermove', (e) => this.move(e));
     box.addEventListener('pointerup', (e) => this.end(e));
     box.addEventListener('pointercancel', (e) => this.end(e));
-    box.addEventListener('contextmenu', (e) => e.preventDefault());
+    box.addEventListener('contextmenu', (e) => {   // a right-click on a selection opens its menu
+      e.preventDefault();
+      const el = this.T.selecting && this.sel && e.target.closest && e.target.closest('.pg');
+      if (el) { const q = this.pt(e, el._P); this.sel.contextMenu(el._P.n, q[0], q[1], e.clientX, e.clientY); }
+    });
   }
 
   pt(e, P) {
@@ -131,6 +160,11 @@ export class Ink {
     const el = e.target.closest('.pg');
     if (!el) { this.active = null; return; }
     const P = el._P, q = this.pt(e, P), z = this.v.zoom;
+    if (T.selecting && kind !== 'palm' && this.sel) {   // Select: circle ink, tap it, or drag the selection
+      this.selP = P;
+      this.sel.down(P.n, q[0], q[1], e.clientX, e.clientY);
+      e.preventDefault(); return;
+    }
     let s;
     // the palm / eraser width is about the hand, so it stays the same size on screen at any zoom
     if (kind === 'palm' || T.erasing) s = { page: P.n, c: T.color, w: (kind === 'palm' ? T.PALM_ERASER_W : T.ERASER_W) / z, e: 1, p: q };
@@ -151,6 +185,12 @@ export class Ink {
     if (this.drag) {
       window.scrollBy(this.drag.x - e.screenX, this.drag.y - e.screenY);
       this.drag.x = e.screenX; this.drag.y = e.screenY;
+      e.preventDefault(); return;
+    }
+    if (this.selP) {
+      let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+      if (!evs || !evs.length) evs = [e];
+      for (const ev of evs) { const q = this.pt(ev, this.selP); this.sel.move(q[0], q[1], ev.clientX, ev.clientY); }
       e.preventDefault(); return;
     }
     const s = this.cur, P = this.curP;
@@ -174,6 +214,11 @@ export class Ink {
     if (drag && this.T.mode === 'scroll' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) < 8) {
       const sel = window.getSelection(); if (sel) sel.removeAllRanges();
     }
+    if (this.selP) {
+      const P = this.selP; this.selP = null;
+      if (e.type === 'pointerup') { const q = this.pt(e, P); this.sel.up(q[0], q[1], e.clientX, e.clientY); } else this.sel.cancel();
+      return;
+    }
     const s = this.cur, P = this.curP;
     if (!s) return;
     this.cur = null; this.curP = null;
@@ -186,6 +231,7 @@ export class Ink {
     if (!this.byPage.has(P.n)) this.byPage.set(P.n, []);
     this.byPage.get(P.n).push(s);
     this.lastCleared = null; this.redos = [];   // new ink starts a new history
+    this.dropSel();
     if (!this.v.want.has(P)) this.free(P);
     this.onChange();
   }
@@ -201,10 +247,11 @@ export class Ink {
   /* ---------- undo / clear / periods ---------- */
 
   undo() {
-    if (this.lastCleared && this.lastCleared.all) {   // the last thing done was Clear all: bring every page back
+    this.dropSel();
+    if (this.lastCleared && this.lastCleared.all) {   // the last thing done was Clear all (or a Select change): bring every page back
+      this.redos.push({ after: this.strokes });
       this.D.periods[this.D.active] = this.lastCleared.all;
       this.lastCleared = null;
-      this.redos.push({ clearedAll: true });
       this.reindex(); this.onChange();
       return this.strokes.length ? this.strokes[this.strokes.length - 1].page : null;
     }
@@ -230,7 +277,8 @@ export class Ink {
   redo() {   // puts back what Undo took, in order; returns the page it changed
     const r = this.redos.pop();
     if (!r) return null;
-    if (r.clearedAll) { this.clearAll(true); return null; }
+    this.dropSel();
+    if (r.after) { this.replaceAll(r.after, true); return null; }
     if (r.cleared) { this.clearPage(r.cleared, true); return r.cleared; }
     this.strokes.push(r);
     if (!this.byPage.has(r.page)) this.byPage.set(r.page, []);
@@ -244,6 +292,7 @@ export class Ink {
   clearPage(n, keepRedo) {
     const list = this.pageList(n);
     if (!list.length) return false;
+    this.dropSel();
     const gone = new Set(list);
     this.lastCleared = { page: n, before: this.strokes };
     this.D.periods[this.D.active] = this.strokes.filter((s) => !gone.has(s));
@@ -253,17 +302,30 @@ export class Ink {
     return true;
   }
 
-  clearAll(keepRedo) {   // every page of the active period; Undo brings them all back
+  clearAll() {   // every page of the active period; Undo brings them all back
     if (!this.strokes.length) return false;
+    this.replaceAll([]);
+    return true;
+  }
+
+  /* the active period's strokes become next (Clear all, and Select's paste, move and delete); Undo brings back the old ones */
+  replaceAll(next, keepRedo) {
     this.lastCleared = { all: this.strokes };
-    this.D.periods[this.D.active] = [];
+    this.D.periods[this.D.active] = next;
     if (!keepRedo) this.redos = [];
     this.reindex(); this.onChange();
-    return true;
+  }
+
+  /* Select ▸ Send a copy to: add strokes to another period (it saves with the rest) */
+  addTo(name, list) {
+    if (!this.D.periods[name]) return;
+    this.D.periods[name].push(...list);
+    this.onChange();
   }
 
   switchTo(name) {
     if (!this.D.periods[name] || name === this.D.active) return false;
+    this.dropSel();
     this.D.active = name;
     this.lastCleared = null; this.redos = [];
     this.reindex(); this.onChange();
@@ -271,6 +333,7 @@ export class Ink {
   }
 
   setPeriods(periods, active) {   // File ▸ Settings… changed the class periods (renamed ones keep their ink)
+    this.dropSel();
     this.D.periods = periods; this.D.active = active;
     this.lastCleared = null; this.redos = [];
     this.reindex(); this.onChange();

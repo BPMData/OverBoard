@@ -3,59 +3,11 @@
 // (PDF.js viewport at scale 1), so each page maps them back with the inverse of that viewport's transform.
 
 import { loadPdfLib } from './libs.js';
-import { seeThrough } from '../shared/ink-core.js';
+import { seeThrough, applyErasers } from '../shared/ink-core.js';
 import { NB_RE } from './notebook.js';
 
-/* The PDF has no "eraser". Apply erasers geometrically: drop the sample points of earlier strokes that the
-   eraser passed over, and split those strokes where the gap is. Returns highlight and pen strokes in order. */
-export function applyErasers(list) {
-  let kept = [];
-  for (const s of list) {
-    if (!s.e) { kept.push(s); continue; }
-    const r = s.w / 2, ep = s.p, box = bbox(ep, r);
-    const next = [];
-    for (const k of kept) {
-      const pad = k.w / 2;
-      if (!overlaps(box, bbox(k.p, pad))) { next.push(k); continue; }
-      let run = [];
-      const flush = () => {
-        if (run.length >= 4 || (run.length === 2 && k.p.length === 2)) next.push({ ...k, p: run });
-        run = [];
-      };
-      for (let i = 0; i < k.p.length; i += 2) {
-        const x = k.p[i], y = k.p[i + 1];
-        if (distToPath(x, y, ep) <= r + pad * 0.5) flush();
-        else run.push(x, y);
-      }
-      flush();
-    }
-    kept = next;
-  }
-  return kept;
-}
-
-function bbox(p, pad) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (let i = 0; i < p.length; i += 2) {
-    x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]);
-    y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]);
-  }
-  return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
-}
-const overlaps = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
-
-function distToPath(x, y, p) {
-  if (p.length < 4) return Math.hypot(x - p[0], y - p[1]);
-  let best = Infinity;
-  for (let i = 0; i + 3 < p.length; i += 2) {
-    const ax = p[i], ay = p[i + 1], bx = p[i + 2], by = p[i + 3];
-    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
-    let t = L ? ((x - ax) * dx + (y - ay) * dy) / L : 0;
-    t = Math.max(0, Math.min(1, t));
-    best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
-  }
-  return best;
-}
+// The PDF has no "eraser": applyErasers (shared/ink-core.js, also used by Select) cuts the erased parts out of the strokes.
+export { applyErasers };
 
 function rgb01(hex) {
   const n = parseInt(hex.slice(1), 16);

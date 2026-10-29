@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Select** (v34, PDF app and HTML overlay): a new **Select** button beside ⏱ Timer. Circle ink with the pen (or tap one mark) and a dashed blue box shows what's picked, with a menu beside it:
+  - **Send a copy to** another class period (P2, P3…): the copy lands in the same spot in that period's ink. Tap more than one period to send it to each.
+  - **Copy**, then tap the page with Select on and choose **Here** or **Same spot** to paste it: on another page, or in another class period after switching.
+  - **Drag the box** to move the ink. **Delete** removes it. Undo puts back a paste, a move or a delete.
+  - A right-click on the box opens the menu too, and Ctrl/⌘+C, Ctrl/⌘+V (same spot), Delete and Escape work from a keyboard.
+  - Copies look exactly like what's on the page: parts you erased stay erased, and a copy never erases ink where it lands.
 - **New license: GNU AGPLv3** (v30), instead of MIT. Anyone can still use, change and share OverBoard for free, but a changed version, whether shared or run as a website, must share its source code too, so nobody can turn it into a closed product. Your worksheets, ink and saved PDFs are yours.
 - **8 languages** (v24, PDF app and HTML overlay): English, Español, 中文, Tagalog, Tiếng Việt, Français, Português (Brasil) and العربية, under **Settings… ▸ 🌐 Language** (and a 🌐 list on the PDF app's start screen). Buttons, tooltips, menus, Settings and status messages all change at once, without reloading. OverBoard starts in the browser's language when it has it. Arabic menus and Settings read right to left. A word too long for its button gets slightly smaller text, so every language fits a 1080p board.
 - **The Board not working? page speaks all 8 languages** too, with its own 🌐 list. It opens in the language OverBoard is using, and the thank-you and follow-up emails go out in that language (Claude Haiku writes its paragraph in it).
