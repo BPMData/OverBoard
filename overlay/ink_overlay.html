@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v35) =====
+<!-- ===== INK OVERLAY START (v36) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -1581,6 +1581,7 @@
       "confirm_remove_pdf": ["Remove {list} and its ink from this PDF?\n\nUndo can't bring it back.", "¿Quitar {list} y su tinta de este PDF?\n\nDeshacer no puede recuperarla.", "要从此 PDF 中删除 {list} 及其笔迹吗？\n\n撤销无法恢复。", "Alisin ang {list} at ang tinta nito sa PDF na ito?\n\nHindi na ito maibabalik ng Undo.", "Xóa {list} và nét mực của nó khỏi PDF này?\n\nHoàn tác không lấy lại được.", "Retirer {list} et son encre de ce PDF ?\n\nAnnuler ne pourra pas le faire revenir.", "Remover {list} e a tinta dele deste PDF?\n\nDesfazer não traz de volta.", "هل تزيل {list} وحبره من ملف PDF هذا؟\n\nلا يمكن للتراجع إعادته."],
       "explain_pick": ["Ink already saves in this browser. This also saves it INSIDE the file. In the window that opens (it says \"Open\"), pick: {f}", "La tinta ya se guarda en este navegador. Esto también la guarda DENTRO del archivo. En la ventana que se abre (dice \"Abrir\"), elige: {f}", "笔迹已经保存在此浏览器中。这会同时把它保存到文件内部。在打开的窗口中（显示“打开”），选择：{f}", "Nase-save na ang tinta sa browser na ito. Sine-save din nito ang tinta SA LOOB ng file. Sa window na lalabas (nakasulat ay \"Open\"), piliin ang: {f}", "Nét mực đã được lưu trong trình duyệt này. Lệnh này lưu thêm vào BÊN TRONG tệp. Trong cửa sổ hiện ra (ghi \"Mở\"), hãy chọn: {f}", "L'encre est déjà enregistrée dans ce navigateur. Ceci l'enregistre aussi DANS le fichier. Dans la fenêtre qui s'ouvre (elle indique « Ouvrir »), choisissez : {f}", "A tinta já é salva neste navegador. Isto também a salva DENTRO do arquivo. Na janela que abrir (diz \"Abrir\"), escolha: {f}", "الحبر محفوظ بالفعل في هذا المتصفح. هذا يحفظه أيضًا داخل الملف. في النافذة التي تظهر (مكتوب فيها \"فتح\")، اختر: {f}"],
       "this_worksheet": ["this worksheet", "esta hoja", "此练习页", "worksheet na ito", "bài tập này", "ce document", "esta folha", "ورقة العمل هذه"],
+      "tap_again_allow": ["Tap again to allow", "Toca otra vez para permitir", "再点一次以允许", "I-tap ulit para payagan", "Chạm lần nữa để cho phép", "Touchez encore pour autoriser", "Toque de novo para permitir", "اضغط مرة أخرى للسماح"],
       "tap_again_pick": ["Tap again to pick file", "Toca otra vez para elegir", "再点一次选择文件", "I-tap ulit para pumili", "Chạm lần nữa để chọn", "Touchez encore pour choisir", "Toque de novo para escolher", "اضغط مرة أخرى لاختيار الملف"],
       "st_loaded_file": ["{p} · ink loaded from file", "{p} · tinta cargada del archivo", "{p} · 已从文件载入笔迹", "{p} · na-load ang tinta mula sa file", "{p} · đã mở nét mực từ tệp", "{p} · encre chargée depuis le fichier", "{p} · tinta carregada do arquivo", "{p} · تم تحميل الحبر من الملف"],
       "st_restored": ["{p} · ink restored from this browser", "{p} · tinta recuperada de este navegador", "{p} · 已从此浏览器恢复笔迹", "{p} · naibalik ang tinta mula sa browser na ito", "{p} · đã khôi phục nét mực từ trình duyệt này", "{p} · encre restaurée depuis ce navigateur", "{p} · tinta recuperada deste navegador", "{p} · تمت استعادة الحبر من هذا المتصفح"],
@@ -1936,9 +1937,13 @@
     var o = parse(s);
     if (!o || (o.t || 0) <= t) { try { localStorage.removeItem(KEY); } catch(e){} }
   }
+  /* Ink written into a file carries w: when it was written. Ink copied into another board copy (Save ink into file,
+     then a different file) can have been drawn before that copy's own ink in this browser, yet it is the newer copy. */
+  var shownT = 0;   // how new the ink on screen is, to compare with the browser's copy
   function load(){
     var emb = dataEl ? parse(dataEl.textContent) : null, loc = lsCopy = parse(getLS(KEY)), src = '';
-    if (loc && (!emb || (loc.t || 0) > (emb.t || 0))) { D = loc; src = 'browser'; }   // newest copy wins; a tie goes to the file
+    var et = emb ? Math.max(emb.t || 0, emb.w || 0) : 0;
+    if (loc && (!emb || (loc.t || 0) > et)) { D = loc; src = 'browser'; }   // newest copy wins; a tie goes to the file
     else if (emb) { D = emb; src = 'file'; }
     else {
       D = fresh();
@@ -1948,6 +1953,8 @@
       } catch(e){}
     }
     if (!Object.keys(D.periods).length) D = fresh();
+    shownT = src === 'file' ? et : D.t || 0;
+    delete D.w;
     shortNames();
     if (!D.periods[D.active]) D.active = Object.keys(D.periods)[0];
     strokes = D.periods[D.active];
@@ -1956,7 +1963,7 @@
   function loadDb(){   // then the IndexedDB copy, if it is newer than what's on screen
     return inkTx('readonly', function(st){ return st.get(KEY); }).then(function(r){
       var got = r.ok && r.val && r.val.periods && typeof r.val.periods === 'object' ? r.val : null, src = '';
-      if (got && (got.t || 0) > (D.t || 0)) {
+      if (got && (got.t || 0) > shownT) {
         D = got; shortNames();
         if (!Object.keys(D.periods).length) D = fresh();
         if (!D.periods[D.active]) D.active = Object.keys(D.periods)[0];
@@ -2219,6 +2226,9 @@
   async function linkFile(){
     var hs = await window.showOpenFilePicker({ types: [{ description: 'This worksheet (.html)', accept: { 'text/html': ['.html', '.htm'] } }] });
     var h = hs[0], base = decodeURIComponent(location.pathname.split('/').pop());
+    // ask to write right away, while the tap that opened the file window still counts: in Chrome, our question
+    // below uses it up, and then the browser refuses without asking
+    try { if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted') await h.requestPermission({ mode: 'readwrite' }); } catch(e){}
     if (base && h.name !== base && !confirm(tr('confirm_other_file', { a: base, b: h.name }))) return false;
     var txt = await (await h.getFile()).text();
     if (injectInk(txt, '{}') === null) { setStatus(tr('st_no_ink_block')); return false; }
@@ -2231,7 +2241,7 @@
     try {
       if (!(await hasPermission(ask))) { setStatus(tr('st_tap_allow', { p: D.active })); return false; }
       var txt = await (await fileHandle.getFile()).text();
-      var out = injectInk(txt, JSON.stringify(D));
+      var out = injectInk(txt, JSON.stringify(Object.assign({}, D, { w: Date.now() })));   // w: when it was written (see load)
       if (out === null) { setStatus(tr('st_linked_no_block')); return false; }
       var w = await fileHandle.createWritable();
       try { await w.write(out); await w.close(); }
@@ -2260,7 +2270,17 @@
     var ok = await saveFile(forcePick);
     if (ok === null) return;
     if (ok) flashBtn(btn, tr(wasLinked ? 'already_saved' : 'saved_to_file'), 'good');
+    else if (fileHandle && !(await hasPermission(false))) askAgain(btn);
     else flashBtn(btn, tr('not_saved'), 'warn');
+  }
+  /* The browser wouldn't ask for permission to write (it only asks right after a tap). Keep the menu open and
+     say so on the button: the next tap there asks. */
+  function askAgain(btn){
+    if (fileMenu.el.hidden) fileMenu.show(true);
+    clearTimeout(btn._flash); if (!btn.classList.contains('warn')) btn._label = btn.textContent;
+    btn.classList.remove('good'); btn.classList.add('warn'); btn.textContent = tr('tap_again_allow');
+    btn._flash = setTimeout(function(){ btn.classList.remove('warn'); btn.textContent = btn._label; }, 10000);
+    setStatus(tr('st_file_linked_again'));
   }
 
   /* ---------- toolbar ---------- */
