@@ -50,9 +50,10 @@ async function saveTap(page) {
   if (await page.locator('#ob-filemenu').isHidden()) await page.click('#ink-bar [data-act="file"]');
   await saveBtn(page).click();
 }
-async function open(page, file) {
+async function open(page, file, again = false) {
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto(url(file)); await overlayReady(page);
+  // again: the file changed on disk; ask past the browser's cache (the test server only knows file times to the second)
+  await page.goto(url(file) + (again ? '?' + Date.now() : '')); await overlayReady(page);
 }
 
 test('save ink into a differently named board copy: the browser asks before our "different file" question', async ({ page }, info) => {
@@ -101,8 +102,24 @@ test('ink written into a board copy shows, even if this browser used that copy m
   // another browser (Edge) wrote ink drawn an hour ago into this file, just now
   const now = Date.now(), stroke = { c: '#111', w: 3, e: 0, p: [100, 100, 300, 100] };
   fs.writeFileSync(clean, withInk(DEMO, { v: 2, t: now - 3600e3, w: now, active: 'P1', periods: { P1: [stroke], P2: [], P3: [], P4: [] } }));
-  await open(page, clean);
+  await open(page, clean, true);
   await expect(page.locator('#ink-status')).toContainText('ink loaded from file');
   await page.click('#ink-bar [data-act="undo"]');   // the file's ink is what's on screen: Undo takes its line away
   await expect(page.locator('#ink-bar [data-act="redo"]')).toBeEnabled();
+});
+
+test('a file without OverBoard in it: Not saved!, said plainly, and the browser never asks to edit it', async ({ page }, info) => {
+  const inked = info.outputPath('pet_board.html');
+  fs.writeFileSync(inked, DEMO);
+  const plain = '<html><body><div class="page">Plain worksheet</div></body></html>';
+  await fakePicker(page, 'pet.html', plain);
+  await open(page, inked);
+  await draw(page);
+  page.on('dialog', (d) => d.accept());
+  await saveTap(page);
+  await saveTap(page);
+  await expect(saveBtn(page)).toHaveText('Not saved!');
+  await expect(page.locator('#ink-status')).toContainText("doesn't have OverBoard in it");
+  expect(await page.evaluate(() => window.__asked)).toBe(0);
+  expect(await page.evaluate(() => window.__file)).toBe(plain);   // untouched
 });

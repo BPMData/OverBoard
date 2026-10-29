@@ -1,4 +1,4 @@
-<!-- ===== INK OVERLAY START (v36) =====
+<!-- ===== INK OVERLAY START (v37) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -1566,7 +1566,7 @@
       "saved_flash": ["Saved!", "¡Guardado!", "已保存！", "Na-save!", "Đã lưu!", "Enregistré !", "Salvo!", "تم الحفظ!"],
       "not_saved": ["Not saved!", "¡No se guardó!", "未保存！", "Hindi na-save!", "Chưa lưu!", "Non enregistré !", "Não salvo!", "لم يُحفظ!"],
       "confirm_other_file": ["This page is \"{a}\" but you picked \"{b}\". Save ink into the picked file?", "Esta página es \"{a}\" pero elegiste \"{b}\". ¿Guardar la tinta en el archivo elegido?", "此页面是“{a}”，但你选择了“{b}”。要把笔迹保存到所选文件吗？", "Ang pahinang ito ay \"{a}\" pero \"{b}\" ang pinili mo. I-save ang tinta sa napiling file?", "Trang này là \"{a}\" nhưng bạn đã chọn \"{b}\". Lưu nét mực vào tệp đã chọn?", "Cette page est « {a} » mais vous avez choisi « {b} ». Enregistrer l'encre dans le fichier choisi ?", "Esta página é \"{a}\", mas você escolheu \"{b}\". Salvar a tinta no arquivo escolhido?", "هذه الصفحة هي \"{a}\" لكنك اخترت \"{b}\". هل تحفظ الحبر في الملف المختار؟"],
-      "st_no_ink_block": ["That file has no ink block. Paste the overlay snippet into it first.", "Ese archivo no tiene bloque de tinta. Primero pega en él el código de OverBoard.", "该文件没有笔迹区块。请先把 OverBoard 代码粘贴进去。", "Walang ink block ang file na iyan. I-paste muna roon ang OverBoard snippet.", "Tệp đó không có khối nét mực. Hãy dán đoạn mã OverBoard vào trước.", "Ce fichier n'a pas de bloc d'encre. Collez-y d'abord le code d'OverBoard.", "Esse arquivo não tem bloco de tinta. Cole o código do OverBoard nele primeiro.", "هذا الملف لا يحتوي على كتلة الحبر. الصق شيفرة OverBoard فيه أولًا."],
+      "st_no_ink_block": ["That file doesn't have OverBoard in it, so it can't keep ink. Drop it on the OverBoard app first to make a board copy.", "Ese archivo no tiene OverBoard, así que no puede guardar tinta. Primero suéltalo en la app de OverBoard para hacer una copia para la pizarra.", "该文件里没有 OverBoard，无法保存笔迹。请先把它拖到 OverBoard 应用里，生成一份白板副本。", "Walang OverBoard ang file na iyan, kaya hindi ito makakapag-save ng tinta. I-drop muna ito sa OverBoard app para gumawa ng kopya para sa board.", "Tệp đó không có OverBoard nên không lưu được nét mực. Hãy thả nó vào ứng dụng OverBoard trước để tạo bản dùng trên bảng.", "Ce fichier ne contient pas OverBoard, il ne peut donc pas garder l'encre. Déposez-le d'abord sur l'app OverBoard pour en faire une copie pour le tableau.", "Esse arquivo não tem o OverBoard, então não guarda tinta. Primeiro solte-o no app OverBoard para fazer uma cópia para a lousa.", "هذا الملف لا يحتوي على OverBoard، لذا لا يمكنه حفظ الحبر. اسحبه أولًا إلى تطبيق OverBoard لإنشاء نسخة للسبورة."],
       "st_tap_allow": ["{p} · tap Save ink into file to allow writing", "{p} · toca Guardar tinta en el archivo para permitir escribir", "{p} · 点按“把笔迹保存到文件”以允许写入", "{p} · i-tap ang I-save ang tinta sa file para payagang magsulat", "{p} · chạm Lưu nét mực vào tệp để cho phép ghi", "{p} · touchez Enregistrer l'encre dans le fichier pour autoriser l'écriture", "{p} · toque em Salvar tinta no arquivo para permitir gravar", "{p} · اضغط «حفظ الحبر في الملف» للسماح بالكتابة"],
       "st_linked_no_block": ["Linked file has no ink block", "El archivo vinculado no tiene bloque de tinta", "关联文件没有笔迹区块", "Walang ink block ang naka-link na file", "Tệp liên kết không có khối nét mực", "Le fichier lié n'a pas de bloc d'encre", "O arquivo vinculado não tem bloco de tinta", "الملف المرتبط لا يحتوي على كتلة الحبر"],
       "st_saved_to": ["{p} · saved to {f} {t}", "{p} · guardado en {f} {t}", "{p} · 已保存到 {f} {t}", "{p} · na-save sa {f} {t}", "{p} · đã lưu vào {f} {t}", "{p} · enregistré dans {f} {t}", "{p} · salvo em {f} {t}", "{p} · حُفظ في {f} {t}"],
@@ -2226,12 +2226,13 @@
   async function linkFile(){
     var hs = await window.showOpenFilePicker({ types: [{ description: 'This worksheet (.html)', accept: { 'text/html': ['.html', '.htm'] } }] });
     var h = hs[0], base = decodeURIComponent(location.pathname.split('/').pop());
+    // a file without OverBoard in it has nowhere to keep ink: say so before the browser asks to edit it
+    var txt = await (await h.getFile()).text();
+    if (injectInk(txt, '{}') === null) { setStatus(tr('st_no_ink_block')); return 'none'; }
     // ask to write right away, while the tap that opened the file window still counts: in Chrome, our question
     // below uses it up, and then the browser refuses without asking
     try { if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted') await h.requestPermission({ mode: 'readwrite' }); } catch(e){}
     if (base && h.name !== base && !confirm(tr('confirm_other_file', { a: base, b: h.name }))) return false;
-    var txt = await (await h.getFile()).text();
-    if (injectInk(txt, '{}') === null) { setStatus(tr('st_no_ink_block')); return false; }
     fileHandle = h; idb('readwrite', function(st){ return st.put(h, KEY); });
     return true;
   }
@@ -2256,7 +2257,7 @@
   async function saveFile(forcePick){   // true = ink written into the file, false = not (status line says why), null = picker cancelled
     if (!FSA) { setStatus(tr('st_needs_chrome')); return false; }
     try {
-      if (forcePick || !fileHandle) { if (!(await linkFile())) return null; }
+      if (forcePick || !fileHandle) { var linked = await linkFile(); if (linked === 'none') return false; if (!linked) return null; }   // false: Not saved! on the button
       writeLocal(true);
       for (var i = 0; fileBusy && i < 30; i++) await new Promise(function(r){ setTimeout(r, 100); });   // let an autosave finish first
       return await writeFile(true);
