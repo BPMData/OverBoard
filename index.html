@@ -234,6 +234,8 @@
 #ob-selmenu .ob-selto button{min-height:48px;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #ob-selmenu button[data-sel="delete"]{background:#5a2323}
 @media print{#ob-lasso,#ob-selmenu,.ob-selbox{display:none!important}}
+/* Select and ⏱ Timer share a row: a little less padding, and "⏱" may wrap above a long word, so every language fits */
+#ink-bar button[data-act="select"],#ink-bar button[data-act="timer"]{padding:2px;white-space:normal;line-height:1.1;overflow-wrap:normal}
 /* ===== END SHARED TOOLBAR CSS ===== */
 @media print{#ink-bar,#ink-canvas,#ink-hl,#ob-selhost,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings,#ob-timer,#ob-timerset{display:none!important}}
 </style>
