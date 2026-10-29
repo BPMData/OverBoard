@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v33) =====
+<!-- ===== INK OVERLAY START (v34) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -63,6 +63,7 @@
   Works best with fixed-size .page elements (any paper size): Page jump and Save PDF then work per page.
   Without .page elements it still scrolls and prints the whole body as one sheet.
   PERIODS: each class period (P1-P4) keeps its own ink on the same worksheet. Tap a period button to switch.
+  SELECT: circle ink with the pen (or tap one mark) to send a copy to another period, copy and paste it, drag it, or delete it.
   SAVING: ink always auto-saves in this browser. File ▸ "Save ink into file" (Chrome or Edge) also writes the ink INTO this .html file,
   so use a board copy of the sheet, not the copy you hand out.
   Settings are the variables at the top of the script. ===== -->
@@ -77,7 +78,7 @@
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
 #ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
-#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
+#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-act="select"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
 #ink-bar button[data-act="hilite"].on{background:#fff176;color:#000}
 #ink-bar button.warn{background:#c62828}
 #ink-bar button.good{background:#2e7d32;color:#fff}
@@ -104,15 +105,15 @@
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu){position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:196px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu)[hidden]{display:none}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) button{min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) button.sm{min-height:48px;font-size:13px}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) .wide{grid-column:1 / 3}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) button.warn{background:#c62828}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) button.good{background:#2e7d32}
-:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu) button:disabled{opacity:.4;cursor:default}
-:is(#ob-clearmenu,#ob-pagemenu) p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu){position:fixed;z-index:101;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;width:196px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu)[hidden]{display:none}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) button{min-height:56px;margin:0;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) button.sm{min-height:48px;font-size:13px}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) .wide{grid-column:1 / 3}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) button.warn{background:#c62828}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) button.good{background:#2e7d32}
+:is(#ob-filemenu,#ob-clearmenu,#ob-pagemenu,#ob-selmenu) button:disabled{opacity:.4;cursor:default}
+:is(#ob-clearmenu,#ob-pagemenu,#ob-selmenu) p{grid-column:1 / 3;margin:0;color:#bbb;font:600 12px Inter,system-ui,sans-serif;text-align:center}
 #ink-bar button[aria-expanded="true"]{background:#fff;color:#000}
 #ob-zoom{grid-column:1 / 3;display:grid;grid-template-columns:40px 1fr 40px;gap:6px}
 #ink-bar #ob-zoom button[data-act="zoom-fit"]{padding:0;font-size:14px;letter-spacing:-.02em;text-overflow:clip}
@@ -220,11 +221,25 @@
 #ob-settings .ob-tm-chime{width:100%;margin-top:8px}
 #ob-settings .ob-tm-chime[hidden]{display:none}
 @media print{#ob-timer,#ob-timerset{display:none!important}}
+/* Select: the dashed loop while circling ink, the box around what's selected, and its menu (makeSelect in ink-core.js) */
+#ob-lasso{position:fixed;inset:0;z-index:99;pointer-events:none}
+#ob-lasso[hidden]{display:none}
+#ob-lasso svg{display:block;width:100%;height:100%}
+#ob-lasso polyline{fill:rgba(30,136,229,.08);stroke:#1e88e5;stroke-width:3;stroke-dasharray:10 7;stroke-linejoin:round;stroke-linecap:round}
+.ob-selbox{position:absolute;z-index:5;box-sizing:border-box;border:3px dashed #1e88e5;border-radius:8px;background:rgba(30,136,229,.12);box-shadow:0 0 0 2px rgba(255,255,255,.85);pointer-events:none}
+#ob-selhost{position:absolute;top:0;left:50%;transform:translateX(-50%);height:0;z-index:51;pointer-events:none}
+#ob-selmenu p{font-size:13px;color:#fff}
+#ob-selmenu p.lbl{color:#bbb;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+#ob-selmenu .ob-selto{grid-column:1 / 3;display:grid;grid-template-columns:repeat(auto-fit,minmax(52px,1fr));gap:6px}
+#ob-selmenu .ob-selto button{min-height:48px;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ob-selmenu button[data-sel="delete"]{background:#5a2323}
+@media print{#ob-lasso,#ob-selmenu,.ob-selbox{display:none!important}}
 /* ===== END SHARED TOOLBAR CSS ===== */
-@media print{#ink-bar,#ink-canvas,#ink-hl,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings,#ob-timer,#ob-timerset{display:none!important}}
+@media print{#ink-bar,#ink-canvas,#ink-hl,#ob-selhost,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings,#ob-timer,#ob-timerset{display:none!important}}
 </style>
 <canvas id="ink-hl"></canvas>
 <canvas id="ink-canvas"></canvas>
+<div id="ob-selhost"></div>
 <div id="ink-bar" role="toolbar" aria-label="Writing tools">
   <button data-act="write" class="on" data-t="write" data-tt="write_tip" title="Write: the pen writes and your palm erases">Write</button>
   <button data-act="scroll" data-t="scroll" data-tt="scroll_tip" title="Scroll: drag to move around the page; nothing is written">Scroll</button>
@@ -249,7 +264,8 @@
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)">Clear page</button>
   <button data-act="clear-all" data-tt="clear_all_tip" title="Clear the ink on every page, in this class period (tap twice; Undo brings it back)">Clear all</button>
   <div id="ob-zoom"><button data-act="zoom-out" aria-label="Zoom out" title="Zoom out" data-ta="zoom_out" data-tt="zoom_out">&minus;</button><button data-act="zoom-fit" class="sm" data-tt="zoom_tip" title="Page zoom. Tap to fit the page to the screen.">100%</button><button data-act="zoom-in" aria-label="Zoom in" title="Zoom in" data-ta="zoom_in" data-tt="zoom_in">+</button></div>
-  <button data-act="timer" class="sm wide" data-t="timer_btn" data-tt="timer_tip" title="A big countdown for the class, with a sound at zero">&#9201; Timer</button>
+  <button data-act="select" class="sm" data-t="select" data-tt="select_tip" title="Select: circle ink with the pen (or tap one mark) to send a copy to another class period, copy it, move it or delete it">Select</button>
+  <button data-act="timer" class="sm" data-t="timer_btn" data-tt="timer_tip" title="A big countdown for the class, with a sound at zero">&#9201; Timer</button>
   <button data-act="file" aria-haspopup="true" aria-expanded="false" data-t="menu" data-tt="menu_tip" title="Save PDF, save ink into the file, settings, language and help">Settings &amp; help &#9656;</button>
   <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the ✎ button brings it back)">Hide</button>
   <div id="ink-status" data-tt="status_tip" title="What OverBoard did last">Ink saves automatically</div>
@@ -1044,6 +1060,328 @@
     };
   }
 
+  /* ---- Erasers as shapes. Export PDF needs them (a PDF has no eraser), and so does Select: a copy shows the ink
+     as it looks now, so it never erases anything where it lands. ---- */
+
+  function inkBox(p, pad){   // [x0, y0, x1, y1] around the points, grown by pad
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (var i = 0; i < p.length; i += 2) {
+      if (p[i] < x0) x0 = p[i]; if (p[i] > x1) x1 = p[i];
+      if (p[i+1] < y0) y0 = p[i+1]; if (p[i+1] > y1) y1 = p[i+1];
+    }
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+  }
+  function boxesMeet(a, b){ return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]; }
+  function distToPath(x, y, p){
+    if (p.length < 4) return Math.hypot(x - p[0], y - p[1]);
+    var best = Infinity;
+    for (var i = 0; i + 3 < p.length; i += 2) {
+      var ax = p[i], ay = p[i+1], dx = p[i+2] - ax, dy = p[i+3] - ay, L = dx * dx + dy * dy;
+      var t = L ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L)) : 0;
+      best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+    }
+    return best;
+  }
+  function copyStroke(s, p){ var o = {}; for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k)) o[k] = s[k]; o.p = p; return o; }
+  /* Drop the sample points of earlier strokes that an eraser passed over, and split those strokes where the gap is.
+     Returns the highlight and pen strokes, in order, without the erasers. */
+  function applyErasers(list){
+    var kept = [];
+    function flush(out, k, run){ if (run.length >= 4 || (run.length === 2 && k.p.length === 2)) out.push(copyStroke(k, run)); }
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i];
+      if (!s.e) { kept.push(s); continue; }
+      var r = s.w / 2, ep = s.p, box = inkBox(ep, r), next = [];
+      for (var j = 0; j < kept.length; j++) {
+        var k = kept[j], pad = k.w / 2, run = [];
+        if (!boxesMeet(box, inkBox(k.p, pad))) { next.push(k); continue; }
+        for (var n = 0; n < k.p.length; n += 2) {
+          if (distToPath(k.p[n], k.p[n+1], ep) <= r + pad * 0.5) { flush(next, k, run); run = []; }
+          else run.push(k.p[n], k.p[n+1]);
+        }
+        flush(next, k, run);
+      }
+      kept = next;
+    }
+    return kept;
+  }
+
+  /* ---- Select: circle ink with the pen (or tap one mark), then send a copy to another class period, copy and
+     paste it, drag it somewhere else, or delete it. The same in the PDF app and the overlay. ---- */
+
+  /* is (x, y) inside the loop [x0,y0,x1,y1,...]? (the loop closes itself) */
+  function pointInLoop(x, y, q){
+    var inside = false;
+    for (var i = 0, j = q.length - 2; i < q.length; j = i, i += 2)
+      if ((q[i+1] > y) !== (q[j+1] > y) && x < (q[j] - q[i]) * (y - q[i+1]) / (q[j+1] - q[i+1]) + q[i]) inside = !inside;
+    return inside;
+  }
+  /* what list[i] looks like now: copies of what the erasers drawn after it left (none if it was all erased) */
+  function seenNow(list, i){
+    var s = list[i], box = inkBox(s.p, s.w / 2), l = [s];
+    for (var j = i + 1; j < list.length; j++) if (list[j].e && boxesMeet(box, inkBox(list[j].p, list[j].w / 2))) l.push(list[j]);
+    return applyErasers(l).map(function(k){ return k === s ? copyStroke(s, s.p.slice()) : k; });
+  }
+  /* The marks a loop picks: at least half of what's left of each (after erasing) is inside it. tap: loop is one point,
+     and the top mark within tol of it is picked. list: one page's strokes in drawing order.
+     Returns [{ s: the stroke in list, pieces: what it looks like now }], in drawing order. */
+  function lassoPick(list, loop, tap, tol){
+    var lb = inkBox(loop, tap ? tol : 0), out = [];
+    for (var i = list.length - 1; i >= 0; i--) {
+      var s = list[i];
+      if (s.e || !boxesMeet(lb, inkBox(s.p, s.w / 2))) continue;
+      var pieces = seenNow(list, i), n = 0, inside = 0, k, m;
+      if (!pieces.length) continue;
+      if (tap) {
+        for (k = 0; k < pieces.length; k++) if (distToPath(loop[0], loop[1], pieces[k].p) <= pieces[k].w / 2 + tol) return [{ s: s, pieces: pieces }];
+        continue;
+      }
+      for (k = 0; k < pieces.length; k++) for (m = 0; m < pieces[k].p.length; m += 2) { n++; if (pointInLoop(pieces[k].p[m], pieces[k].p[m+1], loop)) inside++; }
+      if (inside * 2 >= n) out.unshift({ s: s, pieces: pieces });
+    }
+    return out;
+  }
+  /* a copy of s moved by (dx, dy), on page (null: no page, as in the overlay; undefined: keep s's) */
+  function movedCopy(s, dx, dy, page){
+    var p = [];
+    for (var i = 0; i < s.p.length; i += 2) p.push(Math.round((s.p[i] + dx) * 100) / 100, Math.round((s.p[i+1] + dy) * 100) / 100);
+    var o = copyStroke(s, p);
+    if (page === null) delete o.page; else if (page !== undefined) o.page = page;
+    return o;
+  }
+  function strokesBox(list){
+    var b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (var i = 0; i < list.length; i++) {
+      var k = inkBox(list[i].p, list[i].w / 2);
+      b = [Math.min(b[0], k[0]), Math.min(b[1], k[1]), Math.max(b[2], k[2]), Math.max(b[3], k[3])];
+    }
+    return b;
+  }
+
+  /* The Select tool's behavior. The caller turns the tool on and off and passes it the pen on the page, in ink
+     coordinates (page: the PDF page number, or null in the overlay). A = {
+       t(): the current translator, status(msg),
+       pageList(page): that page's strokes of the active period, in drawing order; all(): every page's,
+       replace(next): make next the active period's strokes (one Undo step), addTo(period, strokes): add to another period,
+       periods(), active(): class period names,
+       preview(page, hide, add): draw page without the strokes in hide and with add (null: as it is),
+       host(page): [element to put the selection box in, css px per ink unit, x offset, y offset],
+       pastePage(page): the page Ctrl+V pastes on (page: where it was copied), onOpen(): close other popouts }
+     Returns { down, move, up, cancel, contextMenu, key, drop, layout, has(), els }. */
+  function makeSelect(A){
+    var sel = null, clip = null, g = null, at = null, raf = 0;   // sel: { page, items, box }; clip: { list, box, page }; g: the pen's gesture; at: where a tap asked to paste
+    var tr = function(k, v){ return A.t()(k, v); };
+    var boxEl = document.createElement('div'); boxEl.className = 'ob-selbox';
+    var lasso = document.createElement('div'); lasso.id = 'ob-lasso'; lasso.hidden = true;
+    lasso.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg"><polyline points=""/></svg>';
+    document.body.appendChild(lasso);
+    var line = lasso.querySelector('polyline');
+    var menu = document.createElement('div');
+    menu.id = 'ob-selmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+    document.body.appendChild(menu);
+    var spot = null;   // where the menu is anchored: null = beside the selection box, else [clientX, clientY]
+
+    function say(k, v){ A.status(tr(k, v)); }
+    function count(n, one, many){ return tr(n === 1 ? one : many, { n: n }); }
+    function alive(){   // the selection still matches the ink (Undo, a period switch or new ink drops it)
+      if (!sel) return false;
+      var all = A.all();
+      for (var i = 0; i < sel.items.length; i++) if (all.indexOf(sel.items[i].s) < 0) { drop(); return false; }
+      return true;
+    }
+    function pieces(){ var out = []; sel.items.forEach(function(it){ out = out.concat(it.pieces); }); return out; }
+    function select(page, items){
+      sel = { page: page, items: items, box: null };
+      sel.box = strokesBox(pieces());
+      showBox(0, 0);
+    }
+    function drop(){ sel = null; g = null; boxEl.remove(); hideMenu(); }
+    function showBox(dx, dy){
+      if (!sel) return;
+      var h = A.host(sel.page); if (!h) return boxEl.remove();
+      var b = sel.box, pad = 6;
+      if (boxEl.parentNode !== h[0]) h[0].appendChild(boxEl);
+      boxEl.style.left = (h[2] + (b[0] + dx) * h[1] - pad) + 'px';
+      boxEl.style.top = (h[3] + (b[1] + dy) * h[1] - pad) + 'px';
+      boxEl.style.width = ((b[2] - b[0]) * h[1] + 2 * pad) + 'px';
+      boxEl.style.height = ((b[3] - b[1]) * h[1] + 2 * pad) + 'px';
+    }
+    function inBox(page, x, y){
+      if (!sel || sel.page !== page) return false;
+      var h = A.host(page), pad = h ? 12 / h[1] : 0, b = sel.box;   // a little extra room around it, for a finger
+      return x >= b[0] - pad && x <= b[2] + pad && y >= b[1] - pad && y <= b[3] + pad;
+    }
+
+    /* the menu beside the selection (or where it was right-clicked, or where a tap asked to paste) */
+    function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function btn(attr, label, tip, cls){ return '<button ' + attr + (cls ? ' class="' + cls + '"' : '') + ' title="' + esc(tip) + '">' + esc(label) + '</button>'; }
+    function showMenu(mode, where){
+      var html;
+      if (mode === 'paste') {
+        html = '<p>' + esc(count(clip.list.length, 'paste_one', 'paste_n')) + '</p>' +
+          btn('data-sel="here"', tr('paste_here'), tr('paste_here_tip')) + btn('data-sel="same"', tr('paste_same'), tr('paste_same_tip'));
+      } else {
+        var others = A.periods().filter(function(p){ return p !== A.active(); });
+        html = '<p>' + esc(count(sel.items.length, 'sel_one', 'sel_n')) + '</p>';
+        if (others.length) {
+          html += '<p class="lbl">' + esc(tr('send_copy_to')) + '</p><div class="ob-selto">';
+          others.forEach(function(p){ html += btn('data-to="' + esc(p) + '" dir="auto"', p, tr('send_to_tip', { p: p })); });
+          html += '</div>';
+        }
+        html += btn('data-sel="copy"', tr('sel_copy'), tr('sel_copy_tip')) + btn('data-sel="delete"', tr('sel_delete'), tr('sel_delete_tip'));
+      }
+      menu.innerHTML = html;
+      menu.setAttribute('aria-label', tr(mode === 'paste' ? 'paste' : 'selected_ink'));
+      menu.dataset.mode = mode;
+      spot = where || null;
+      if (menu.hidden && A.onOpen) A.onOpen();
+      menu.hidden = false;
+      fitLabels(menu);
+      placeMenu();
+    }
+    function hideMenu(){ menu.hidden = true; spot = null; }
+    function placeMenu(){
+      if (menu.hidden) return;
+      var r = spot ? { left: spot[0], right: spot[0], top: spot[1] } : boxEl.parentNode ? boxEl.getBoundingClientRect() : null;
+      if (!r) return hideMenu();
+      var m = menu.getBoundingClientRect(), k = menu.offsetWidth ? m.width / menu.offsetWidth : 1, gap = spot ? 4 : 12;   // the menu may be zoomed (fitTools)
+      var x = r.right + gap;
+      if (x + m.width > innerWidth - 10) x = r.left - gap - m.width;   // no room on the right: the left side
+      x = Math.max(10, Math.min(x, innerWidth - m.width - 10));
+      var y = Math.max(10, Math.min(r.top, innerHeight - m.height - 10));
+      menu.style.left = x / k + 'px'; menu.style.top = y / k + 'px';
+    }
+    menu.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.to) return sendTo(b.dataset.to, b);
+      var a = b.dataset.sel;
+      if (a === 'copy') copy();
+      else if (a === 'delete') del();
+      else if (a === 'here' && at && clip) { var c = clip.box; paste(at.page, at.x - (c[0] + c[2]) / 2, at.y - (c[1] + c[3]) / 2); }
+      else if (a === 'same' && at && clip) paste(at.page, 0, 0);
+    });
+    menu.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    document.addEventListener('pointerdown', function(e){ if (!menu.hidden && !menu.contains(e.target)) hideMenu(); }, true);
+    window.addEventListener('scroll', function(){ if (!spot) placeMenu(); }, { passive: true });
+
+    /* the actions */
+    function sendTo(name, b){
+      if (!alive()) return;
+      A.addTo(name, pieces().map(function(s){ return movedCopy(s, 0, 0, sel.page); }));
+      flashBtn(b, '✓', 'good');
+      say('st_sent', { n: sel.items.length, p: name });
+    }
+    function copy(){
+      if (!alive()) return;
+      var list = pieces().map(function(s){ return movedCopy(s, 0, 0, null); });
+      clip = { list: list, box: strokesBox(list), page: sel.page };
+      hideMenu();
+      say('st_copied', { n: clip.list.length });
+    }
+    function del(){
+      if (!alive()) return;
+      var gone = sel.items.map(function(it){ return it.s; }), n = gone.length;
+      A.replace(A.all().filter(function(s){ return gone.indexOf(s) < 0; }));
+      drop();
+      say('st_sel_deleted', { n: n });
+    }
+    function paste(page, dx, dy){
+      var add = clip.list.map(function(s){ return movedCopy(s, dx, dy, page); });
+      drop();
+      A.replace(A.all().concat(add));
+      select(page, add.map(function(s){ return { s: s, pieces: [s] }; }));
+      showMenu('sel');
+      say('st_pasted', { n: add.length });
+    }
+
+    /* the pen on the page */
+    function lassoPoint(cx, cy){
+      var r = lasso.getBoundingClientRect(), k = lasso.offsetWidth ? r.width / lasso.offsetWidth : 1;   // the overlay's page zoom
+      return Math.round((cx - r.left) / k) + ',' + Math.round((cy - r.top) / k);
+    }
+    function down(page, x, y, cx, cy){
+      hideMenu(); alive();
+      if (inBox(page, x, y)) { g = { drag: true, page: page, x0: x, y0: y, cx: cx, cy: cy, dx: 0, dy: 0, moved: false }; return; }
+      var had = !!sel;   // a tap beside a selection only lets it go
+      drop();
+      g = { drag: false, page: page, pts: [x, y], cx: cx, cy: cy, far: 0, had: had };
+      lasso.hidden = false;
+      line.setAttribute('points', lassoPoint(cx, cy));
+    }
+    function move(x, y, cx, cy){
+      if (!g) return;
+      var far = Math.abs(cx - g.cx) + Math.abs(cy - g.cy);
+      if (g.drag) {
+        if (!g.moved && far < 8) return;   // a tap wobbles a little
+        g.moved = true; g.dx = x - g.x0; g.dy = y - g.y0;
+        if (!raf) raf = requestAnimationFrame(function(){
+          raf = 0; if (!g || !g.drag || !sel) return;
+          var gx = g.dx, gy = g.dy;
+          A.preview(sel.page, sel.items.map(function(it){ return it.s; }), pieces().map(function(s){ return movedCopy(s, gx, gy); }));
+          showBox(gx, gy);
+        });
+        return;
+      }
+      g.far = Math.max(g.far, far);
+      var n = g.pts.length;
+      if (Math.abs(x - g.pts[n-2]) + Math.abs(y - g.pts[n-1]) < 0.5) return;
+      g.pts.push(Math.round(x * 100) / 100, Math.round(y * 100) / 100);
+      line.setAttribute('points', line.getAttribute('points') + ' ' + lassoPoint(cx, cy));
+    }
+    function up(x, y, cx, cy){
+      var G = g; g = null;
+      if (!G) return;
+      if (G.drag) {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        if (!sel) return;
+        if (!G.moved) return showMenu('sel');   // a tap on the selection opens its menu again
+        var dx = x - G.x0, dy = y - G.y0, gone = sel.items.map(function(it){ return it.s; });
+        var moved = pieces().map(function(s){ return movedCopy(s, dx, dy); }), page = sel.page;
+        A.preview(null);
+        drop();
+        A.replace(A.all().filter(function(s){ return gone.indexOf(s) < 0; }).concat(moved));   // moved ink goes on top
+        select(page, moved.map(function(s){ return { s: s, pieces: [s] }; }));
+        return say('st_sel_moved');
+      }
+      lasso.hidden = true; line.setAttribute('points', '');
+      var tap = G.far < 10, h = A.host(G.page), tol = h ? 10 / h[1] : 10;
+      var items = lassoPick(A.pageList(G.page), tap ? [x, y] : G.pts, tap, tol);
+      if (items.length) {
+        select(G.page, items);
+        showMenu('sel');
+        say('st_sel_n', { n: items.length });
+      }
+      else if (tap && G.had) { /* let the selection go */ }
+      else if (tap && clip) { at = { page: G.page, x: x, y: y }; showMenu('paste', [cx, cy]); }
+      else say(tap ? 'st_sel_how' : 'st_sel_none');
+    }
+    function cancel(){
+      if (!g) return;
+      var G = g; g = null;
+      lasso.hidden = true; line.setAttribute('points', '');
+      if (G.drag) { A.preview(null); showBox(0, 0); }
+    }
+    function contextMenu(page, x, y, cx, cy){   // a right-click (mouse) on the selection opens its menu there
+      if (!alive() || !inBox(page, x, y)) return false;
+      showMenu('sel', [cx, cy]);
+      return true;
+    }
+    function key(e){   // Ctrl/⌘+C copy, Ctrl/⌘+V paste in the same spot, Delete, Escape. Returns true if used.
+      var k = (e.key || '').toLowerCase(), mod = (e.ctrlKey || e.metaKey) && !e.altKey;
+      if (mod && k === 'c' && alive()) { copy(); return true; }
+      if (mod && k === 'v' && clip) { at = { page: A.pastePage(clip.page) }; paste(at.page, 0, 0); return true; }
+      if ((k === 'delete' || k === 'backspace') && !mod && alive()) { del(); return true; }
+      if (k === 'escape' && (sel || !menu.hidden)) { drop(); return true; }
+      return false;
+    }
+    return {
+      down: down, move: move, up: up, cancel: cancel, contextMenu: contextMenu, key: key, drop: drop,
+      layout: function(){ if (sel) showBox(0, 0); placeMenu(); },
+      has: function(){ return !!sel; }, active: function(){ return !!g; },
+      els: [menu, lasso]
+    };
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -1112,7 +1450,7 @@
       }
     }
     var tag = { zh: 'zh-CN', pt: 'pt-BR', tl: 'fil' }[t.lang] || t.lang;
-    var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-pagemenu', 'ob-addpage', 'ob-hlmenu', 'ob-permenu', 'ob-settings', 'ob-timer', 'ob-timerset', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
+    var boxes = ['ink-bar', 'ink-show', 'ob-filemenu', 'ob-clearmenu', 'ob-pagemenu', 'ob-addpage', 'ob-hlmenu', 'ob-permenu', 'ob-selmenu', 'ob-settings', 'ob-timer', 'ob-timerset', 'ob-start', 'ob-find', 'ob-toc', 'ob-embed', 'ob-coverwarn'];
     for (i = 0; i < boxes.length; i++) {
       var b = document.getElementById(boxes[i]); if (!b) continue;
       b.setAttribute('lang', tag);
@@ -1377,8 +1715,34 @@
       "embed_6": ["This browser can't keep saving into a file, so you get a one-time download, <b class=\"name\">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.", "Este navegador no puede seguir guardando en un archivo, así que recibes una descarga única, <b class=\"name\">Name_board.pdf</b>. Chrome o Edge pueden mantenerlo guardado automáticamente.", "此浏览器无法持续保存到文件，所以你会得到一次性下载的 <b class=\"name\">Name_board.pdf</b>。Chrome 或 Edge 可以自动保持保存。", "Hindi kayang patuloy na mag-save sa file ng browser na ito, kaya isang beses mo itong mada-download, <b class=\"name\">Name_board.pdf</b>. Kaya ng Chrome o Edge na awtomatikong i-save ito.", "Trình duyệt này không thể lưu liên tục vào tệp, nên bạn sẽ tải về một lần, <b class=\"name\">Name_board.pdf</b>. Chrome hoặc Edge có thể tự động lưu liên tục.", "Ce navigateur ne peut pas continuer à enregistrer dans un fichier : vous obtenez un téléchargement unique, <b class=\"name\">Name_board.pdf</b>. Chrome ou Edge peuvent l'enregistrer automatiquement.", "Este navegador não consegue continuar salvando num arquivo, então você recebe um download único, <b class=\"name\">Name_board.pdf</b>. O Chrome ou o Edge podem manter salvo automaticamente.", "لا يستطيع هذا المتصفح مواصلة الحفظ في ملف، لذا ستحصل على تنزيل لمرة واحدة، <b class=\"name\">Name_board.pdf</b>. يمكن لـ Chrome أو Edge الحفظ تلقائيًا."],
       "embed_off": ["Leave it off and nothing changes: ink still saves in this browser.", "Si lo dejas desactivado, nada cambia: la tinta se sigue guardando en este navegador.", "保持关闭则一切照旧：笔迹仍保存在此浏览器中。", "Kapag naka-off, walang magbabago: nase-save pa rin ang tinta sa browser na ito.", "Để tắt thì không có gì thay đổi: nét mực vẫn được lưu trong trình duyệt này.", "Laissez désactivé et rien ne change : l'encre reste enregistrée dans ce navigateur.", "Deixe desligado e nada muda: a tinta continua salva neste navegador.", "اتركه متوقفًا ولن يتغير شيء: لا يزال الحبر يُحفظ في هذا المتصفح."],
       "cancel": ["Cancel", "Cancelar", "取消", "Kanselahin", "Hủy", "Annuler", "Cancelar", "إلغاء"],
-      "timer_btn": ["⏱ Timer", "⏱ Temporizador", "⏱ 计时器", "⏱ Timer", "⏱ Hẹn giờ", "⏱ Minuteur", "⏱ Temporizador", "⏱ المؤقت"],
+      "timer_btn": ["⏱ Timer", "⏱ Tiempo", "⏱ 计时器", "⏱ Timer", "⏱ Hẹn giờ", "⏱ Minuteur", "⏱ Timer", "⏱ المؤقت"],
       "timer_tip": ["A big countdown for the class, with a sound at zero", "Una cuenta atrás grande para la clase, con un sonido al llegar a cero", "给全班看的大号倒计时，到零时响铃", "Malaking countdown para sa klase, may tunog pagdating sa zero", "Đồng hồ đếm ngược lớn cho cả lớp, có âm báo khi về 0", "Un grand compte à rebours pour la classe, avec un son à zéro", "Uma contagem regressiva grande para a turma, com um som no zero", "عدّ تنازلي كبير للصف، مع صوت عند الصفر"],
+      "select": ["Select", "Seleccionar", "选择", "Piliin", "Chọn", "Sélection", "Selecionar", "تحديد"],
+      "select_tip": ["Select: circle ink with the pen (or tap one mark) to send a copy to another class period, copy it, move it or delete it", "Seleccionar: rodea la tinta con el lápiz (o toca un trazo) para enviar una copia a otra clase, copiarla, moverla o borrarla", "选择：用笔圈住笔迹（或点一下某一笔），可以复制到另一个班级、复制、移动或删除", "Piliin: bilugan ang tinta gamit ang pen (o i-tap ang isang guhit) para magpadala ng kopya sa ibang klase, kopyahin, ilipat o burahin ito", "Chọn: khoanh nét mực bằng bút (hoặc chạm vào một nét) để gửi bản sao sang lớp khác, sao chép, di chuyển hoặc xóa", "Sélection : entourez l'encre avec le stylet (ou touchez un trait) pour en envoyer une copie à une autre classe, la copier, la déplacer ou la supprimer", "Selecionar: circule a tinta com a caneta (ou toque num traço) para mandar uma cópia a outra turma, copiar, mover ou apagar", "تحديد: أحِط الحبر بالقلم (أو انقر على خط واحد) لإرسال نسخة إلى حصة أخرى أو نسخه أو نقله أو حذفه"],
+      "sel_one": ["1 mark selected", "1 trazo seleccionado", "已选 1 笔", "1 guhit ang napili", "Đã chọn 1 nét", "1 trait sélectionné", "1 traço selecionado", "تم تحديد خط واحد"],
+      "sel_n": ["{n} marks selected", "{n} trazos seleccionados", "已选 {n} 笔", "{n} guhit ang napili", "Đã chọn {n} nét", "{n} traits sélectionnés", "{n} traços selecionados", "تم تحديد {n} خطوط"],
+      "send_copy_to": ["Send a copy to", "Enviar una copia a", "复制到", "Magpadala ng kopya sa", "Gửi bản sao đến", "Envoyer une copie à", "Mandar uma cópia para", "أرسل نسخة إلى"],
+      "send_to_tip": ["Put a copy of the selected ink in {p}, in the same spot", "Pon una copia de la tinta seleccionada en {p}, en el mismo lugar", "把选中的笔迹复制一份到 {p}，位置不变", "Maglagay ng kopya ng napiling tinta sa {p}, sa parehong puwesto", "Đặt một bản sao của nét mực đã chọn vào {p}, ở đúng chỗ cũ", "Mettre une copie de l'encre sélectionnée dans {p}, au même endroit", "Colocar uma cópia da tinta selecionada em {p}, no mesmo lugar", "ضع نسخة من الحبر المحدد في {p}، في المكان نفسه"],
+      "sel_copy": ["Copy", "Copiar", "复制", "Kopyahin", "Sao chép", "Copier", "Copiar", "نسخ"],
+      "sel_copy_tip": ["Copy the selected ink, then tap the page with Select on to paste it: on another page or in another class period (Ctrl+C)", "Copia la tinta seleccionada; luego toca la página con Seleccionar activado para pegarla, en otra página o en otra clase (Ctrl+C)", "复制选中的笔迹，然后在“选择”模式下点一下页面即可粘贴：可以贴到另一页或另一个班级（Ctrl+C）", "Kopyahin ang napiling tinta, saka i-tap ang pahina habang naka-Piliin para i-paste: sa ibang pahina o ibang klase (Ctrl+C)", "Sao chép nét mực đã chọn, rồi chạm vào trang khi đang bật Chọn để dán: sang trang khác hoặc lớp khác (Ctrl+C)", "Copier l'encre sélectionnée, puis touchez la page avec Sélection activée pour la coller : sur une autre page ou dans une autre classe (Ctrl+C)", "Copiar a tinta selecionada; depois toque na página com Selecionar ligado para colar: em outra página ou outra turma (Ctrl+C)", "انسخ الحبر المحدد، ثم انقر على الصفحة وأداة التحديد مفعّلة للصقه: في صفحة أخرى أو حصة أخرى (Ctrl+C)"],
+      "sel_delete": ["Delete", "Borrar", "删除", "Burahin", "Xóa", "Supprimer", "Apagar", "حذف"],
+      "sel_delete_tip": ["Delete the selected ink (Undo brings it back)", "Borra la tinta seleccionada (Deshacer la recupera)", "删除选中的笔迹（撤销可恢复）", "Burahin ang napiling tinta (maibabalik ng Undo)", "Xóa nét mực đã chọn (Hoàn tác để lấy lại)", "Supprimer l'encre sélectionnée (Annuler la fait revenir)", "Apagar a tinta selecionada (Desfazer traz de volta)", "احذف الحبر المحدد (التراجع يعيده)"],
+      "selected_ink": ["Selected ink", "Tinta seleccionada", "选中的笔迹", "Napiling tinta", "Nét mực đã chọn", "Encre sélectionnée", "Tinta selecionada", "الحبر المحدد"],
+      "paste": ["Paste", "Pegar", "粘贴", "I-paste", "Dán", "Coller", "Colar", "لصق"],
+      "paste_one": ["Paste 1 mark:", "Pegar 1 trazo:", "粘贴 1 笔：", "I-paste ang 1 guhit:", "Dán 1 nét:", "Coller 1 trait :", "Colar 1 traço:", "لصق خط واحد:"],
+      "paste_n": ["Paste {n} marks:", "Pegar {n} trazos:", "粘贴 {n} 笔：", "I-paste ang {n} guhit:", "Dán {n} nét:", "Coller {n} traits :", "Colar {n} traços:", "لصق {n} خطوط:"],
+      "paste_here": ["Here", "Aquí", "这里", "Dito", "Ở đây", "Ici", "Aqui", "هنا"],
+      "paste_here_tip": ["Put the copied ink where you tapped", "Pon la tinta copiada donde tocaste", "把复制的笔迹放在你点的位置", "Ilagay ang kinopyang tinta kung saan ka nag-tap", "Đặt nét mực đã sao chép vào chỗ bạn vừa chạm", "Mettre l'encre copiée là où vous avez touché", "Colocar a tinta copiada onde você tocou", "ضع الحبر المنسوخ حيث نقرت"],
+      "paste_same": ["Same spot", "Mismo lugar", "原位置", "Dating puwesto", "Chỗ cũ", "Même endroit", "Mesmo lugar", "المكان نفسه"],
+      "paste_same_tip": ["Put the copied ink in the same spot it was copied from, on this page (Ctrl+V)", "Pon la tinta copiada en el mismo lugar de donde la copiaste, en esta página (Ctrl+V)", "把复制的笔迹放回复制时的位置，放在这一页（Ctrl+V）", "Ilagay ang kinopyang tinta sa parehong puwesto kung saan ito kinopya, sa pahinang ito (Ctrl+V)", "Đặt nét mực đã sao chép vào đúng chỗ đã sao chép, trên trang này (Ctrl+V)", "Mettre l'encre copiée au même endroit que l'original, sur cette page (Ctrl+V)", "Colocar a tinta copiada no mesmo lugar de onde foi copiada, nesta página (Ctrl+V)", "ضع الحبر المنسوخ في المكان نفسه الذي نُسخ منه، في هذه الصفحة (Ctrl+V)"],
+      "st_sel_how": ["Select: draw a loop around ink with the pen, or tap one mark", "Seleccionar: rodea la tinta con el lápiz o toca un trazo", "选择：用笔圈住笔迹，或点一下某一笔", "Piliin: gumuhit ng bilog sa paligid ng tinta gamit ang pen, o i-tap ang isang guhit", "Chọn: khoanh quanh nét mực bằng bút, hoặc chạm vào một nét", "Sélection : entourez l'encre avec le stylet, ou touchez un trait", "Selecionar: circule a tinta com a caneta ou toque num traço", "تحديد: ارسم دائرة حول الحبر بالقلم، أو انقر على خط واحد"],
+      "st_sel_none": ["No ink inside that loop. Circle the ink you want.", "No hay tinta dentro de ese círculo. Rodea la tinta que quieras.", "圈里没有笔迹。请圈住你想要的笔迹。", "Walang tinta sa loob ng bilog na iyon. Bilugan ang tintang gusto mo.", "Không có nét mực nào trong vòng đó. Hãy khoanh nét mực bạn muốn.", "Pas d'encre dans cette boucle. Entourez l'encre voulue.", "Nenhuma tinta dentro desse círculo. Circule a tinta que quiser.", "لا يوجد حبر داخل هذه الدائرة. أحِط الحبر الذي تريده."],
+      "st_sel_n": ["{n} selected · drag the box to move it", "{n} seleccionados · arrastra el recuadro para moverlo", "已选 {n} 笔 · 拖动方框即可移动", "{n} ang napili · i-drag ang kahon para ilipat", "Đã chọn {n} · kéo khung để di chuyển", "{n} sélectionné(s) · faites glisser le cadre pour le déplacer", "{n} selecionados · arraste a caixa para mover", "تم تحديد {n} · اسحب الإطار لنقله"],
+      "st_sent": ["Sent a copy to {p} ({n} marks)", "Copia enviada a {p} ({n} trazos)", "已复制到 {p}（{n} 笔）", "Naipadala ang kopya sa {p} ({n} guhit)", "Đã gửi bản sao đến {p} ({n} nét)", "Copie envoyée à {p} ({n} traits)", "Cópia enviada para {p} ({n} traços)", "أُرسلت نسخة إلى {p} ({n} خطوط)"],
+      "st_copied": ["Copied ({n}) · tap the page to paste (any page, any class period)", "Copiado ({n}) · toca la página para pegar (cualquier página o clase)", "已复制 {n} 笔 · 点一下页面即可粘贴（任何一页、任何班级都行）", "Nakopya ({n}) · i-tap ang pahina para i-paste (kahit anong pahina o klase)", "Đã sao chép ({n}) · chạm vào trang để dán (trang nào, lớp nào cũng được)", "Copié ({n}) · touchez la page pour coller (n'importe quelle page ou classe)", "Copiado ({n}) · toque na página para colar (qualquer página ou turma)", "تم النسخ ({n}) · انقر على الصفحة للصق (أي صفحة أو أي حصة)"],
+      "st_pasted": ["Pasted ({n}) · drag the box to move it", "Pegado ({n}) · arrastra el recuadro para moverlo", "已粘贴（{n} 笔）· 拖动方框即可移动", "Na-paste ({n}) · i-drag ang kahon para ilipat", "Đã dán ({n}) · kéo khung để di chuyển", "Collé ({n}) · faites glisser le cadre pour le déplacer", "Colado ({n}) · arraste a caixa para mover", "تم اللصق ({n}) · اسحب الإطار لنقله"],
+      "st_sel_deleted": ["Deleted ({n}) · Undo brings it back", "Borrado ({n}) · Deshacer lo recupera", "已删除（{n} 笔）· 撤销可恢复", "Nabura ({n}) · Maibabalik ng Undo", "Đã xóa ({n}) · Hoàn tác để lấy lại", "Supprimé ({n}) · Annuler le fait revenir", "Apagado ({n}) · Desfazer traz de volta", "تم الحذف ({n}) · التراجع يعيده"],
+      "st_sel_moved": ["Moved · Undo puts it back", "Movido · Deshacer lo regresa", "已移动 · 撤销可复原", "Nailipat · Ibabalik ng Undo", "Đã di chuyển · Hoàn tác để đưa về chỗ cũ", "Déplacé · Annuler le remet en place", "Movido · Desfazer põe de volta", "تم النقل · التراجع يعيده"],
       "timer": ["Timer", "Temporizador", "计时器", "Timer", "Hẹn giờ", "Minuteur", "Temporizador", "المؤقت"],
       "n_min": ["{n} min", "{n} min", "{n} 分钟", "{n} min", "{n} phút", "{n} min", "{n} min", "{n} دقيقة"],
       "timer_less": ["One minute less", "Un minuto menos", "减少一分钟", "Bawasan ng isang minuto", "Bớt một phút", "Une minute de moins", "Um minuto a menos", "دقيقة أقل"],
@@ -1551,7 +1915,7 @@
   var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
   var penColor = startPen(PEN_COLOR);   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
-  var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, customColor = '', H = 0, scale = 1;
+  var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, selecting = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function setLS(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
   var sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) width = sw;
@@ -1699,9 +2063,11 @@
     for (var k = 1; k < p.length; k += 2) { if (p[k] < lo) lo = p[k]; if (p[k] > hi) hi = p[k]; }
     return hi + s.w >= BY && lo - s.w <= BY + BH;
   }
+  var pv = null;   // Select: { hide, add } while a selection is being dragged
   function redraw(){
     clearCanvas(canvas, ctx); clearCanvas(hcan, hctx); showHl(false);   // drawing a highlight below shows it again
-    for (var i = 0; i < strokes.length; i++) if (inBand(strokes[i])) drawStroke(strokes[i]);
+    for (var i = 0; i < strokes.length; i++) if (inBand(strokes[i]) && !(pv && pv.hide.indexOf(strokes[i]) >= 0)) drawStroke(strokes[i]);
+    if (pv) pv.add.forEach(drawStroke);
     if (cur) drawStroke(cur);   // a stroke still being drawn when the band moves
   }
   function calcCW(){
@@ -1716,6 +2082,7 @@
   // falls back to the processor and every pen move gets slow: a 20-page worksheet on a 2x (Retina) screen ran at a few
   // frames a second.
   var FW = 0, OX = 0, BY = 0, BH = 0;   // full canvas width (CSS px) and where the page column starts inside it
+  var selHost = document.getElementById('ob-selhost'), sel = null, selDown = false;   // Select: the selection box sits in selHost, lined up with the canvas
   function docTop(r){ return (r || canvas.getBoundingClientRect()).top - BY * Z; }   // screen y of the worksheet's top edge
   function size(){
     var h = Math.ceil(body.offsetHeight), cw = calcCW();
@@ -1728,7 +2095,9 @@
       c.width = Math.round(FW * scale); c.height = Math.round(BH * scale);
       c.style.width = FW + 'px'; c.style.height = BH + 'px';
     });
+    selHost.style.width = FW + 'px';
     follow(true);
+    if (sel) sel.layout();
   }
   // keep the band around what's on screen, with a screen to spare above and below; redraw when it moves
   function follow(force){
@@ -1755,6 +2124,7 @@
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
     if (finger && fingerScrolls) { drag = { y: e.screenY }; e.preventDefault(); return; }
     var q = pt(e);
+    if (selecting && !palm) { selDown = true; sel.down(null, q[0], q[1], e.clientX, e.clientY); e.preventDefault(); return; }   // Select: circle ink, tap it, or drag the selection
     if (palm || erasing) cur = { c: color, w: (palm ? PALM_ERASER_W : 44) / Z, e: 1, p: [q[0], q[1]] };   // about the hand: same size on screen at any zoom
     else if (hiliting && HL.covering) cur = { c: color, w: hlWidth, e: 0, h: 1, o: 1, p: [q[0], q[1]] };
     else if (hiliting) cur = { c: hlInk(color, HL.hlStrength), w: hlWidth, e: 0, h: 1, p: [q[0], q[1]] };
@@ -1765,10 +2135,11 @@
   });
   canvas.addEventListener('pointermove', function(e){
     if (e.pointerId === active && drag) { window.scrollBy(0, drag.y - e.screenY); drag.y = e.screenY; e.preventDefault(); return; }
-    if (e.pointerId !== active || !cur) return;
+    if (e.pointerId !== active || (!cur && !selDown)) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
     if (!evs || !evs.length) evs = [e];
     var r = canvas.getBoundingClientRect();   // once for all the samples in this move
+    if (selDown) { evs.forEach(function(ev){ var q = pt(ev, r); sel.move(q[0], q[1], ev.clientX, ev.clientY); }); e.preventDefault(); return; }
     for (var i = 0; i < evs.length; i++) { var q = pt(evs[i], r); liveAdd(cur, live, q[0], q[1], smooth); }   // smoothing steadies board jitter
     drawPieces(cur, livePieces(cur, live));
     e.preventDefault();
@@ -1776,19 +2147,24 @@
   function end(e){
     if (e.pointerId !== active) return;
     active = null; drag = null;
+    if (selDown) { selDown = false; if (e.type === 'pointerup') { var p = pt(e); sel.up(p[0], p[1], e.clientX, e.clientY); } else sel.cancel(); return; }
     if (!cur) return;
     var s = cur; cur = null;
     if (e.type === 'pointerup') { var q = pt(e); liveLift(s, q[0], q[1]); }   // smoothing trails slightly behind; finish where the pen lifted
     drawPieces(s, liveEndPieces(s, live));
     // the board sends a few-millisecond blip when you switch between hand and pen; drop it
     if (performance.now() - downAt < 15 && s.p.length <= 4) { redraw(); return; }
-    strokes.push(s); lastCleared = null; redos = []; refreshRedo(); save();   // new ink starts a new history
+    strokes.push(s); lastCleared = null; redos = []; refreshRedo(); sel.drop(); save();   // new ink starts a new history
   }
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
-  canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  canvas.addEventListener('contextmenu', function(e){   // a right-click on a selection opens its menu
+    e.preventDefault();
+    if (selecting) { var q = pt(e); sel.contextMenu(null, q[0], q[1], e.clientX, e.clientY); }
+  });
 
   function undo(){
+    sel.drop();
     if (lastCleared) { redos.push({ after: strokes }); setStrokes(lastCleared); lastCleared = null; redraw(); save(); }   // bring back what Clear took
     else if (strokes.length) { redos.push(strokes.pop()); redraw(); save(); }
     refreshRedo();
@@ -1796,15 +2172,17 @@
   function redo(){   // puts back what Undo took, in order
     var r = redos.pop();
     if (!r) return;
+    sel.drop();
     if (r.after) { lastCleared = strokes; setStrokes(r.after); }   // clear again
     else { strokes.push(r); lastCleared = null; }
     redraw(); save(); refreshRedo();
   }
   function refreshRedo(){ var b = bar.querySelector('[data-act="redo"]'); if (b) b.disabled = !redos.length; }
-  function setCleared(keep){ lastCleared = strokes; setStrokes(keep); redos = []; refreshRedo(); redraw(); save(); }
+  function setCleared(keep){ lastCleared = strokes; setStrokes(keep); redos = []; refreshRedo(); redraw(); save(); }   // also Select's paste, move and delete: one Undo step
+  function clearInk(keep){ sel.drop(); setCleared(keep); }
   function clearAll(){
     if (!strokes.length) { setStatus(tr('st_no_ink_clear', { p: D.active })); return; }
-    setCleared([]); setStatus(tr(pages().length > 1 ? 'st_all_cleared' : 'st_cleared', { p: D.active }));
+    clearInk([]); setStatus(tr(pages().length > 1 ? 'st_all_cleared' : 'st_cleared', { p: D.active }));
   }
   /* Clear page: a stroke belongs to the .page its middle is on (the gap below a page and the margins beside
      it count as that page); "this page" is the one at the middle of the screen */
@@ -1820,7 +2198,7 @@
       return band((lo + hi) / 2) !== n;
     });
     if (keep.length === strokes.length) { setStatus(tr('st_page_no_ink', { n: n + 1, p: D.active })); return; }
-    setCleared(keep); setStatus(tr('st_page_cleared', { n: n + 1 }));
+    clearInk(keep); setStatus(tr('st_page_cleared', { n: n + 1 }));
   }
 
   /* ---------- class periods ---------- */
@@ -1829,9 +2207,24 @@
   function renderPeriods(){ periodPicker.render(Object.keys(D.periods), D.active); }
   function switchTo(name){
     if (!D.periods[name] || name === D.active) return;
+    sel.drop();
     D.active = name; strokes = D.periods[name]; lastCleared = null; redos = []; refreshRedo();
     redraw(); renderPeriods(); save();
   }
+
+  /* ---------- Select (shared with the PDF app): circle ink to send a copy to another period, copy and paste it, move it or delete it ---------- */
+  sel = makeSelect({
+    t: function(){ return tr; }, status: setStatus,
+    pageList: function(){ return strokes; }, all: function(){ return strokes; },
+    replace: function(next){ setCleared(next); },
+    addTo: function(name, list){ if (D.periods[name]) { D.periods[name] = D.periods[name].concat(list); save(); } },
+    periods: function(){ return Object.keys(D.periods); }, active: function(){ return D.active; },
+    preview: function(page, hide, add){ pv = hide ? { hide: hide, add: add } : null; redraw(); },
+    host: function(){ return [selHost, 1, OX, 0]; },
+    pastePage: function(){ return null; },
+    onOpen: function(){ closeMenus('sel'); }
+  });
+  function selectOff(){ if (selecting) { selecting = false; sel.drop(); } }
 
   /* ---------- page jump ---------- */
   function pageTops(){
@@ -1935,13 +2328,15 @@
     sizeNum.textContent = w; sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px'; sizeDot.style.background = shown;
     smoothNum.textContent = smooth ? smooth : tr('off');
     bar.querySelector('[data-act="erase"]').classList.toggle('on', erasing);
+    bar.querySelector('[data-act="select"]').classList.toggle('on', selecting);
     var hb = bar.querySelector('[data-act="hilite"]');
-    hb.classList.toggle('on', hiliting && !erasing); hb.classList.toggle('cover', HL.covering);
+    hb.classList.toggle('on', hiliting && !erasing && !selecting); hb.classList.toggle('cover', HL.covering);
     hb.textContent = tr(HL.covering ? 'cover' : 'highlighter');   // the ▾ choice shows on the button
     hlm.sync();
     bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   }
   function setMode(m){
+    if (m === 'scroll') sel.drop();
     canvas.classList.toggle('scroll-mode', m === 'scroll');
     bar.querySelector('[data-act="write"]').classList.toggle('on', m === 'write');
     bar.querySelector('[data-act="scroll"]').classList.toggle('on', m === 'scroll');
@@ -1950,7 +2345,7 @@
     color = c;
     if (hiliting && HL.covering) { HL.coverColor = c; setLS('ink-cover-color', c); }
     else if (hiliting) { HL.hlColor = c; setLS('ink-hl-color', c); } else penColor = c;
-    erasing = false; setMode('write'); refresh();
+    erasing = false; selectOff(); setMode('write'); refresh();
   }
   /* - / + buttons: tap = one step; hold = keeps stepping, speeding up. Size controls the highlighter width while it's on. */
   function stepSize(dir){
@@ -1963,7 +2358,7 @@
       if (w === width && !erasing) return false;
       width = w; setLS('ink-width', width);
     }
-    erasing = false; setMode('write'); refresh();
+    erasing = false; selectOff(); setMode('write'); refresh();
     return true;
   }
   function stepSmooth(dir){
@@ -1982,7 +2377,7 @@
   var hlm = makeHlMenu(bar, HL, function(){
     setLS('ink-hl-mode', HL.covering ? 'cover' : 'hl'); setLS('ink-hl-strength', HL.hlStrength);
     if (HL.covering) setLS('ink-cover-color', HL.coverColor);
-    hiliting = true; erasing = false; color = toolColor(); setMode('write'); refresh();
+    hiliting = true; erasing = false; selectOff(); color = toolColor(); setMode('write'); refresh();
   }, function(){ closeMenus('hl'); });
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
@@ -1994,11 +2389,15 @@
     else switch (b.dataset.act) {
       case 'write': setMode('write'); break;
       case 'scroll': setMode('scroll'); break;
-      case 'erase': erasing = !erasing; setMode('write'); break;
+      case 'erase': erasing = !erasing; selectOff(); setMode('write'); break;
       case 'hilite':
-        hiliting = erasing ? true : !hiliting;
+        hiliting = erasing || selecting ? true : !hiliting;
         color = toolColor();   // highlighter (or cover) gets its own color back; turning it off restores your pen color
-        erasing = false; setMode('write'); break;
+        erasing = false; selectOff(); setMode('write'); break;
+      case 'select':
+        if (selecting) selectOff();
+        else { selecting = true; erasing = false; setStatus(tr('st_sel_how')); }
+        setMode('write'); break;
       case 'custom':
         if (customColor && (color !== customColor || erasing)) pickColor(customColor);
         else { picker.value = customColor || color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch(_){ picker.click(); } }
@@ -2071,7 +2470,7 @@
       if (r.same) return true;
       if (r.lost.length && !confirm(tr('confirm_remove_ws', { list: r.lost.join(', ') }))) return false;
       D.periods = r.periods; D.active = r.active; strokes = D.periods[D.active];
-      lastCleared = null; redos = []; refreshRedo(); redraw(); renderPeriods(); save();
+      lastCleared = null; redos = []; refreshRedo(); sel.drop(); redraw(); renderPeriods(); save();
       setStatus(tr('st_periods_changed', { p: D.active }));
       return true;
     },
@@ -2108,7 +2507,8 @@
   }
   /* the toolbar and its popouts shrink to fit a short window (a laptop) and undo the page zoom */
   function fitToolbar(){
-    fitTools(bar, [fileMenu.el, hlm.el, periodPicker.el], 1 / Z);
+    fitTools(bar, [fileMenu.el, hlm.el, periodPicker.el, sel.els[0]], 1 / Z);
+    sel.els[1].style.zoom = Z === 1 ? '' : String(1 / Z);   // the loop drawn while selecting is in screen px
     settings.el.style.zoom = Z === 1 ? '' : String(1 / Z);   // the page zoom doesn't change the Settings box
     showBtn.style.zoom = Z === 1 ? '' : String(1 / Z);
     if (timer) timer.els.forEach(function(el){ el.style.zoom = Z === 1 ? '' : String(1 / Z); });   // nor the timer
@@ -2160,7 +2560,9 @@
   }
   document.addEventListener('keydown', function(e){
     var h = historyKey(e), t = document.activeElement;   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
-    if (!h || (h !== 'block' && t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))) return;   // text boxes keep their own undo
+    var typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    if (!h && selecting && ready && !typing && sel.key(e)) { e.preventDefault(); return; }   // Select: Ctrl/⌘+C, Ctrl/⌘+V, Delete, Escape
+    if (!h || (h !== 'block' && typing)) return;   // text boxes keep their own undo
     e.preventDefault();
     if (h !== 'block' && ready) (h === 'undo' ? undo : redo)();
   });
