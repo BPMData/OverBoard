@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Save ink into file says so when a file can't take ink** (v37, HTML overlay). Picking a file without OverBoard in it now shows **Not saved!** on the button and explains in plain words (drop it on the app first to make a board copy), and the browser no longer asks to edit a file that won't be written to.
 - **Save ink into file works into a different board copy in Chrome** (v36, HTML overlay). Saving from `pet_board_inked.html` into `pet_board_clean.html` now asks Chrome's "allow editing?" question straight after you pick the file, before OverBoard's own "different file name" question (which used up the tap Chrome needs). If the browser still won't ask, the button stays in view and says **Tap again to allow**.
 - **Ink saved into a file always shows when that file opens** (v36). The file now notes when the ink was written into it, so a browser that had used that copy before (even just to try it and clear it) no longer shows its own older, empty copy instead.
 - **Tested: old board copies upgrade cleanly** (v35). Dropping an older `_board.html` on the PDF app keeps its name (no `_board_board`), puts in the newest toolbar, and the ink saved inside it still opens. A test now checks this end to end, starting from a v13 board copy.
