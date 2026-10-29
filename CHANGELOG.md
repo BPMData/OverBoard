@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Tested: old board copies upgrade cleanly** (v35). Dropping an older `_board.html` on the PDF app keeps its name (no `_board_board`), puts in the newest toolbar, and the ink saved inside it still opens. A test now checks this end to end, starting from a v13 board copy.
 - **Select** (v34, PDF app and HTML overlay): a new **Select** button beside ⏱ Timer. Circle ink with the pen (or tap one mark) and a dashed blue box shows what's picked, with a menu beside it:
   - **Send a copy to** another class period (P2, P3…): the copy lands in the same spot in that period's ink. Tap more than one period to send it to each.
   - **Copy**, then tap the page with Select on and choose **Here** or **Same spot** to paste it: on another page, or in another class period after switching.

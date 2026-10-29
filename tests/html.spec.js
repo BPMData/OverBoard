@@ -4,6 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { test } = require('@playwright/test');
 const { expect, fixture, openApp, openPdf, download, fileMenu } = require('./support/app');
+const { overlayReady, savedInk } = require('./support/overlay');
 
 const ROOT = path.join(__dirname, '..');
 const overlay = () => fs.readFileSync(path.join(ROOT, 'overlay', 'ink_overlay.html'), 'utf8').trim();
@@ -47,6 +48,30 @@ test('older overlay is upgraded and its saved ink kept', async ({ page }, info) 
   expect(r.text).toContain(overlay().split('\n')[0]);
   expect(r.text).toContain('"periods":{"P1":[{"c":"#111"');
   expect(r.msg).toMatch(/upgraded v13 → v\d+, saved ink kept/);
+});
+
+test('an old _board.html dropped on the app keeps its name, and the upgraded copy opens with its ink', async ({ page }, info) => {
+  const src = info.outputPath('Lesson_board.html');
+  fs.copyFileSync(fixture('Old_v13.html'), src);
+  const r = await boardCopy(page, src, info);
+  expect(r.name).toBe('Lesson_board.html');   // not Lesson_board_board.html
+  expect(r.msg).toMatch(/upgraded v13 → v\d+, saved ink kept/);
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/' + path.relative(ROOT, r.file).split(path.sep).map(encodeURIComponent).join('/'));
+  await overlayReady(page);
+  await expect(page.locator('#ink-bar [data-act="select"]')).toBeVisible();   // today's toolbar
+  await page.evaluate(async () => {   // write one more line, so the ink is saved and can be read back
+    const c = document.getElementById('ink-canvas'), b = c.getBoundingClientRect(), y = b.top + 200;
+    const ev = (t, x) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y }));
+    ev('pointerdown', b.left + 400);
+    for (let x = 410; x <= 600; x += 10) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', b.left + x); }
+    await new Promise((r) => setTimeout(r, 20)); ev('pointerup', b.left + 600);
+  });
+  const ink = await savedInk(page);
+  expect(ink.periods.P1).toHaveLength(2);
+  expect(ink.periods.P1[0]).toEqual({ c: '#111', w: 2, e: 0, p: [1, 2, 3, 4] });   // the v13 ink, as it was
+  expect(errors).toEqual([]);
 });
 
 test('a board copy that is already current is left alone', async ({ page }, info) => {
