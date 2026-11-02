@@ -11,7 +11,7 @@ import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
 import { setupOffline } from './offline.js';
-import { NB_RE, newNotebook, addPage, removePage, shiftInk } from './notebook.js';
+import { NB_RE, newNotebook, addPage, removePage, shiftInk, shiftTurns } from './notebook.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
 const PERIODS = ['P1', 'P2', 'P3', 'P4'];   // until a list is set in File ▸ Settings… (shared with the overlay)
@@ -66,11 +66,12 @@ const T = {
 
 /* ---------- the open document ---------- */
 let doc = null;       // { hash, name, pages, file, pdf, notebook }
-let D = null;         // ink data: { v: 3, t, active, at, periods: { P1: [strokes] } }
+let D = null;         // ink data: { v: 3, t, active, at, periods: { P1: [strokes] }, rot: { page: 90 | 180 | 270 } (Turn page) }
 let saveTimer = null, dirty = false;
 
 const viewer = new Viewer(pagesEl, {
   show: (P) => ink.show(P), hide: (P) => ink.hide(P), resize: (P) => ink.resize(P), textReady: (P) => finder.showHit(P),
+  turn: (n) => (D && D.rot && D.rot[n]) || 0,
 });
 const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus, () => tr);
 const ink = new Ink(viewer, T, () => { refreshRedo(); markDirty(); });
@@ -686,7 +687,8 @@ const hlMenu = makeHlMenu(bar, T, () => {
 for (const m of [fileMenu, clearMenu.el]) m.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   onToolbarClick(e);
-  // keep it open while a two-tap confirm ("Sure?") is waiting, or after moving the toolbar
+  // keep it open while a two-tap confirm ("Sure?") is waiting, after moving the toolbar, or after a turn (tap again to turn more)
+  if (/^turn-/.test(b.dataset.act)) return;
   if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
   else if (b.dataset.act === 'side') placeFileMenu();
 });
@@ -738,6 +740,7 @@ function onToolbarClick(e) {
     case 'prev': jump(-1); break;
     case 'next': jump(1); break;
     case 'export': exportPdf(b); break;
+    case 'turn-page': case 'turn-all': turnPages(b.dataset.act === 'turn-all'); break;
     case 'ink-save': saveInkFile(b); break;
     case 'pdf-link': onLinkButton(b); return;
     case 'ink-load': $('#ob-inkfile').click(); break;
@@ -830,6 +833,7 @@ async function changePages(change, at, by, show, msg) {
     d.file = new File([bytes], d.name, { type: 'application/pdf' });
     d.base = d.file.size; d.info = null; d.pdf = pdf; d.pages = pdf.numPages;
     shiftInk(D.periods, at, by);
+    D.rot = shiftTurns(D.rot, at, by);
     finder.close(); finder.reset();
     await viewer.open(pdf);
     old.destroy().catch(() => {});
@@ -865,6 +869,35 @@ pageMenu.el.addEventListener('click', (e) => {
   }
 });
 
+/* ---------- Turn page (for PDFs scanned or saved upside down or sideways) ----------
+   Each tap turns the page a quarter turn clockwise; tap twice for upside down. The turn is kept with
+   the ink (D.rot), ink already on the page turns with it, and Export PDF comes out turned the same way.
+   The PDF file itself isn't changed, so its ink stays matched to it. */
+let turning = false;
+async function turnPages(all) {
+  if (!doc || turning) return;
+  turning = true;
+  try {
+    const n = viewer.currentPage();
+    const list = all ? viewer.pages.map((P) => P.n) : [n];
+    const inked = new Set();
+    for (const l of Object.values(D.periods)) for (const s of l) inked.add(s.page);
+    D.rot = D.rot || {};
+    for (const k of list) {
+      if (inked.has(k)) { const { w, h } = await viewer.shownSize(k); ink.turnInk(k, 1, w, h); }
+      const t = ((D.rot[k] || 0) + 90) % 360;
+      if (t) D.rot[k] = t; else delete D.rot[k];
+    }
+    viewer.applyTurns();
+    if (!all) viewer.goTo(n);
+    refreshRedo(); markDirty();
+    setStatus(tr(all ? 'st_turned_all' : 'st_turned', { n }));
+  } catch (e) {
+    console.error(e);
+    setStatus(String((e && e.message) || e));
+  } finally { turning = false; }
+}
+
 /* ---------- export annotated PDF ---------- */
 const baseName = () => doc.name.replace(/\.pdf$/i, '');
 // only the active period is exported, so the name says which: Moby_Dick_annotated_P1.pdf
@@ -889,7 +922,8 @@ async function exportPdf(btn) {
   let covered = false;
   await writeNow();
   // an empty notebook still exports: printable paper
-  if (!ink.count() && !doc.notebook) { flashBtn(btn, tr('no_ink_yet'), 'warn'); setStatus(tr('st_no_ink_export', { p: D.active })); return; }
+  // ... and so does a PDF with turned pages: a copy the right way up
+  if (!ink.count() && !doc.notebook && !Object.keys(D.rot || {}).length) { flashBtn(btn, tr('no_ink_yet'), 'warn'); setStatus(tr('st_no_ink_export', { p: D.active })); return; }
   btn.disabled = true;
   setStatus(tr('st_making_pdf'));
   try {
@@ -898,7 +932,7 @@ async function exportPdf(btn) {
     covered = hasCovers(ink.byPage);
     if (covered && !(await ask(coverWarn))) { setStatus(tr('st_export_cancelled', { p: D.active })); return; }
     const bytes = new Uint8Array(await doc.file.slice(0, doc.base).arrayBuffer());   // without the stored ink
-    const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, (n) => setStatus(tr('st_making_pdf_n', { n })));
+    const out = await exportAnnotatedPdf(bytes, doc.pdf, ink.byPage, D.rot, (n) => setStatus(tr('st_making_pdf_n', { n })));
     store.download(new Blob([out], { type: 'application/pdf' }), exportName());
     setStatus(tr('st_pdf_downloaded', { p: D.active }) + (covered ? tr('st_covered_note') : ''));
     flashBtn(btn, tr('downloaded_flash'), 'good');
@@ -925,7 +959,7 @@ async function importInk(file) {
     const has = Object.values(D.periods).some((l) => l.length);
     if (has && !confirm(tr('confirm_replace_ink', { f: file.name }))) return;
     D = data;
-    ink.setData(D); refreshRedo(); renderPeriods(); refresh();
+    ink.setData(D); viewer.applyTurns(); refreshRedo(); renderPeriods(); refresh();
     markDirty(); await writeNow();
     setStatus(tr('st_ink_loaded_from', { f: file.name }));
   } catch (e) { setStatus(e.message || String(e)); }

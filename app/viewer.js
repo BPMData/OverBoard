@@ -2,6 +2,8 @@
 // (IntersectionObserver) and are freed again far away, so a 600-page book stays light.
 // Units: page sizes are PDF points as shown (PDF.js viewport at scale 1); `zoom` is CSS px per point.
 // Each page also gets selectable text and clickable links (textlayer.js), made and freed with its image.
+// Turned pages: the teacher can turn any page by quarter turns (hooks.turn(n) gives 0, 90, 180 or 270),
+// added to the PDF's own rotation. Sizes, images and text layers all use the page as shown.
 
 import { addLayers, freeLayers, markHits } from './textlayer.js';
 
@@ -14,7 +16,7 @@ const MAX_ZOOM = 6, MIN_ZOOM = 0.2;
 export class Viewer {
   constructor(container, hooks) {
     this.box = container;
-    this.hooks = hooks;              // { show(P), hide(P), resize(P), textReady(P) }
+    this.hooks = hooks;              // { show(P), hide(P), resize(P), textReady(P), turn(n) }
     this.pages = [];
     this.zoom = 1;
     this.fit = true;
@@ -31,11 +33,16 @@ export class Viewer {
     });
   }
 
+  turnOf(n) { return (this.hooks.turn && this.hooks.turn(n)) || 0; }
+
+  /* a PDF.js page's viewport as shown: its own rotation plus the teacher's turn */
+  view(page, scale) { return page.getViewport({ scale, rotation: (page.rotate + this.turnOf(page.pageNumber)) % 360 }); }
+
   async open(pdf) {
     this.close();
     const gen = ++this.gen;
     this.pdf = pdf;
-    const first = (await pdf.getPage(1)).getViewport({ scale: 1 });
+    const first = this.view(await pdf.getPage(1), 1);
     if (gen !== this.gen) return;
     const frag = document.createDocumentFragment();
     for (let n = 1; n <= pdf.numPages; n++) {
@@ -45,7 +52,7 @@ export class Viewer {
       const sheet = document.createElement('div');
       sheet.className = 'sheet';
       el.appendChild(sheet);
-      const P = { n, w: first.width, h: first.height, sized: n === 1, el, sheet, img: null, imgZoom: 0, task: null, text: null, ink: null, hl: null };
+      const P = { n, w: first.width, h: first.height, sized: n === 1, turn: this.turnOf(n), rv: 0, el, sheet, img: null, imgZoom: 0, task: null, text: null, ink: null, hl: null };
       el._P = P;
       this.pages.push(P);
       frag.appendChild(el);
@@ -73,16 +80,39 @@ export class Viewer {
   async loadSizes(gen) {
     for (let n = 2; n <= this.pages.length; n++) {
       let vp;
-      try { vp = (await this.pdf.getPage(n)).getViewport({ scale: 1 }); } catch (e) { continue; }
+      try { vp = this.view(await this.pdf.getPage(n), 1); } catch (e) { continue; }
       if (gen !== this.gen) return;
       const P = this.pages[n - 1];
-      P.sized = true;
+      P.sized = true; P.turn = this.turnOf(n);
       if (Math.abs(vp.width - P.w) > 0.01 || Math.abs(vp.height - P.h) > 0.01) {
         P.w = vp.width; P.h = vp.height;
         this.sizePage(P);
         if (this.fit && P.w > this.maxW) this.layout();
       }
     }
+  }
+
+  /* the size of page n as shown now, in points (loads it if the background pass hasn't yet) */
+  async shownSize(n) {
+    const P = this.pages[n - 1];
+    if (!P.sized || P.turn !== this.turnOf(n)) {
+      const vp = this.view(await this.pdf.getPage(n), 1);
+      return { w: vp.width, h: vp.height };
+    }
+    return { w: P.w, h: P.h };
+  }
+
+  /* after hooks.turn changed for some pages: resize them and draw them again, turned */
+  applyTurns() {
+    for (const P of this.pages) {
+      const t = this.turnOf(P.n);
+      if (t === P.turn) continue;
+      if (((t - P.turn + 360) / 90) % 2) [P.w, P.h] = [P.h, P.w];
+      P.turn = t;
+      P.rv++;                        // a render already under way is for the old turn: drop it
+      this.freeImage(P);
+    }
+    this.layout();
   }
 
   get maxW() { return Math.max(...this.pages.filter((P) => P.sized).map((P) => P.w)); }
@@ -192,26 +222,26 @@ export class Viewer {
   }
 
   async render(P) {
-    const gen = this.gen, z = this.zoom;
+    const gen = this.gen, z = this.zoom, rv = P.rv;
     this.busy++;
     const c = document.createElement('canvas');
     try {
       const page = await this.pdf.getPage(P.n);
       if (gen !== this.gen) return;
-      const css = page.getViewport({ scale: z });
+      const css = this.view(page, z);
       const bs = Math.min(window.devicePixelRatio || 1, Math.sqrt(MAX_IMG_PX / (css.width * css.height)));
-      const vp = page.getViewport({ scale: z * bs });
+      const vp = this.view(page, z * bs);
       c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
       c.className = 'img';
       P.task = page.render({ canvasContext: c.getContext('2d', { alpha: false }), viewport: vp });
       await P.task.promise;
-      if (gen !== this.gen || !this.want.has(P)) { c.width = 0; return; }
+      if (gen !== this.gen || !this.want.has(P) || rv !== P.rv) { c.width = 0; return; }
       if (P.img) { P.img.width = 0; P.img.remove(); }
       P.img = c;
       P.imgZoom = z;
       P.sheet.appendChild(c);
       if (!P.text) {
-        addLayers(P, page, () => gen === this.gen && this.want.has(P)).then(() => {
+        addLayers(P, page, this.view(page, 1), () => gen === this.gen && this.want.has(P) && rv === P.rv).then(() => {
           if (!P.text || gen !== this.gen) return;
           if (this.query) markHits(P, this.query);
           if (this.hooks.textReady) this.hooks.textReady(P);

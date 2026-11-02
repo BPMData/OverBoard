@@ -1,17 +1,17 @@
 // Selectable text and clickable links over each page image, so OCR'd and digital PDFs keep their text.
 // Built and freed together with the page image (see viewer.js), so a long book stays light.
 // Both layers are laid out at scale 1 in % of the page; the CSS variable --scale-factor (set per page
-// to the zoom) sizes the text, so zooming never rebuilds them. Rotated pages: PDF.js's TextLayer marks
+// to the zoom) sizes the text, so zooming never rebuilds them. Rotated (or teacher-turned) pages: PDF.js's TextLayer marks
 // the layer with data-main-rotation and app.css turns it; link boxes come from the rotated viewport.
 // Input: these layers only take pointer events in Scroll mode (app.css), so pens never hit them in Write mode.
 
 import { loadPdfjs } from './libs.js';
 
-/* add the text and link layers to page P (a PDF.js page proxy). Resolves once the text is in place. */
-export async function addLayers(P, page, isCurrent) {
+/* add the text and link layers to page P (a PDF.js page proxy; vp: its viewport as shown, at scale 1).
+   Resolves once the text is in place. */
+export async function addLayers(P, page, vp, isCurrent) {
   const lib = await loadPdfjs();
   if (!isCurrent() || P.text) return;   // freed meanwhile, or another build got there first
-  const vp = page.getViewport({ scale: 1 });
   const div = document.createElement('div');
   div.className = 'textLayer';
   const layer = new lib.TextLayer({

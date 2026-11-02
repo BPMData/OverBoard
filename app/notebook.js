@@ -95,3 +95,14 @@ export function shiftInk(periods, at, by) {
       .map((s) => (s.page >= at ? { ...s, page: s.page + by } : s));
   }
 }
+
+/* the same for turned pages (Turn page): { page: degrees } */
+export function shiftTurns(rot, at, by) {
+  const out = {};
+  for (const [k, t] of Object.entries(rot || {})) {
+    const n = +k;
+    if (by < 0 && n === at) continue;
+    out[n >= at ? n + by : n] = t;
+  }
+  return out;
+}
