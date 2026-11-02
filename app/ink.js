@@ -339,5 +339,24 @@ export class Ink {
     this.reindex(); this.onChange();
   }
 
+  /* Turn page: page n is now shown q quarter turns further clockwise, so its ink in every period turns
+     with it and stays on the same words. w, h: the page's size as shown before the turn, in points. */
+  turnInk(n, q, w, h) {
+    this.dropSel();
+    const r = (v) => Math.round(v * 100) / 100;
+    for (const list of Object.values(this.D.periods)) {
+      for (const s of list) {
+        if (s.page !== n) continue;
+        const p = s.p;
+        for (let i = 0; i < p.length; i += 2) {
+          let x = p[i], y = p[i + 1], W = w, H = h;
+          for (let k = 0; k < q; k++) { [x, y] = [H - y, x]; [W, H] = [H, W]; }   // a quarter turn clockwise
+          p[i] = r(x); p[i + 1] = r(y);
+        }
+      }
+    }
+    this.lastCleared = null; this.redos = [];   // Undo's steps were for the old way up
+  }
+
   count() { return this.strokes.length; }
 }

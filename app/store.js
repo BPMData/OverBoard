@@ -81,7 +81,7 @@ export function makeSidecar(D, doc) {
   return JSON.stringify({
     app: 'OverBoard', kind: 'pdf-ink', v: 3,
     pdf: { sha256: doc.hash, name: doc.name, pages: doc.pages },
-    t: D.t, active: D.active, periods: D.periods,
+    t: D.t, active: D.active, periods: D.periods, ...(D.rot && Object.keys(D.rot).length ? { rot: D.rot } : {}),
   });
 }
 
@@ -97,7 +97,9 @@ export function parseSidecar(text) {
   }
   if (!Object.keys(periods).length) throw new Error('That ink file has no class periods in it.');
   const active = periods[o.active] ? o.active : Object.keys(periods)[0];
-  return { data: { v: 3, t: o.t || Date.now(), active, periods }, pdf: o.pdf || {} };
+  const rot = {};   // pages the teacher turned (Turn page): page -> 90, 180 or 270
+  for (const [n, t] of Object.entries(o.rot && typeof o.rot === 'object' ? o.rot : {})) if (+n >= 1 && [90, 180, 270].includes(t)) rot[n] = t;
+  return { data: { v: 3, t: o.t || Date.now(), active, periods, rot }, pdf: o.pdf || {} };
 }
 
 export function download(blob, name) {

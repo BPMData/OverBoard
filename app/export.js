@@ -43,26 +43,32 @@ function strokeOps(L, s) {
   return ops;
 }
 
-/* bytes: the original PDF. pdf: the open PDF.js document (for each page's viewport transform).
-   byPage: Map(pageNumber -> strokes in drawing order). Returns the new PDF's bytes. */
 /* true if any cover is still there after erasers (its text underneath stays in the PDF) */
 export function hasCovers(byPage) {
   for (const list of byPage.values()) if (list.some((s) => s.o) && applyErasers(list).some((s) => s.o)) return true;
   return false;
 }
 
-export async function exportAnnotatedPdf(bytes, pdf, byPage, onProgress) {
+/* bytes: the original PDF. pdf: the open PDF.js document (for each page's viewport transform).
+   byPage: Map(pageNumber -> strokes in drawing order). turns: { pageNumber: 90 | 180 | 270 } the teacher
+   turned (Turn page); those pages come out turned the same way. Returns the new PDF's bytes. */
+export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) {
   const L = await loadPdfLib();
   const out = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
   if (NB_RE.test(out.getKeywords() || '')) out.setKeywords([]);   // an exported notebook is a plain PDF, not the notebook itself
   const pages = out.getPages();
+  const shown = (pg) => (pg.rotate + ((turns && turns[pg.pageNumber]) || 0)) % 360;
+  for (const [k, t] of Object.entries(turns || {})) {
+    const page = pages[k - 1];
+    if (page && t) page.setRotation(L.degrees(shown(await pdf.getPage(+k))));
+  }
   let done = 0;
   for (const [n, list] of byPage) {
     const page = pages[n - 1];
     if (!page || !list.length) continue;
     const drawn = applyErasers(list);
     if (!drawn.length) continue;
-    const vp = (await pdf.getPage(n)).getViewport({ scale: 1 });
+    const pg = await pdf.getPage(n), vp = pg.getViewport({ scale: 1, rotation: shown(pg) });
     const m = invert(vp.transform);            // page-as-shown points -> PDF user space
     const ops = [L.pushGraphicsState(), L.concatTransformationMatrix(...m.map(r3)),
       L.setLineCap(L.LineCapStyle.Round), L.setLineJoin(L.LineJoinStyle.Round)];
