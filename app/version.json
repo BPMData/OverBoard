@@ -1,10 +1,11 @@
 {
-  "v": "a463a5a109c4",
+  "v": "69af6a098a21",
   "js": [
     "embed.js",
     "export.js",
     "find.js",
     "html.js",
+    "image.js",
     "ink.js",
     "libs.js",
     "main.js",

@@ -5,6 +5,7 @@
 import { loadPdfLib } from './libs.js';
 import { seeThrough, applyErasers } from '../shared/ink-core.js';
 import { NB_RE } from './notebook.js';
+import { IMG_RE } from './image.js';
 
 // The PDF has no "eraser": applyErasers (shared/ink-core.js, also used by Select) cuts the erased parts out of the strokes.
 export { applyErasers };
@@ -55,7 +56,7 @@ export function hasCovers(byPage) {
 export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) {
   const L = await loadPdfLib();
   const out = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
-  if (NB_RE.test(out.getKeywords() || '')) out.setKeywords([]);   // an exported notebook is a plain PDF, not the notebook itself
+  if (NB_RE.test(out.getKeywords() || '') || IMG_RE.test(out.getKeywords() || '')) out.setKeywords([]);   // an exported notebook or picture is a plain PDF, so its ink isn't drawn twice when reopened
   const pages = out.getPages();
   const shown = (pg) => (pg.rotate + ((turns && turns[pg.pageNumber]) || 0)) % 360;
   for (const [k, t] of Object.entries(turns || {})) {
