@@ -11,6 +11,7 @@ import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
 import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
 import { setupOffline } from './offline.js';
+import { isImage, imageToPdf, IMG_RE, stripExt } from './image.js';
 import { NB_RE, newNotebook, addPage, removePage, shiftInk, shiftTurns } from './notebook.js';
 
 /* ===== SETTINGS (same meaning as in the overlay) ===== */
@@ -221,7 +222,7 @@ async function downloadWithInk() {   // browsers without file access: a one-time
     setStatus(tr('st_downloaded_with_ink', { f: boardPdfName() }));
   } catch (e) { setStatus(tr('st_could_not_make_pdf', { e: (e && e.message) || e })); }
 }
-const boardPdfName = () => doc.name.replace(/\.pdf$/i, '').replace(/_board$/, '') + '_board.pdf';
+const boardPdfName = () => stripExt(doc.name).replace(/_board$/, '') + '_board.pdf';
 function onLinkButton(b) {
   if (doc.linkOn) { confirmTap(b, stopLink, tr('sure')); return; }
   if (doc.link) {   // reconnect: the browser asks again after a restart
@@ -289,6 +290,9 @@ async function makeBoardCopy(file, handlePromise) {
 async function openFile(file, handlePromise) {
   if (!file) return;
   if (isHtml(file)) { if (doc) await closeDoc(true); return makeBoardCopy(file, handlePromise); }
+  if (isImage(file)) {   // a picture: open it as a one-page PDF (app/image.js)
+    try { file = await imageToPdf(file); } catch (e) { console.error(e); showError(tr('err_could_not_open', { f: file.name, e: (e && e.message) || e })); return; }
+  }
   if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { showError(tr('err_not_pdf', { f: file.name })); return; }
   showError(''); showMsg('');
   const drop = $('#ob-drop strong'), label = drop.textContent;
@@ -306,9 +310,14 @@ async function openFile(file, handlePromise) {
     };
     const pdf = await task.promise;
     // a blank notebook OverBoard made: its ink is kept under the notebook's ID, which stays the same as pages are added
-    let nb = null;
-    try { nb = NB_RE.exec(((await pdf.getMetadata()).info || {}).Keywords || ''); } catch (e) { /* no metadata */ }
+    // a picture OverBoard turned into a PDF: its ink is kept under the picture's ID (app/image.js)
+    let nb = null, im = null;
+    try {
+      const kw = ((await pdf.getMetadata()).info || {}).Keywords || '';
+      nb = NB_RE.exec(kw); im = IMG_RE.exec(kw);
+    } catch (e) { /* no metadata */ }
     if (nb) hash = 'notebook-' + nb[1];
+    else if (im) hash = 'image-' + im[1];
     let saved = validData(await store.loadInk(hash).catch(() => null));
     const backup = readBackup(hash);   // ink from a reload that cut off the last save
     const fromBackup = !!backup && (!saved || (backup.t || 0) > (saved.t || 0));
@@ -325,7 +334,7 @@ async function openFile(file, handlePromise) {
     document.body.classList.remove('start');
     bar.hidden = false;
     layoutClear(); fitToolbar();
-    document.title = file.name.replace(/\.pdf$/i, '') + ' · OverBoard';
+    document.title = stripExt(file.name) + ' · OverBoard';
     pagesTotal.textContent = tr('of_n', { n: pdf.numPages });
     fitSpace();
     await viewer.open(pdf);
@@ -374,7 +383,7 @@ dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key ===
    its folder (Save ink into PDF, an HTML board copy). Other browsers use the plain file input. */
 function chooseFile() {
   if (!window.showOpenFilePicker) { $('#ob-file').click(); return; }
-  window.showOpenFilePicker({ id: 'overboard-open', types: [{ description: 'PDF or HTML worksheet', accept: { 'application/pdf': ['.pdf'], 'text/html': ['.html', '.htm'] } }] })
+  window.showOpenFilePicker({ id: 'overboard-open', types: [{ description: 'PDF, picture or HTML worksheet', accept: { 'application/pdf': ['.pdf'], 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'], 'text/html': ['.html', '.htm'] } }] })
     .then(async ([h]) => openFile(await h.getFile(), Promise.resolve(h)))
     .catch((err) => { if (!err || err.name !== 'AbortError') $('#ob-file').click(); });
 }
@@ -899,7 +908,7 @@ async function turnPages(all) {
 }
 
 /* ---------- export annotated PDF ---------- */
-const baseName = () => doc.name.replace(/\.pdf$/i, '');
+const baseName = () => stripExt(doc.name);
 // only the active period is exported, so the name says which: Moby_Dick_annotated_P1.pdf
 const exportName = () => (baseName() + '_annotated_' + D.active).replace(/\s+/g, '_') + '.pdf';
 const coverWarn = $('#ob-coverwarn');
