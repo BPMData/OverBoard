@@ -76,6 +76,7 @@ const viewer = new Viewer(pagesEl, {
 });
 const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus, () => tr);
 const ink = new Ink(viewer, T, () => { refreshRedo(); markDirty(); });
+ink.onTextCopied = () => setStatus(tr('st_text_copied'));
 ink.attach(pagesEl);
 /* Select (shared with the overlay): circle ink to send a copy to another period, copy and paste it, move it or delete it */
 ink.sel = makeSelect({

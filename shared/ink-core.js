@@ -1244,6 +1244,40 @@ function makeTyping(A){
   };
 }
 
+/* Type: a drag that starts on the page's own text selects it (PDF text in the app, the worksheet's text in the overlay).
+   The ink canvas sits on top, so unblock() lets the text be found under it for a moment (it returns the undo).
+   textAt: the caret spot { node, off } in text under a screen point, or null when the point isn't on a letter. */
+function textAt(cx, cy, unblock){
+  var undo = unblock(), out = null;
+  try {
+    var node = null, off = 0;
+    if (document.caretRangeFromPoint) { var c = document.caretRangeFromPoint(cx, cy); if (c) { node = c.startContainer; off = c.startOffset; } }
+    else if (document.caretPositionFromPoint) { var p = document.caretPositionFromPoint(cx, cy); if (p) { node = p.offsetNode; off = p.offset; } }
+    if (node && node.nodeType === 3) {
+      for (var k = off; k >= off - 1; k--) {   // the letter after or before the caret must be under the point
+        if (k < 0 || k >= node.length) continue;
+        var r = document.createRange(); r.setStart(node, k); r.setEnd(node, k + 1);
+        var b = r.getBoundingClientRect();
+        if (cx >= b.left - 2 && cx <= b.right + 2 && cy >= b.top - 2 && cy <= b.bottom + 2) { out = { node: node, off: off }; break; }
+      }
+    }
+  } finally { undo(); }
+  return out;
+}
+/* stretch the selection from start to the text under the point (keeps the last one when the point is between lines) */
+function selectTo(start, cx, cy, unblock){
+  var f = textAt(cx, cy, unblock), sel = window.getSelection();
+  if (f && sel) sel.setBaseAndExtent(start.node, start.off, f.node, f.off);
+}
+function clearTextSel(){ var sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); }
+/* copy the selected text to the clipboard (Ctrl+C works too); returns true if there was text */
+function copyTextSel(){
+  var t = String(window.getSelection() || '').trim();
+  if (!t) return false;
+  try { navigator.clipboard.writeText(t).catch(function(){}); } catch(e){}
+  return true;
+}
+
 /* Keyboard history keys, the same in the PDF app and the overlay:
    Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
    is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -1258,4 +1292,4 @@ function historyKey(e) {
   return null;
 }
 
-export { makeTyping, isNote, notesGone, makeNote, applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { textAt, selectTo, clearTextSel, copyTextSel, makeTyping, isNote, notesGone, makeNote, applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

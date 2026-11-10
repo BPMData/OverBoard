@@ -4,7 +4,7 @@
 // so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
 // layer, above the page and its text, instead of multiplied underneath.
 
-import { seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
+import { textAt, selectTo, clearTextSel, copyTextSel, seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
 export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
@@ -26,6 +26,9 @@ export class Ink {
     this.selP = null;              // the page a Select gesture started on
     this.pv = null;                // { page, hide, add }: a selection being dragged, drawn in its new spot
   }
+
+  /* for a moment, let the PDF's text be found under the pen (Type: drag on text to select it) */
+  get unblock() { return () => { this.box.classList.add('probe'); return () => this.box.classList.remove('probe'); }; }
 
   dropSel() { if (this.sel) this.sel.drop(); }
   endTyping() { if (this.typing) this.typing.close(); }   // keep a note being typed, before the ink changes under it
@@ -161,6 +164,7 @@ export class Ink {
     if (scrolling) {
       const pg = e.target.closest && e.target.closest('.pg');
       this.drag = { x: e.screenX, y: e.screenY, x0: e.screenX, y0: e.screenY, type: typing, P: pg && pg._P };
+      if (typing) { clearTextSel(); this.drag.text = textAt(e.clientX, e.clientY, this.unblock); }   // starting on the PDF's text: select it
       e.preventDefault(); return;
     }
     const el = e.target.closest('.pg');
@@ -188,6 +192,10 @@ export class Ink {
 
   move(e) {
     if (e.pointerId !== this.active) return;
+    if (this.drag && this.drag.text) {   // a tap wobbles a little: select only once it's a drag
+      if (Math.abs(e.screenX - this.drag.x0) + Math.abs(e.screenY - this.drag.y0) >= 8) selectTo(this.drag.text, e.clientX, e.clientY, this.unblock);
+      e.preventDefault(); return;
+    }
     if (this.drag) {
       window.scrollBy(this.drag.x - e.screenX, this.drag.y - e.screenY);
       this.drag.x = e.screenX; this.drag.y = e.screenY;
@@ -217,6 +225,7 @@ export class Ink {
     const drag = this.drag;
     this.active = null; this.drag = null;
     if (drag) {   // a tap (not a drag): type a note there, or press the link under the finger
+      if (drag.text && e.type === 'pointerup' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) { if (copyTextSel() && this.onTextCopied) this.onTextCopied(); return; }
       if (e.type !== 'pointerup' || Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8 || !drag.P) return;
       if (drag.type) { const q = this.pt(e, drag.P); this.typing.tap(drag.P.n, q[0], q[1]); return; }
       const a = [...drag.P.el.querySelectorAll('a.ob-link')].find((l) => {

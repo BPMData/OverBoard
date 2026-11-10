@@ -207,7 +207,7 @@
   </div>
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines, but may cause some lag in detecting and displaying the ink you draw. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
-  <button data-act="type" class="wide" data-t="type" data-tt="type_tip" title="Type: tap the page to type a note there, or tap a note to change it. Drag to scroll. Pen color and size set the note's color and size.">Type</button>
+  <button data-act="type" class="wide" data-t="type" data-tt="type_tip" title="Type: tap the page to type a note there, or tap a note to change it. Drag on the page&#39;s text to copy it; drag anywhere else to scroll. Pen color and size set the note&#39;s color and size.">Type</button>
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)">Clear page</button>
@@ -1479,6 +1479,40 @@
     };
   }
 
+  /* Type: a drag that starts on the page's own text selects it (PDF text in the app, the worksheet's text in the overlay).
+     The ink canvas sits on top, so unblock() lets the text be found under it for a moment (it returns the undo).
+     textAt: the caret spot { node, off } in text under a screen point, or null when the point isn't on a letter. */
+  function textAt(cx, cy, unblock){
+    var undo = unblock(), out = null;
+    try {
+      var node = null, off = 0;
+      if (document.caretRangeFromPoint) { var c = document.caretRangeFromPoint(cx, cy); if (c) { node = c.startContainer; off = c.startOffset; } }
+      else if (document.caretPositionFromPoint) { var p = document.caretPositionFromPoint(cx, cy); if (p) { node = p.offsetNode; off = p.offset; } }
+      if (node && node.nodeType === 3) {
+        for (var k = off; k >= off - 1; k--) {   // the letter after or before the caret must be under the point
+          if (k < 0 || k >= node.length) continue;
+          var r = document.createRange(); r.setStart(node, k); r.setEnd(node, k + 1);
+          var b = r.getBoundingClientRect();
+          if (cx >= b.left - 2 && cx <= b.right + 2 && cy >= b.top - 2 && cy <= b.bottom + 2) { out = { node: node, off: off }; break; }
+        }
+      }
+    } finally { undo(); }
+    return out;
+  }
+  /* stretch the selection from start to the text under the point (keeps the last one when the point is between lines) */
+  function selectTo(start, cx, cy, unblock){
+    var f = textAt(cx, cy, unblock), sel = window.getSelection();
+    if (f && sel) sel.setBaseAndExtent(start.node, start.off, f.node, f.off);
+  }
+  function clearTextSel(){ var sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); }
+  /* copy the selected text to the clipboard (Ctrl+C works too); returns true if there was text */
+  function copyTextSel(){
+    var t = String(window.getSelection() || '').trim();
+    if (!t) return false;
+    try { navigator.clipboard.writeText(t).catch(function(){}); } catch(e){}
+    return true;
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -1569,9 +1603,10 @@
       "finger_scrolls": ["Finger: scrolls", "Dedo: desplaza", "手指：滚动", "Daliri: scroll", "Ngón tay: cuộn", "Doigt : défile", "Dedo: rola", "الإصبع: تمرير"],
       "finger_draws": ["Finger: draws", "Dedo: dibuja", "手指：书写", "Daliri: guhit", "Ngón tay: vẽ", "Doigt : dessine", "Dedo: desenha", "الإصبع: رسم"],
       "type": ["Type", "Teclear", "打字", "Mag-type", "Gõ chữ", "Taper", "Digitar", "كتابة نص"],
-      "type_tip": ["Type: tap the page to type a note there, or tap a note to change it. Drag to scroll. Pen color and size set the note's color and size.", "Teclear: toca la página para escribir una nota ahí, o toca una nota para cambiarla. Arrastra para desplazarte. El color y tamaño del lápiz dan el color y tamaño de la nota.", "打字：点按页面在该处输入文字，或点按文字进行修改。拖动可滚动。笔的颜色和粗细决定文字的颜色和大小。", "Mag-type: i-tap ang pahina para mag-type ng tala doon, o i-tap ang tala para baguhin ito. I-drag para mag-scroll. Ang kulay at laki ng pen ang kulay at laki ng tala.", "Gõ chữ: chạm vào trang để gõ ghi chú tại đó, hoặc chạm vào ghi chú để sửa. Kéo để cuộn. Màu và cỡ bút là màu và cỡ chữ.", "Taper : touchez la page pour y taper une note, ou touchez une note pour la modifier. Glissez pour défiler. La couleur et la taille du stylet donnent celles de la note.", "Digitar: toque a página para digitar uma nota ali, ou toque numa nota para mudá-la. Arraste para rolar. A cor e o tamanho da caneta definem os da nota.", "كتابة نص: اضغط على الصفحة لكتابة ملاحظة هناك، أو اضغط على ملاحظة لتغييرها. اسحب للتمرير. لون القلم وحجمه هما لون الملاحظة وحجمها."],
+      "type_tip": ["Type: tap the page to type a note there, or tap a note to change it. Drag on the page's text to copy it; drag anywhere else to scroll. Pen color and size set the note's color and size.", "Teclear: toca la página para escribir una nota ahí, o toca una nota para cambiarla. Arrastra sobre el texto de la página para copiarlo; arrastra en otro sitio para desplazarte. El color y tamaño del lápiz dan el color y tamaño de la nota.", "打字：点按页面在该处输入文字，或点按文字进行修改。在页面原有文字上拖动可复制；在其他地方拖动可滚动。笔的颜色和粗细决定文字的颜色和大小。", "Mag-type: i-tap ang pahina para mag-type ng tala doon, o i-tap ang tala para baguhin ito. I-drag sa teksto ng pahina para kopyahin ito; i-drag sa ibang lugar para mag-scroll. Ang kulay at laki ng pen ang kulay at laki ng tala.", "Gõ chữ: chạm vào trang để gõ ghi chú tại đó, hoặc chạm vào ghi chú để sửa. Kéo trên chữ của trang để chép; kéo chỗ khác để cuộn. Màu và cỡ bút là màu và cỡ chữ.", "Taper : touchez la page pour y taper une note, ou touchez une note pour la modifier. Glissez sur le texte de la page pour le copier ; glissez ailleurs pour défiler. La couleur et la taille du stylet donnent celles de la note.", "Digitar: toque a página para digitar uma nota ali, ou toque numa nota para mudá-la. Arraste sobre o texto da página para copiá-lo; arraste em outro lugar para rolar. A cor e o tamanho da caneta definem os da nota.", "كتابة نص: اضغط على الصفحة لكتابة ملاحظة هناك، أو اضغط على ملاحظة لتغييرها. اسحب على نص الصفحة لنسخه؛ اسحب في مكان آخر للتمرير. لون القلم وحجمه هما لون الملاحظة وحجمها."],
       "note_label": ["Typed note", "Nota escrita", "文字", "Na-type na tala", "Ghi chú", "Note tapée", "Nota digitada", "ملاحظة مكتوبة"],
       "st_type_how": ["Tap the page to type; tap a note to change it", "Toca la página para escribir; toca una nota para cambiarla", "点按页面打字；点按文字修改", "I-tap ang pahina para mag-type; i-tap ang tala para baguhin", "Chạm trang để gõ; chạm ghi chú để sửa", "Touchez la page pour taper ; touchez une note pour la modifier", "Toque a página para digitar; toque numa nota para mudar", "اضغط على الصفحة للكتابة؛ اضغط على ملاحظة لتغييرها"],
+      "st_text_copied": ["Text copied: paste it anywhere with Ctrl+V", "Texto copiado: pégalo donde quieras con Ctrl+V", "已复制文字：可用 Ctrl+V 粘贴到任何地方", "Nakopya ang teksto: i-paste kahit saan gamit ang Ctrl+V", "Đã chép chữ: dán vào bất cứ đâu bằng Ctrl+V", "Texte copié : collez-le où vous voulez avec Ctrl+V", "Texto copiado: cole onde quiser com Ctrl+V", "نُسخ النص: الصقه في أي مكان باستخدام Ctrl+V"],
       "st_note_added": ["Note added", "Nota añadida", "已添加文字", "Naidagdag ang tala", "Đã thêm ghi chú", "Note ajoutée", "Nota adicionada", "أُضيفت الملاحظة"],
       "st_note_changed": ["Note changed", "Nota cambiada", "已修改文字", "Nabago ang tala", "Đã sửa ghi chú", "Note modifiée", "Nota alterada", "تغيّرت الملاحظة"],
       "st_note_deleted": ["Note removed (Undo brings it back)", "Nota quitada (Deshacer la recupera)", "已删除文字（撤销可恢复）", "Inalis ang tala (ibinabalik ng Undo)", "Đã xóa ghi chú (Hoàn tác để lấy lại)", "Note supprimée (Annuler la ramène)", "Nota removida (Desfazer a traz de volta)", "حُذفت الملاحظة (التراجع يعيدها)"],
@@ -2238,7 +2273,11 @@
     active = e.pointerId;
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
     // Type: a drag scrolls and a tap types a note (any pointer but the palm). A finger that scrolls: a tap presses what's under it on the worksheet.
-    if ((typingOn && !palm) || (finger && fingerScrolls)) { drag = { y: e.screenY, x0: e.screenX, y0: e.screenY, type: typingOn && !palm }; e.preventDefault(); return; }
+    if ((typingOn && !palm) || (finger && fingerScrolls)) {
+      drag = { y: e.screenY, x0: e.screenX, y0: e.screenY, type: typingOn && !palm };
+      if (drag.type) { clearTextSel(); drag.text = textAt(e.clientX, e.clientY, unblock); }   // starting on the worksheet's text: select it
+      e.preventDefault(); return;
+    }
     var q = pt(e);
     if (selecting && !palm) { selDown = true; sel.down(null, q[0], q[1], e.clientX, e.clientY); e.preventDefault(); return; }   // Select: circle ink, tap it, or drag the selection
     if (palm || erasing) cur = { c: color, w: (palm ? PALM_ERASER_W : 44) / Z, e: 1, p: [q[0], q[1]] };   // about the hand: same size on screen at any zoom
@@ -2250,6 +2289,10 @@
     drawStroke(cur); e.preventDefault();
   });
   canvas.addEventListener('pointermove', function(e){
+    if (e.pointerId === active && drag && drag.text) {   // a tap wobbles a little: select only once it's a drag
+      if (Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) selectTo(drag.text, e.clientX, e.clientY, unblock);
+      e.preventDefault(); return;
+    }
     if (e.pointerId === active && drag) { window.scrollBy(0, drag.y - e.screenY); drag.y = e.screenY; e.preventDefault(); return; }
     if (e.pointerId !== active || (!cur && !selDown)) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
@@ -2260,16 +2303,19 @@
     drawPieces(cur, livePieces(cur, live));
     e.preventDefault();
   });
+  // for a moment, let the worksheet be found under the ink canvases (a finger tap presses it; Type selects its text)
+  function unblock(){ canvas.style.pointerEvents = hcan.style.pointerEvents = 'none'; return function(){ canvas.style.pointerEvents = hcan.style.pointerEvents = ''; }; }
   function end(e){
     if (e.pointerId !== active) return;
     var dr = drag;
     active = null; drag = null;
     if (dr) {   // a tap (not a drag): type a note there, or press the link, button or box under the finger
-      if (e.type !== 'pointerup' || Math.abs(e.screenX - dr.x0) + Math.abs(e.screenY - dr.y0) >= 8) return;
+      var far = Math.abs(e.screenX - dr.x0) + Math.abs(e.screenY - dr.y0) >= 8;
+      if (dr.text && far && e.type === 'pointerup') { if (copyTextSel()) setStatus(tr('st_text_copied')); return; }
+      if (e.type !== 'pointerup' || far) return;
       if (dr.type) { var tq = pt(e); typer.tap(null, tq[0], tq[1]); return; }
-      canvas.style.pointerEvents = 'none'; hcan.style.pointerEvents = 'none';
-      var under = document.elementFromPoint(e.clientX, e.clientY);
-      canvas.style.pointerEvents = ''; hcan.style.pointerEvents = '';
+      var back = unblock(), under = document.elementFromPoint(e.clientX, e.clientY);
+      back();
       if (under && !bar.contains(under)) {
         if (under.focus) under.focus();
         if (under.click) under.click();

@@ -74,6 +74,33 @@ test('the text never takes the pen, palm or a Type tap', async ({ page }) => {
   expect(await onText()).toBe(false);
 });
 
+test('Type: a drag on the PDF text selects and copies it; a tap on it types a note; a drag beside it scrolls', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await openApp(page);
+  await openPdf(page, 'links.pdf');
+  await go(page, 2);
+  await page.click('[data-act="type"]');
+  const s = await span(page, 2, 'Answer key line 1:');
+  const from = [s.pts[0][0] - 0.08 * s.w, s.pts[0][1]], to = [s.pts[2][0] + 0.09 * s.w, s.pts[2][1]];
+  const y0 = await page.evaluate(() => scrollY);
+  await page.evaluate(([a, b]) => new Promise(async (res) => {   // a pen drag in screen coordinates
+    const ev = (t, x, y) => (document.elementFromPoint(x, y) || document.body).dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 5, isPrimary: true, buttons: t === 'pointerup' ? 0 : 1, button: t === 'pointermove' ? -1 : 0, clientX: x, clientY: y, screenX: x, screenY: y }));
+    ev('pointerdown', ...a);
+    for (let i = 1; i <= 10; i++) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', a[0] + (b[0] - a[0]) * i / 10, a[1] + (b[1] - a[1]) * i / 10); }
+    ev('pointerup', ...b); res();
+  }), [from, to]);
+  expect(await page.evaluate(() => getSelection().toString())).toContain('Answer key line 1');
+  expect(await page.evaluate(() => scrollY)).toBe(y0);
+  await expect(page.locator('#ink-status')).toContainText('Text copied');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Answer key line 1');
+  expect(await strokes(page)).toHaveLength(0);
+  await expect(page.locator('.ob-note-edit')).toHaveCount(0);
+  // a tap on the text: a note there, and the selection goes
+  await penTap(page, ...s.pts[1]);
+  await expect(page.locator('.ob-note-edit')).toBeFocused();
+  expect(await page.evaluate(() => getSelection().toString())).toBe('');
+});
+
 test('links: a finger tap follows them (contents entries jump inside the PDF, web links open a new tab); the pen writes over them', async ({ page, context }) => {
   await context.route('https://example.org/**', (r) => r.fulfill({ body: 'ok' }));
   await openApp(page);

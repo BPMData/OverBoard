@@ -64,6 +64,8 @@ body.start #ob-pages { display: none; }
 /* pens, palms and fingers never reach the text or links, so drawing always works; a finger tap that scrolls presses a link (ink.js) */
 #ob-pages { user-select: none; -webkit-user-select: none; }
 #ob-pages :is(.textLayer, .textLayer *, .links, .links *) { pointer-events: none !important; }
+#ob-pages.probe .textLayer span { pointer-events: auto !important; }   /* Type: finding the text under the pen (Ink.unblock) */
+#ob-pages .textLayer { user-select: text; -webkit-user-select: text; }
 .textLayer { position: absolute; inset: 0; overflow: clip; opacity: 1; line-height: 1; text-align: initial; -webkit-text-size-adjust: none; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText; z-index: 1; }
 .textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
 .textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; }

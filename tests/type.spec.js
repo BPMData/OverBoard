@@ -121,6 +121,27 @@ test.describe('HTML overlay', () => {
     expect(ink.periods.P1).toHaveLength(0);
   });
 
+  test('Type: a drag on the worksheet text selects and copies it', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.evaluate(() => {
+      const p = document.createElement('p');
+      p.id = 'ws-text'; p.textContent = 'Photosynthesis makes sugar'; p.style.cssText = 'font-size:32px;margin:40px';
+      (document.querySelector('.page') || document.body).prepend(p);
+    });
+    await page.click('#ink-bar [data-act="type"]');
+    const r = await page.evaluate(() => { const t = document.getElementById('ws-text').firstChild, g = document.createRange(); g.selectNodeContents(t); const b = g.getBoundingClientRect(); return [b.left, b.right, b.top + b.height / 2]; });
+    await page.evaluate(([x0, x1, y]) => new Promise(async (res) => {
+      const c = document.getElementById('ink-canvas');
+      const ev = (t, x) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y, screenX: x, screenY: y }));
+      ev('pointerdown', x0 + 2);
+      for (let i = 1; i <= 10; i++) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', x0 + 2 + (x1 - x0) * i / 10); }
+      ev('pointerup', x1 - 1); res();
+    }), r);
+    expect(await page.evaluate(() => getSelection().toString())).toContain('Photosynthesis makes suga');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Photosynthesis');
+    await expect(page.locator('.ob-note-edit')).toHaveCount(0);
+  });
+
   test('with Type off, a finger tap presses a button on the worksheet', async ({ page }) => {
     await page.evaluate(() => {
       const b = document.createElement('button');
