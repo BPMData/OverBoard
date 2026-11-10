@@ -3,7 +3,7 @@
 // (PDF.js viewport at scale 1), so each page maps them back with the inverse of that viewport's transform.
 
 import { loadPdfLib } from './libs.js';
-import { seeThrough, applyErasers } from '../shared/ink-core.js';
+import { seeThrough, applyErasers, isNote, paintStroke } from '../shared/ink-core.js';
 import { NB_RE } from './notebook.js';
 import { IMG_RE } from './image.js';
 
@@ -44,6 +44,17 @@ function strokeOps(L, s) {
   return ops;
 }
 
+/* a typed note as a PNG (4 pixels per point), so any language's letters come out as they look on screen */
+const NOTE_PX = 4;
+async function notePng(s) {
+  const [x0, y0, x1, y1] = s.p, pad = s.f * 0.3;
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil((x1 - x0 + 2 * pad) * NOTE_PX)); c.height = Math.max(1, Math.ceil((y1 - y0 + 2 * pad) * NOTE_PX));
+  paintStroke(c.getContext('2d'), s, NOTE_PX, (pad - x0) * NOTE_PX, (pad - y0) * NOTE_PX);
+  const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), box: [x0 - pad, y0 - pad, x1 + pad, y1 + pad] };
+}
+
 /* true if any cover is still there after erasers (its text underneath stays in the PDF) */
 export function hasCovers(byPage) {
   for (const list of byPage.values()) if (list.some((s) => s.o) && applyErasers(list).some((s) => s.o)) return true;
@@ -74,7 +85,7 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) 
     const ops = [L.pushGraphicsState(), L.concatTransformationMatrix(...m.map(r3)),
       L.setLineCap(L.LineCapStyle.Round), L.setLineJoin(L.LineJoinStyle.Round)];
     // covers (o: 1) are opaque and drawn in order with the pen ink, over the page's text, like on screen
-    const hl = drawn.filter(seeThrough), pen = drawn.filter((s) => !seeThrough(s));
+    const hl = drawn.filter(seeThrough), pen = drawn.filter((s) => !seeThrough(s) && !isNote(s));
     if (hl.length) {   // highlights go under the pen ink and multiply, so printed text stays readable
       const gs = page.doc.context.obj({ Type: 'ExtGState', BM: 'Multiply' });
       const key = page.node.newExtGState('GS', gs);
@@ -83,6 +94,11 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) 
       ops.push(L.popGraphicsState());
     }
     for (const s of pen) ops.push(...strokeOps(L, s));
+    for (const s of drawn.filter(isNote)) {   // y runs down here, so the picture is flipped back upright
+      const png = await notePng(s), img = await out.embedPng(png.bytes), [a, b, c, d] = png.box;
+      const name = page.node.newXObject('Note', img.ref);
+      ops.push(L.pushGraphicsState(), L.concatTransformationMatrix(r3(c - a), 0, 0, r3(b - d), r3(a), r3(d)), L.drawObject(name), L.popGraphicsState());
+    }
     ops.push(L.popGraphicsState());
     page.pushOperators(...ops);
     done++;

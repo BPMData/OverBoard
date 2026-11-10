@@ -4,7 +4,7 @@
 // with internal links and one external link, a landscape page (3) and a rotated page (4).
 const fs = require('fs');
 const { test } = require('@playwright/test');
-const { expect, fixture, openApp, openPdf, strokes, fileMenu, download, penTap } = require('./support/app');
+const { expect, fixture, openApp, openPdf, strokes, fileMenu, download, penTap, tap } = require('./support/app');
 const { pdfText } = require('./support/render');
 
 test.beforeEach(async ({ page }) => {
@@ -59,7 +59,7 @@ test('text lines up with the page image at every zoom, on portrait, landscape an
   }
 });
 
-test('Write mode: the text never takes the pen; Scroll mode: it does', async ({ page }) => {
+test('the text never takes the pen, palm or a Type tap', async ({ page }) => {
   await openApp(page);
   await openPdf(page, 'links.pdf');
   await go(page, 2);
@@ -70,33 +70,11 @@ test('Write mode: the text never takes the pen; Scroll mode: it does', async ({ 
   expect(await strokes(page)).toHaveLength(1);
   await page.evaluate(() => __t.stroke(2, __t.line(200, 150, 200, 200), { buttons: 32 }));   // palm
   expect((await strokes(page)).slice(-1)[0].e).toBe(1);
-  await page.click('[data-act="scroll"]');
-  expect(await onText()).toBe(true);
-  await page.click('[data-act="write"]');
+  await page.click('[data-act="type"]');
   expect(await onText()).toBe(false);
 });
 
-test('Scroll mode: a drag on text selects it (no ink, no scrolling); a tap beside it clears it', async ({ page }) => {
-  await openApp(page);
-  await openPdf(page, 'links.pdf');
-  await go(page, 2);
-  await page.click('[data-act="scroll"]');
-  const s = await span(page, 2, 'Answer key line 1:');
-  const y0 = await page.evaluate(() => scrollY);
-  await page.mouse.move(s.pts[0][0] - 0.08 * s.w, s.pts[0][1]);
-  await page.mouse.down();
-  await page.mouse.move(s.pts[1][0], s.pts[1][1], { steps: 5 });
-  await page.mouse.move(s.pts[2][0] + 0.09 * s.w, s.pts[2][1], { steps: 5 });
-  await page.mouse.up();
-  expect(await page.evaluate(() => getSelection().toString())).toContain('Answer key line 1');
-  expect(await page.evaluate(() => scrollY)).toBe(y0);
-  expect(await strokes(page)).toHaveLength(0);
-  const g = await page.evaluate(() => { const r = __overboard.viewer.pages[1].el.getBoundingClientRect(); return [r.left + 10, r.top + 300]; });
-  await page.mouse.click(g[0], g[1]);   // the writable gutter beside the page
-  expect(await page.evaluate(() => getSelection().toString())).toBe('');
-});
-
-test('links: contents entries jump inside the PDF, web links open a new tab, Write mode ignores them', async ({ page, context }) => {
+test('links: a finger tap follows them (contents entries jump inside the PDF, web links open a new tab); the pen writes over them', async ({ page, context }) => {
   await context.route('https://example.org/**', (r) => r.fulfill({ body: 'ok' }));
   await openApp(page);
   await openPdf(page, 'links.pdf');
@@ -105,21 +83,20 @@ test('links: contents entries jump inside the PDF, web links open a new tab, Wri
   expect(await page.evaluate(() => __overboard.viewer.pages[0].text.links.children.length)).toBe(4);
   const current = () => page.evaluate(() => __overboard.viewer.currentPage());
 
-  // Write mode: a pen tap on a link is just a dot of ink
+  // a pen tap on a link is just a dot of ink
   await penTap(page, ...(await linkCenter(page, 1)));
   expect(await strokes(page)).toHaveLength(1);
   expect(await current(page)).toBe(1);
   await page.click('[data-act="undo"]');
 
-  await page.click('[data-act="scroll"]');
-  await page.mouse.click(...(await linkCenter(page, 1)));   // finger (the board sends "mouse"): Chapter 2 -> page 3
+  await tap(page, ...(await linkCenter(page, 1)), 'mouse');   // finger (the board sends "mouse"): Chapter 2 -> page 3
   await expect.poll(current).toBe(3);
   await go(page, 1);
-  await penTap(page, ...(await linkCenter(page, 2)));        // pen: Chapter 3 -> page 4
+  await tap(page, ...(await linkCenter(page, 2)), 'mouse');   // Chapter 3 -> page 4
   await expect.poll(current).toBe(4);
   await go(page, 1);
-  const [tab] = await Promise.all([context.waitForEvent('page'), penTap(page, ...(await linkCenter(page, 3)))]);
-  expect(tab.url()).toBe('https://example.org/overboard');
+  const [tab] = await Promise.all([context.waitForEvent('page'), tap(page, ...(await linkCenter(page, 3)), 'mouse')]);
+  await tab.waitForURL('https://example.org/overboard');
   expect(await strokes(page)).toHaveLength(0);
 });
 

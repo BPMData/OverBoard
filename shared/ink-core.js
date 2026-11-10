@@ -32,6 +32,7 @@ function inkStyle(g, s, sc, ox, oy){
 /* one whole stroke onto one canvas: quadratic curves through the midpoints between samples,
    so corners come out round instead of jagged. Ink coordinates map to canvas px as x*sc+ox. */
 function paintStroke(g, s, sc, ox, oy){
+  if (isNote(s)) return paintNote(g, s, sc, ox, oy);
   var p = s.p; g.save(); inkStyle(g, s, sc, ox, oy);
   g.beginPath();
   if (p.length < 4) { g.arc(p[0], p[1], s.w/2, 0, 6.2832); g.fill(); }
@@ -42,6 +43,61 @@ function paintStroke(g, s, sc, ox, oy){
     g.stroke();
   }
   g.restore();
+}
+
+/* ---- Typed notes: { t: 'the text', c: color, f: font size, w: 0, e: 0, p: [x0, y0, x1, y1] (the box around the text) }
+   in the same units as the ink, so saving, undo, Clear, Select, periods and zoom treat them like any other stroke.
+   An eraser that touches a note removes the whole note (notesGone). */
+var NOTE_FONT = 'Arial, Helvetica, sans-serif', NOTE_LH = 1.25;
+function isNote(s){ return typeof s.t === 'string'; }
+var noteG = null;
+function noteSize(text, f){   // [width, height] of the text at font size f
+  if (!noteG) noteG = document.createElement('canvas').getContext('2d');
+  noteG.font = f + 'px ' + NOTE_FONT;
+  var lines = text.split('\n'), w = 0;
+  for (var i = 0; i < lines.length; i++) w = Math.max(w, noteG.measureText(lines[i]).width);
+  return [Math.ceil(w * 100) / 100, Math.round(lines.length * f * NOTE_LH * 100) / 100];
+}
+function makeNote(text, c, f, x, y){
+  var r = function(v){ return Math.round(v * 100) / 100; }, wh = noteSize(text, f);
+  return { t: text, c: c, f: r(f), w: 0, e: 0, p: [r(x), r(y), r(x + wh[0]), r(y + wh[1])] };
+}
+function paintNote(g, s, sc, ox, oy){
+  g.save();
+  g.setTransform(sc, 0, 0, sc, ox, oy);
+  g.globalCompositeOperation = 'source-over';
+  g.fillStyle = s.c; g.font = s.f + 'px ' + NOTE_FONT; g.textBaseline = 'top';
+  var lines = s.t.split('\n'), lh = s.f * NOTE_LH, pad = (lh - s.f) / 2;
+  for (var i = 0; i < lines.length; i++) g.fillText(lines[i], s.p[0], s.p[1] + pad + i * lh);
+  g.restore();
+}
+function noteTouched(s, ep, r){   // does the eraser path ep (radius r) touch note s?
+  var b = s.p;
+  for (var i = 0; i < ep.length; i += 2) {
+    var dx = Math.max(b[0] - ep[i], 0, ep[i] - b[2]), dy = Math.max(b[1] - ep[i+1], 0, ep[i+1] - b[3]);
+    if (dx * dx + dy * dy <= r * r) return true;
+  }
+  if (ep.length >= 4) {   // a fast swipe right across a small note: check between samples too
+    for (var j = 0; j + 3 < ep.length; j += 2) {
+      var n = Math.ceil(Math.hypot(ep[j+2] - ep[j], ep[j+3] - ep[j+1]) / Math.max(r, 1));
+      for (var k = 1; k < n; k++) {
+        var x = ep[j] + (ep[j+2] - ep[j]) * k / n, y = ep[j+1] + (ep[j+3] - ep[j+1]) * k / n;
+        var ddx = Math.max(b[0] - x, 0, x - b[2]), ddy = Math.max(b[1] - y, 0, y - b[3]);
+        if (ddx * ddx + ddy * ddy <= r * r) return true;
+      }
+    }
+  }
+  return false;
+}
+/* the notes in list (drawing order) that an eraser drawn after them touched: they are not drawn */
+function notesGone(list){
+  var gone = [], notes = [];
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i];
+    if (isNote(s)) notes.push(s);
+    else if (s.e && notes.length) notes = notes.filter(function(n){ if (noteTouched(n, s.p, s.w / 2)) { gone.push(n); return false; } return true; });
+  }
+  return gone;
 }
 
 /* ---- live drawing: draws the same curve as paintStroke, piece by piece as points arrive ----
@@ -809,6 +865,7 @@ function applyErasers(list){
     for (var j = 0; j < kept.length; j++) {
       var k = kept[j], pad = k.w / 2, run = [];
       if (!boxesMeet(box, inkBox(k.p, pad))) { next.push(k); continue; }
+      if (isNote(k)) { if (!noteTouched(k, ep, r)) next.push(k); continue; }
       for (var n = 0; n < k.p.length; n += 2) {
         if (distToPath(k.p[n], k.p[n+1], ep) <= r + pad * 0.5) { flush(next, k, run); run = []; }
         else run.push(k.p[n], k.p[n+1]);
@@ -846,6 +903,14 @@ function lassoPick(list, loop, tap, tol){
     if (s.e || !boxesMeet(lb, inkBox(s.p, s.w / 2))) continue;
     var pieces = seenNow(list, i), n = 0, inside = 0, k, m;
     if (!pieces.length) continue;
+    if (isNote(s)) {   // a note: tap inside its box, or circle its middle
+      var b = s.p;
+      if (tap ? loop[0] >= b[0] - tol && loop[0] <= b[2] + tol && loop[1] >= b[1] - tol && loop[1] <= b[3] + tol : pointInLoop((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, loop)) {
+        if (tap) return [{ s: s, pieces: pieces }];
+        out.unshift({ s: s, pieces: pieces });
+      }
+      continue;
+    }
     if (tap) {
       for (k = 0; k < pieces.length; k++) if (distToPath(loop[0], loop[1], pieces[k].p) <= pieces[k].w / 2 + tol) return [{ s: s, pieces: pieces }];
       continue;
@@ -1096,6 +1161,89 @@ function makeSelect(A){
   };
 }
 
+/* ---- Type: tap the page to type a note there; tap a note to change it. The same in the PDF app and the overlay.
+   A: { t, status, pageList(page), all(), replace(next), host(page) -> [element, css px per unit, x offset, y offset],
+        preview(page, hide, add), style() -> { c, f }, page(s) -> a note's page (or undefined) } ---- */
+function makeTyping(A){
+  var ed = null;   // { box: the textarea, page, x, y, old: the note being changed (or null), c, f }
+  var closedAt = 0;   // when a note was finished by losing focus: the tap that took the focus doesn't start a new one
+  var tr = function(k, v){ return A.t()(k, v); };
+  function hit(page, x, y, tol){   // the top note under (x, y), not erased
+    var list = A.pageList(page), gone = notesGone(list);
+    for (var i = list.length - 1; i >= 0; i--) {
+      var s = list[i], b = s.p;
+      if (isNote(s) && gone.indexOf(s) < 0 && x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol) return s;
+    }
+    return null;
+  }
+  function place(){
+    if (!ed) return;
+    var h = A.host(ed.page); if (!h) return close();
+    var b = ed.box, k = h[1];
+    if (b.parentNode !== h[0]) h[0].appendChild(b);
+    b.style.left = (h[2] + ed.x * k) + 'px';
+    b.style.top = (h[3] + ed.y * k) + 'px';
+    b.style.fontSize = (ed.f * k) + 'px';
+    b.style.color = ed.c;
+    b.style.width = '1px'; b.style.height = '1px';   // then grow to fit the text
+    b.style.width = Math.max(b.scrollWidth + 2, ed.f * k * 3) + 'px';
+    b.style.height = b.scrollHeight + 'px';
+  }
+  function open(page, x, y, old){
+    var st = A.style();
+    var b = document.createElement('textarea');
+    b.className = 'ob-note-edit'; b.dir = 'auto'; b.spellcheck = false; b.rows = 1; b.wrap = 'off';
+    b.setAttribute('aria-label', tr('note_label'));
+    b.addEventListener('pointerdown', function(e){ e.stopPropagation(); });   // typing in the box never draws
+    b.addEventListener('input', place);
+    b.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    b.addEventListener('blur', function(e){   // done when the focus goes elsewhere, except to the toolbar (a new color or size changes this note)
+      if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#ink-bar')) return;
+      setTimeout(function(){ if (ed && ed.box === b && document.activeElement !== b) { closedAt = Date.now(); close(); } }, 0);
+    });
+    ed = { box: b, page: page, x: old ? old.p[0] : x, y: old ? old.p[1] : y, old: old, c: old ? old.c : st.c, f: old ? old.f : st.f };
+    // a new note is lifted so the tap lands in the middle of its first line
+    if (!old) ed.y = Math.round((y - ed.f * NOTE_LH / 2) * 100) / 100;
+    b.value = old ? old.t : '';
+    if (old) A.preview(page, [old], []);
+    place();
+    b.focus();
+    if (old) b.setSelectionRange(b.value.length, b.value.length);
+  }
+  function close(){   // keep what was typed (an empty box removes the note)
+    if (!ed) return;
+    var E = ed; ed = null;
+    var text = E.box.value.replace(/\s+$/, '');
+    E.box.remove();
+    if (E.old) A.preview(null);
+    var all = A.all(), i = E.old ? all.indexOf(E.old) : -1;
+    if (E.old && i < 0) return;   // the note went away meanwhile (Undo, a period switch)
+    if (E.old && text === E.old.t && E.c === E.old.c && E.f === E.old.f) return;
+    if (!text && !E.old) return;
+    var next = all.slice();
+    if (!text) { next.splice(i, 1); A.replace(next); return A.status(tr('st_note_deleted')); }
+    var n = makeNote(text, E.c, E.f, E.x, E.y), pg = A.page(E.page);
+    if (pg !== undefined) n.page = pg;
+    if (E.old) next[i] = n; else next.push(n);
+    A.replace(next);
+    A.status(tr(E.old ? 'st_note_changed' : 'st_note_added'));
+  }
+  function tap(page, x, y){
+    if (ed) { close(); return; }   // a tap beside an open note only finishes it
+    if (Date.now() - closedAt < 600) return;   // (it may have finished already, when the box lost focus)
+    var h = A.host(page), tol = h ? 8 / h[1] : 8;
+    open(page, x, y, hit(page, x, y, tol));
+  }
+  return {
+    tap: tap, close: close,
+    layout: place,
+    restyle: function(){ if (!ed) return; var st = A.style(); ed.c = st.c; ed.f = st.f; place(); ed.box.focus(); },
+    editing: function(){ return !!ed; }
+  };
+}
+
 /* Keyboard history keys, the same in the PDF app and the overlay:
    Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
    is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -1110,4 +1258,4 @@ function historyKey(e) {
   return null;
 }
 
-export { applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { makeTyping, isNote, notesGone, makeNote, applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
