@@ -2,10 +2,10 @@
 // Everything runs in this browser tab. Nothing is uploaded.
 
 import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
-import { makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods, makeSelect } from '../shared/ink-core.js';
+import { makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods, makeSelect, makeTyping } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
-import { Ink } from './ink.js';
+import { Ink, PT_PER_UNIT } from './ink.js';
 import { Finder } from './find.js';
 import * as store from './store.js';
 import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
@@ -44,7 +44,7 @@ const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 
 /* ---------- tool state (read by the ink layer) ---------- */
 const T = {
-  mode: 'write', erasing: false, hiliting: false, covering: false,   // covering: the highlighter is in Cover mode
+  typing: false, erasing: false, hiliting: false, covering: false,   // covering: the highlighter is in Cover mode
   selecting: false,                 // the Select tool: the pen circles ink instead of writing
   penColor: PEN_COLOR, hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
   color: PEN_COLOR, width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
@@ -76,6 +76,7 @@ const viewer = new Viewer(pagesEl, {
 });
 const findPanel = $('#ob-find'), finder = new Finder(viewer, findPanel, setStatus, () => tr);
 const ink = new Ink(viewer, T, () => { refreshRedo(); markDirty(); });
+ink.onTextCopied = () => setStatus(tr('st_text_copied'));
 ink.attach(pagesEl);
 /* Select (shared with the overlay): circle ink to send a copy to another period, copy and paste it, move it or delete it */
 ink.sel = makeSelect({
@@ -86,6 +87,14 @@ ink.sel = makeSelect({
   preview: (n, hide, add) => ink.preview(n, hide, add), host: (n) => ink.host(n),
   pastePage: (n) => (n && viewer.pages[n - 1] && isOnScreen(n) ? n : viewer.currentPage()),
   onOpen: () => closeMenus('sel'),
+});
+const typing = ink.typing = makeTyping({
+  t: () => tr, status: setStatus,
+  pageList: (n) => ink.pageList(n), all: () => ink.strokes,
+  replace: (next) => ink.replaceAll(next),
+  preview: (n, hide, add) => ink.preview(n, hide, add), host: (n) => ink.host(n),
+  style: () => ({ c: T.penColor, f: Math.round((10 + T.width * 4) * PT_PER_UNIT * 100) / 100 }),
+  page: (n) => n,
 });
 window.__overboard = { viewer, ink, get doc() { return doc; }, get data() { return D; }, flush: () => writeNow() };   // for tests and the curious
 
@@ -582,7 +591,7 @@ const settings = makeSettings({
     return true;
   },
   tools: () => ({ finger: T.fingerScrolls, width: T.width, smooth: T.smooth, hlColor: T.hlColor, hlStrength: T.hlStrength }),
-  setPen(c) { T.penColor = c; if (!T.hiliting) T.color = c; T.erasing = false; setMode('write'); refresh(); },
+  setPen(c) { T.penColor = c; if (!T.hiliting) T.color = c; T.erasing = false; if (T.typing) typing.restyle(); refresh(); },
   resetTools() {
     Object.assign(T, { width: 2.5, hlWidth: HIGHLIGHT_W, hlColor: HIGHLIGHT_COLOR, customColor: '', covering: false, hlStrength: HIGHLIGHT_STRENGTH,
       coverColor: COVER_COLOR, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS, penColor: PEN_COLOR, erasing: false });
@@ -623,6 +632,8 @@ function refresh() {
   smoothNum.textContent = T.smooth ? T.smooth : tr('off');
   $('[data-act="erase"]', bar).classList.toggle('on', T.erasing);
   $('[data-act="select"]', bar).classList.toggle('on', T.selecting);
+  $('[data-act="type"]', bar).classList.toggle('on', T.typing);
+  pagesEl.classList.toggle('type-mode', T.typing);
   const hb = $('[data-act="hilite"]', bar);
   hb.classList.toggle('on', T.hiliting && !T.erasing && !T.selecting);
   hb.classList.toggle('cover', T.covering);
@@ -631,12 +642,12 @@ function refresh() {
   $('[data-act="finger"]', bar).textContent = tr(T.fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   refreshZoom();
 }
-function setMode(m) {
-  T.mode = m;
-  if (m === 'scroll') ink.dropSel();
-  pagesEl.classList.toggle('scroll-mode', m === 'scroll');
-  $('[data-act="write"]', bar).classList.toggle('on', m === 'write');
-  $('[data-act="scroll"]', bar).classList.toggle('on', m === 'scroll');
+/* Type: tap the page to type a note (makeTyping in shared/ink-core.js). Eraser, Highlighter and Select turn it off. */
+function typeOff() { if (T.typing) { T.typing = false; typing.close(); } }
+function typeOn() {
+  T.typing = true; T.erasing = false; selectOff();
+  if (T.hiliting) { T.hiliting = false; T.color = toolColor(); }   // notes use the pen color
+  setStatus(tr('st_type_how'));
 }
 function selectOff() { if (T.selecting) { T.selecting = false; ink.dropSel(); } }
 function toolColor() { return T.hiliting ? (T.covering ? T.coverColor : T.hlColor) : T.penColor; }
@@ -644,7 +655,7 @@ function pickColor(c) {
   T.color = c;
   if (T.hiliting && T.covering) { T.coverColor = c; setLS('ink-cover-color', c); }
   else if (T.hiliting) { T.hlColor = c; setLS('ink-hl-color', c); } else T.penColor = c;
-  T.erasing = false; selectOff(); setMode('write'); refresh();
+  T.erasing = false; selectOff(); if (T.typing) typing.restyle(); refresh();
 }
 /* - / + : size controls the highlighter width while it's on */
 function stepSize(dir) {
@@ -657,7 +668,7 @@ function stepSize(dir) {
     if (w === T.width && !T.erasing) return false;
     T.width = w; setLS('ink-width', w);
   }
-  T.erasing = false; selectOff(); setMode('write'); refresh();
+  T.erasing = false; selectOff(); if (T.typing) typing.restyle(); refresh();
   return true;
 }
 function stepSmooth(dir) {
@@ -691,7 +702,7 @@ const hlMenu = makeHlMenu(bar, T, () => {
   setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
   setLS('ink-hl-strength', T.hlStrength);
   if (T.covering) setLS('ink-cover-color', T.coverColor);
-  T.hiliting = true; T.erasing = false; selectOff(); T.color = toolColor(); setMode('write'); refresh();
+  typeOff(); T.hiliting = true; T.erasing = false; selectOff(); T.color = toolColor(); refresh();
 }, () => closeMenus('hl'));
 for (const m of [fileMenu, clearMenu.el]) m.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -708,17 +719,16 @@ function onToolbarClick(e) {
   if (b.dataset.color) pickColor(b.dataset.color);
   else if (b.dataset.period !== undefined) { if (ink.switchTo(b.dataset.period)) renderPeriods(); }
   else switch (b.dataset.act) {
-    case 'write': setMode('write'); break;
-    case 'scroll': setMode('scroll'); break;
-    case 'erase': T.erasing = !T.erasing; selectOff(); setMode('write'); break;
+    case 'type': if (T.typing) typeOff(); else typeOn(); break;
+    case 'erase': typeOff(); T.erasing = !T.erasing; selectOff(); break;
     case 'hilite':
       T.hiliting = T.erasing || T.selecting ? true : !T.hiliting;
       T.color = toolColor();   // highlighter (or cover) gets its own color back; turning it off restores your pen color
-      T.erasing = false; selectOff(); setMode('write'); break;
+      typeOff(); T.erasing = false; selectOff(); break;
     case 'select':
       if (T.selecting) selectOff();
-      else { T.selecting = true; T.erasing = false; setStatus(tr('st_sel_how')); }
-      setMode('write'); break;
+      else { typeOff(); T.selecting = true; T.erasing = false; setStatus(tr('st_sel_how')); }
+      break;
     case 'custom':
       if (T.customColor && (T.color !== T.customColor || T.erasing)) pickColor(T.customColor);
       else { picker.value = T.customColor || T.color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch (_) { picker.click(); } }
@@ -786,16 +796,17 @@ function openFind() {
   finder.open();
 }
 document.addEventListener('keydown', (e) => {
-  const typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+  const t = document.activeElement, inBox = t && /^(INPUT|TEXTAREA)$/.test(t.tagName);
   const h = historyKey(e);   // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
-  if (h && (h === 'block' || !typing)) { e.preventDefault(); if (h !== 'block' && doc) historyStep(h); }   // text boxes keep their own undo
+  if (h && (h === 'block' || !inBox)) { e.preventDefault(); if (h !== 'block' && doc) historyStep(h); }   // text boxes keep their own undo
   // Select: Ctrl/⌘+C, Ctrl/⌘+V, Delete, Escape (text boxes keep their own)
-  else if (T.selecting && doc && !typing && !e.defaultPrevented && ink.sel.key(e)) e.preventDefault();
+  else if (T.selecting && doc && !inBox && !e.defaultPrevented && ink.sel.key(e)) e.preventDefault();
   // the browser's own find only sees pages near the screen; ours searches the whole PDF
   if ((e.ctrlKey || e.metaKey) && e.key === 'f' && doc) { openFind(); e.preventDefault(); }
   if (e.key === 'Escape' && !findPanel.hidden) finder.close();
 });
 function historyStep(act) {   // Undo or Redo, then show the page it changed
+  typing.close();
   const n = act === 'redo' ? ink.redo() : ink.undo();
   if (n && !isOnScreen(n)) viewer.goTo(n);
 }
@@ -976,7 +987,7 @@ async function importInk(file) {
 $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && doc) importInk(f); });
 
 /* ---------- start ---------- */
-translateAll(); refresh(); setMode('write'); renderRecent();
+translateAll(); refresh(); renderRecent();
 setupOffline(openFile);
 (() => {   // reopen the PDF after a reload; typing or clicking the address shows the start screen
   const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];

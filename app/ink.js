@@ -4,7 +4,7 @@
 // so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
 // layer, above the page and its text, instead of multiplied underneath.
 
-import { seeThrough, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
+import { textAt, selectTo, clearTextSel, copyTextSel, seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
 export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
@@ -22,15 +22,21 @@ export class Ink {
     this.lastCleared = null;       // { page, before } or { all } so Undo can bring back what Clear took
     this.redos = [];               // what Undo took back, newest last: a stroke, or { cleared: page }
     this.sel = null;               // the Select tool (makeSelect in shared/ink-core.js), set by main.js
+    this.typing = null;            // the Type tool (makeTyping), set by main.js
     this.selP = null;              // the page a Select gesture started on
     this.pv = null;                // { page, hide, add }: a selection being dragged, drawn in its new spot
   }
 
+  /* for a moment, let the PDF's text be found under the pen (Type: drag on text to select it) */
+  get unblock() { return () => { this.box.classList.add('probe'); return () => this.box.classList.remove('probe'); }; }
+
   dropSel() { if (this.sel) this.sel.drop(); }
+  endTyping() { if (this.typing) this.typing.close(); }   // keep a note being typed, before the ink changes under it
 
   get strokes() { return this.D.periods[this.D.active]; }
 
   setData(D) {
+    this.endTyping();
     this.D = D;
     this.dropSel();
     this.lastCleared = null; this.redos = [];
@@ -83,8 +89,8 @@ export class Ink {
 
   redraw(P) {
     for (const c of [P.ink, P.hl]) if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
-    const pv = this.pv && this.pv.page === P.n ? this.pv : null;
-    for (const s of this.pageList(P.n)) if (!pv || !pv.hide.includes(s)) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+    const pv = this.pv && this.pv.page === P.n ? this.pv : null, gone = notesGone(this.pageList(P.n));   // notes an eraser touched
+    for (const s of this.pageList(P.n)) if ((!pv || !pv.hide.includes(s)) && !gone.includes(s)) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
     if (pv) for (const s of pv.add) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
   }
 
@@ -123,6 +129,7 @@ export class Ink {
     for (const c of [P.ink, P.hl]) if (c) this.sizeCanvas(P, c);
     this.redraw(P);   // always: zoom changes the transform even when the pixel size stays the same
     if (this.sel) this.sel.layout();
+    if (this.typing) this.typing.layout();
   }
 
   /* ---------- input ---------- */
@@ -149,14 +156,17 @@ export class Ink {
     if (this.active !== null || !this.D) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const T = this.T, kind = pointerKind(e);
-    const scrolling = T.mode === 'scroll' || (kind === 'finger' && T.fingerScrolls);
-    // Scroll mode: pressing on the PDF's text selects it and links open, like any PDF viewer.
-    // (The text and link layers only take pointer events in Scroll mode, so this never happens in Write mode.)
-    const layer = T.mode === 'scroll' && e.target.closest && e.target.closest('.textLayer, a.ob-link');
-    if (layer) { if (layer.classList.contains('textLayer')) this.selecting(layer); return; }
+    // Type: a drag scrolls and a tap types a note (any pointer but the palm). A finger that scrolls: a tap presses a link.
+    const typing = T.typing && kind !== 'palm' && this.typing;
+    const scrolling = typing || (kind === 'finger' && T.fingerScrolls);
     this.active = e.pointerId;
     try { this.box.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
-    if (scrolling) { this.drag = { x: e.screenX, y: e.screenY, x0: e.screenX, y0: e.screenY }; e.preventDefault(); return; }
+    if (scrolling) {
+      const pg = e.target.closest && e.target.closest('.pg');
+      this.drag = { x: e.screenX, y: e.screenY, x0: e.screenX, y0: e.screenY, type: typing, P: pg && pg._P };
+      if (typing) { clearTextSel(); this.drag.text = textAt(e.clientX, e.clientY, this.unblock); }   // starting on the PDF's text: select it
+      e.preventDefault(); return;
+    }
     const el = e.target.closest('.pg');
     if (!el) { this.active = null; return; }
     const P = el._P, q = this.pt(e, P), z = this.v.zoom;
@@ -182,6 +192,10 @@ export class Ink {
 
   move(e) {
     if (e.pointerId !== this.active) return;
+    if (this.drag && this.drag.text) {   // a tap wobbles a little: select only once it's a drag
+      if (Math.abs(e.screenX - this.drag.x0) + Math.abs(e.screenY - this.drag.y0) >= 8) selectTo(this.drag.text, e.clientX, e.clientY, this.unblock);
+      e.preventDefault(); return;
+    }
     if (this.drag) {
       window.scrollBy(this.drag.x - e.screenX, this.drag.y - e.screenY);
       this.drag.x = e.screenX; this.drag.y = e.screenY;
@@ -210,9 +224,16 @@ export class Ink {
     if (e.pointerId !== this.active) return;
     const drag = this.drag;
     this.active = null; this.drag = null;
-    // a tap (not a drag) in Scroll mode clears a text selection, like clicking beside text does
-    if (drag && this.T.mode === 'scroll' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) < 8) {
-      const sel = window.getSelection(); if (sel) sel.removeAllRanges();
+    if (drag) {   // a tap (not a drag): type a note there, or press the link under the finger
+      if (drag.text && e.type === 'pointerup' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) { if (copyTextSel() && this.onTextCopied) this.onTextCopied(); return; }
+      if (e.type !== 'pointerup' || Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8 || !drag.P) return;
+      if (drag.type) { const q = this.pt(e, drag.P); this.typing.tap(drag.P.n, q[0], q[1]); return; }
+      const a = [...drag.P.el.querySelectorAll('a.ob-link')].find((l) => {
+        const r = l.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      });
+      if (a) a.click();
+      return;
     }
     if (this.selP) {
       const P = this.selP; this.selP = null;
@@ -228,20 +249,14 @@ export class Ink {
     if (performance.now() - this.downAt < 15 && s.p.length <= 4) { this.refreshPage(P.n); return; }
     if (s.e && !this.pageList(P.n).length) { this.refreshPage(P.n); return; }   // erasing a blank page: nothing to keep
     this.strokes.push(s);
+    if (s.e && this.pageList(P.n).some(isNote)) this.redrawSoon = P.n;   // a note it touched goes away whole
     if (!this.byPage.has(P.n)) this.byPage.set(P.n, []);
     this.byPage.get(P.n).push(s);
     this.lastCleared = null; this.redos = [];   // new ink starts a new history
     this.dropSel();
+    if (this.redrawSoon) { this.redrawSoon = null; this.redraw(P); }
     if (!this.v.want.has(P)) this.free(P);
     this.onChange();
-  }
-
-  /* while selecting, the layer's filler covers the gaps between words so the selection doesn't jump */
-  selecting(layer) {
-    layer.classList.add('selecting');
-    const done = () => { layer.classList.remove('selecting'); window.removeEventListener('pointerup', done, true); window.removeEventListener('pointercancel', done, true); };
-    window.addEventListener('pointerup', done, true);
-    window.addEventListener('pointercancel', done, true);
   }
 
   /* ---------- undo / clear / periods ---------- */
@@ -325,6 +340,7 @@ export class Ink {
 
   switchTo(name) {
     if (!this.D.periods[name] || name === this.D.active) return false;
+    this.endTyping();
     this.dropSel();
     this.D.active = name;
     this.lastCleared = null; this.redos = [];
@@ -333,6 +349,7 @@ export class Ink {
   }
 
   setPeriods(periods, active) {   // File ▸ Settings… changed the class periods (renamed ones keep their ink)
+    this.endTyping();
     this.dropSel();
     this.D.periods = periods; this.D.active = active;
     this.lastCleared = null; this.redos = [];
@@ -342,6 +359,7 @@ export class Ink {
   /* Turn page: page n is now shown q quarter turns further clockwise, so its ink in every period turns
      with it and stays on the same words. w, h: the page's size as shown before the turn, in points. */
   turnInk(n, q, w, h) {
+    this.endTyping();
     this.dropSel();
     const r = (v) => Math.round(v * 100) / 100;
     for (const list of Object.values(this.D.periods)) {
@@ -352,6 +370,10 @@ export class Ink {
           let x = p[i], y = p[i + 1], W = w, H = h;
           for (let k = 0; k < q; k++) { [x, y] = [H - y, x]; [W, H] = [H, W]; }   // a quarter turn clockwise
           p[i] = r(x); p[i + 1] = r(y);
+        }
+        if (isNote(s)) {   // text stays upright: the same box, now at the turned corners' top-left
+          const dx = Math.abs(p[2] - p[0]), dy = Math.abs(p[3] - p[1]), x0 = Math.min(p[0], p[2]), y0 = Math.min(p[1], p[3]);
+          s.p = q % 2 ? [x0, y0, r(x0 + dy), r(y0 + dx)] : [x0, y0, r(x0 + dx), r(y0 + dy)];
         }
       }
     }

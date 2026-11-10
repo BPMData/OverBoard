@@ -3,7 +3,7 @@
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
 #ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
-#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-act="select"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
+#ink-bar button[data-act="erase"].on,#ink-bar button[data-act="select"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
 #ink-bar button[data-act="hilite"].on{background:#fff176;color:#000}
 #ink-bar button.warn{background:#c62828}
 #ink-bar button.good{background:#2e7d32;color:#fff}
@@ -161,3 +161,7 @@
 @media print{#ob-lasso,#ob-selmenu,.ob-selbox{display:none!important}}
 /* Select and ⏱ Timer share a row: a little less padding, and "⏱" may wrap above a long word, so every language fits */
 #ink-bar button[data-act="select"],#ink-bar button[data-act="timer"]{padding:2px;white-space:normal;line-height:1.1;overflow-wrap:normal}
+/* Type: the box a note is typed in, sitting on the page where the note goes (makeTyping) */
+.ob-note-edit{position:absolute;z-index:6;margin:0;padding:0;border:0;outline:2px dashed #1e88e5;outline-offset:3px;border-radius:2px;background:rgba(255,255,255,.75);font-family:Arial,Helvetica,sans-serif;line-height:1.25;white-space:pre;overflow:hidden;resize:none;pointer-events:auto;touch-action:manipulation;caret-color:#1e88e5}
+#ink-bar button[data-act="type"].on{background:#fff;color:#000}
+@media print{.ob-note-edit{display:none!important}}

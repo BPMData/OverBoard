@@ -54,7 +54,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v44) =====
+<!-- ===== INK OVERLAY START (v45) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -72,13 +72,13 @@
 #ink-canvas,#ink-hl{position:absolute;top:0;left:50%;transform:translateX(-50%);display:block}
 #ink-canvas{z-index:50;touch-action:none;cursor:crosshair}
 #ink-hl{z-index:49;pointer-events:none;mix-blend-mode:multiply}
-#ink-canvas.scroll-mode{pointer-events:none}
+#ink-canvas.type-mode{cursor:text}
 /* ===== SHARED TOOLBAR CSS: generated from shared/toolbar.css by tools/build_overlay.py; edit that file ===== */
 #ink-bar{position:fixed;top:50%;left:10px;transform:translateY(-50%);z-index:100;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px;width:176px;box-sizing:border-box;background:#1f1f1f;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation;max-height:96vh;overflow-y:auto}
 #ink-bar.right{left:auto;right:10px}
 #ink-bar button{min-height:56px;border:3px solid transparent;border-radius:12px;background:#3a3a3a;color:#fff;font:700 15px Inter,system-ui,sans-serif;cursor:pointer;padding:4px}
 #ink-bar button.on{border-color:#ffd400;box-shadow:inset 0 0 0 2px #1f1f1f}
-#ink-bar button[data-act="write"].on,#ink-bar button[data-act="scroll"].on,#ink-bar button[data-act="erase"].on,#ink-bar button[data-act="select"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
+#ink-bar button[data-act="erase"].on,#ink-bar button[data-act="select"].on,#ink-bar button[data-period].on{background:#fff;color:#000}
 #ink-bar button[data-act="hilite"].on{background:#fff176;color:#000}
 #ink-bar button.warn{background:#c62828}
 #ink-bar button.good{background:#2e7d32;color:#fff}
@@ -236,6 +236,10 @@
 @media print{#ob-lasso,#ob-selmenu,.ob-selbox{display:none!important}}
 /* Select and ⏱ Timer share a row: a little less padding, and "⏱" may wrap above a long word, so every language fits */
 #ink-bar button[data-act="select"],#ink-bar button[data-act="timer"]{padding:2px;white-space:normal;line-height:1.1;overflow-wrap:normal}
+/* Type: the box a note is typed in, sitting on the page where the note goes (makeTyping) */
+.ob-note-edit{position:absolute;z-index:6;margin:0;padding:0;border:0;outline:2px dashed #1e88e5;outline-offset:3px;border-radius:2px;background:rgba(255,255,255,.75);font-family:Arial,Helvetica,sans-serif;line-height:1.25;white-space:pre;overflow:hidden;resize:none;pointer-events:auto;touch-action:manipulation;caret-color:#1e88e5}
+#ink-bar button[data-act="type"].on{background:#fff;color:#000}
+@media print{.ob-note-edit{display:none!important}}
 /* ===== END SHARED TOOLBAR CSS ===== */
 @media print{#ink-bar,#ink-canvas,#ink-hl,#ob-selhost,#ink-show,#ob-hlmenu,#ob-filemenu,#ob-clearmenu,#ob-permenu,#ob-settings,#ob-timer,#ob-timerset{display:none!important}}
 </style>
@@ -243,8 +247,6 @@
 <canvas id="ink-canvas"></canvas>
 <div id="ob-selhost"></div>
 <div id="ink-bar" role="toolbar" aria-label="Writing tools">
-  <button data-act="write" class="on" data-t="write" data-tt="write_tip" title="Write: the pen writes and your palm erases">Write</button>
-  <button data-act="scroll" data-t="scroll" data-tt="scroll_tip" title="Scroll: drag to move around the page; nothing is written">Scroll</button>
   <button data-act="prev" data-t="prev_page" data-tt="prev_tip" title="Previous page">&#9650; Page</button>
   <button data-act="next" data-t="next_page" data-tt="next_tip" title="Next page">&#9660; Page</button>
   <button data-act="finger" class="sm wide" data-tt="finger_tip" title="What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.">Finger: scrolls</button>
@@ -261,6 +263,7 @@
   </div>
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines, but may cause some lag in detecting and displaying the ink you draw. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
+  <button data-act="type" class="wide" data-t="type" data-tt="type_tip" title="Type: tap the page to type a note there, or tap a note to change it. Drag on the page&#39;s text to copy it; drag anywhere else to scroll. Pen color and size set the note&#39;s color and size.">Type</button>
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="clear-page" data-t="clear_page" data-tt="clear_page_tip" title="Clear the ink on the page you are looking at (Undo brings it back)">Clear page</button>
@@ -320,6 +323,7 @@
   /* one whole stroke onto one canvas: quadratic curves through the midpoints between samples,
      so corners come out round instead of jagged. Ink coordinates map to canvas px as x*sc+ox. */
   function paintStroke(g, s, sc, ox, oy){
+    if (isNote(s)) return paintNote(g, s, sc, ox, oy);
     var p = s.p; g.save(); inkStyle(g, s, sc, ox, oy);
     g.beginPath();
     if (p.length < 4) { g.arc(p[0], p[1], s.w/2, 0, 6.2832); g.fill(); }
@@ -330,6 +334,61 @@
       g.stroke();
     }
     g.restore();
+  }
+
+  /* ---- Typed notes: { t: 'the text', c: color, f: font size, w: 0, e: 0, p: [x0, y0, x1, y1] (the box around the text) }
+     in the same units as the ink, so saving, undo, Clear, Select, periods and zoom treat them like any other stroke.
+     An eraser that touches a note removes the whole note (notesGone). */
+  var NOTE_FONT = 'Arial, Helvetica, sans-serif', NOTE_LH = 1.25;
+  function isNote(s){ return typeof s.t === 'string'; }
+  var noteG = null;
+  function noteSize(text, f){   // [width, height] of the text at font size f
+    if (!noteG) noteG = document.createElement('canvas').getContext('2d');
+    noteG.font = f + 'px ' + NOTE_FONT;
+    var lines = text.split('\n'), w = 0;
+    for (var i = 0; i < lines.length; i++) w = Math.max(w, noteG.measureText(lines[i]).width);
+    return [Math.ceil(w * 100) / 100, Math.round(lines.length * f * NOTE_LH * 100) / 100];
+  }
+  function makeNote(text, c, f, x, y){
+    var r = function(v){ return Math.round(v * 100) / 100; }, wh = noteSize(text, f);
+    return { t: text, c: c, f: r(f), w: 0, e: 0, p: [r(x), r(y), r(x + wh[0]), r(y + wh[1])] };
+  }
+  function paintNote(g, s, sc, ox, oy){
+    g.save();
+    g.setTransform(sc, 0, 0, sc, ox, oy);
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = s.c; g.font = s.f + 'px ' + NOTE_FONT; g.textBaseline = 'top';
+    var lines = s.t.split('\n'), lh = s.f * NOTE_LH, pad = (lh - s.f) / 2;
+    for (var i = 0; i < lines.length; i++) g.fillText(lines[i], s.p[0], s.p[1] + pad + i * lh);
+    g.restore();
+  }
+  function noteTouched(s, ep, r){   // does the eraser path ep (radius r) touch note s?
+    var b = s.p;
+    for (var i = 0; i < ep.length; i += 2) {
+      var dx = Math.max(b[0] - ep[i], 0, ep[i] - b[2]), dy = Math.max(b[1] - ep[i+1], 0, ep[i+1] - b[3]);
+      if (dx * dx + dy * dy <= r * r) return true;
+    }
+    if (ep.length >= 4) {   // a fast swipe right across a small note: check between samples too
+      for (var j = 0; j + 3 < ep.length; j += 2) {
+        var n = Math.ceil(Math.hypot(ep[j+2] - ep[j], ep[j+3] - ep[j+1]) / Math.max(r, 1));
+        for (var k = 1; k < n; k++) {
+          var x = ep[j] + (ep[j+2] - ep[j]) * k / n, y = ep[j+1] + (ep[j+3] - ep[j+1]) * k / n;
+          var ddx = Math.max(b[0] - x, 0, x - b[2]), ddy = Math.max(b[1] - y, 0, y - b[3]);
+          if (ddx * ddx + ddy * ddy <= r * r) return true;
+        }
+      }
+    }
+    return false;
+  }
+  /* the notes in list (drawing order) that an eraser drawn after them touched: they are not drawn */
+  function notesGone(list){
+    var gone = [], notes = [];
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i];
+      if (isNote(s)) notes.push(s);
+      else if (s.e && notes.length) notes = notes.filter(function(n){ if (noteTouched(n, s.p, s.w / 2)) { gone.push(n); return false; } return true; });
+    }
+    return gone;
   }
 
   /* ---- live drawing: draws the same curve as paintStroke, piece by piece as points arrive ----
@@ -1097,6 +1156,7 @@
       for (var j = 0; j < kept.length; j++) {
         var k = kept[j], pad = k.w / 2, run = [];
         if (!boxesMeet(box, inkBox(k.p, pad))) { next.push(k); continue; }
+        if (isNote(k)) { if (!noteTouched(k, ep, r)) next.push(k); continue; }
         for (var n = 0; n < k.p.length; n += 2) {
           if (distToPath(k.p[n], k.p[n+1], ep) <= r + pad * 0.5) { flush(next, k, run); run = []; }
           else run.push(k.p[n], k.p[n+1]);
@@ -1134,6 +1194,14 @@
       if (s.e || !boxesMeet(lb, inkBox(s.p, s.w / 2))) continue;
       var pieces = seenNow(list, i), n = 0, inside = 0, k, m;
       if (!pieces.length) continue;
+      if (isNote(s)) {   // a note: tap inside its box, or circle its middle
+        var b = s.p;
+        if (tap ? loop[0] >= b[0] - tol && loop[0] <= b[2] + tol && loop[1] >= b[1] - tol && loop[1] <= b[3] + tol : pointInLoop((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, loop)) {
+          if (tap) return [{ s: s, pieces: pieces }];
+          out.unshift({ s: s, pieces: pieces });
+        }
+        continue;
+      }
       if (tap) {
         for (k = 0; k < pieces.length; k++) if (distToPath(loop[0], loop[1], pieces[k].p) <= pieces[k].w / 2 + tol) return [{ s: s, pieces: pieces }];
         continue;
@@ -1384,6 +1452,123 @@
     };
   }
 
+  /* ---- Type: tap the page to type a note there; tap a note to change it. The same in the PDF app and the overlay.
+     A: { t, status, pageList(page), all(), replace(next), host(page) -> [element, css px per unit, x offset, y offset],
+          preview(page, hide, add), style() -> { c, f }, page(s) -> a note's page (or undefined) } ---- */
+  function makeTyping(A){
+    var ed = null;   // { box: the textarea, page, x, y, old: the note being changed (or null), c, f }
+    var closedAt = 0;   // when a note was finished by losing focus: the tap that took the focus doesn't start a new one
+    var tr = function(k, v){ return A.t()(k, v); };
+    function hit(page, x, y, tol){   // the top note under (x, y), not erased
+      var list = A.pageList(page), gone = notesGone(list);
+      for (var i = list.length - 1; i >= 0; i--) {
+        var s = list[i], b = s.p;
+        if (isNote(s) && gone.indexOf(s) < 0 && x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol) return s;
+      }
+      return null;
+    }
+    function place(){
+      if (!ed) return;
+      var h = A.host(ed.page); if (!h) return close();
+      var b = ed.box, k = h[1];
+      if (b.parentNode !== h[0]) h[0].appendChild(b);
+      b.style.left = (h[2] + ed.x * k) + 'px';
+      b.style.top = (h[3] + ed.y * k) + 'px';
+      b.style.fontSize = (ed.f * k) + 'px';
+      b.style.color = ed.c;
+      b.style.width = '1px'; b.style.height = '1px';   // then grow to fit the text
+      b.style.width = Math.max(b.scrollWidth + 2, ed.f * k * 3) + 'px';
+      b.style.height = b.scrollHeight + 'px';
+    }
+    function open(page, x, y, old){
+      var st = A.style();
+      var b = document.createElement('textarea');
+      b.className = 'ob-note-edit'; b.dir = 'auto'; b.spellcheck = false; b.rows = 1; b.wrap = 'off';
+      b.setAttribute('aria-label', tr('note_label'));
+      b.addEventListener('pointerdown', function(e){ e.stopPropagation(); });   // typing in the box never draws
+      b.addEventListener('input', place);
+      b.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); e.stopPropagation(); close(); }
+      });
+      b.addEventListener('blur', function(e){   // done when the focus goes elsewhere, except to the toolbar (a new color or size changes this note)
+        if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#ink-bar')) return;
+        setTimeout(function(){ if (ed && ed.box === b && document.activeElement !== b) { closedAt = Date.now(); close(); } }, 0);
+      });
+      ed = { box: b, page: page, x: old ? old.p[0] : x, y: old ? old.p[1] : y, old: old, c: old ? old.c : st.c, f: old ? old.f : st.f };
+      // a new note is lifted so the tap lands in the middle of its first line
+      if (!old) ed.y = Math.round((y - ed.f * NOTE_LH / 2) * 100) / 100;
+      b.value = old ? old.t : '';
+      if (old) A.preview(page, [old], []);
+      place();
+      b.focus();
+      if (old) b.setSelectionRange(b.value.length, b.value.length);
+    }
+    function close(){   // keep what was typed (an empty box removes the note)
+      if (!ed) return;
+      var E = ed; ed = null;
+      var text = E.box.value.replace(/\s+$/, '');
+      E.box.remove();
+      if (E.old) A.preview(null);
+      var all = A.all(), i = E.old ? all.indexOf(E.old) : -1;
+      if (E.old && i < 0) return;   // the note went away meanwhile (Undo, a period switch)
+      if (E.old && text === E.old.t && E.c === E.old.c && E.f === E.old.f) return;
+      if (!text && !E.old) return;
+      var next = all.slice();
+      if (!text) { next.splice(i, 1); A.replace(next); return A.status(tr('st_note_deleted')); }
+      var n = makeNote(text, E.c, E.f, E.x, E.y), pg = A.page(E.page);
+      if (pg !== undefined) n.page = pg;
+      if (E.old) next[i] = n; else next.push(n);
+      A.replace(next);
+      A.status(tr(E.old ? 'st_note_changed' : 'st_note_added'));
+    }
+    function tap(page, x, y){
+      if (ed) { close(); return; }   // a tap beside an open note only finishes it
+      if (Date.now() - closedAt < 600) return;   // (it may have finished already, when the box lost focus)
+      var h = A.host(page), tol = h ? 8 / h[1] : 8;
+      open(page, x, y, hit(page, x, y, tol));
+    }
+    return {
+      tap: tap, close: close,
+      layout: place,
+      restyle: function(){ if (!ed) return; var st = A.style(); ed.c = st.c; ed.f = st.f; place(); ed.box.focus(); },
+      editing: function(){ return !!ed; }
+    };
+  }
+
+  /* Type: a drag that starts on the page's own text selects it (PDF text in the app, the worksheet's text in the overlay).
+     The ink canvas sits on top, so unblock() lets the text be found under it for a moment (it returns the undo).
+     textAt: the caret spot { node, off } in text under a screen point, or null when the point isn't on a letter. */
+  function textAt(cx, cy, unblock){
+    var undo = unblock(), out = null;
+    try {
+      var node = null, off = 0;
+      if (document.caretRangeFromPoint) { var c = document.caretRangeFromPoint(cx, cy); if (c) { node = c.startContainer; off = c.startOffset; } }
+      else if (document.caretPositionFromPoint) { var p = document.caretPositionFromPoint(cx, cy); if (p) { node = p.offsetNode; off = p.offset; } }
+      if (node && node.nodeType === 3) {
+        for (var k = off; k >= off - 1; k--) {   // the letter after or before the caret must be under the point
+          if (k < 0 || k >= node.length) continue;
+          var r = document.createRange(); r.setStart(node, k); r.setEnd(node, k + 1);
+          var b = r.getBoundingClientRect();
+          if (cx >= b.left - 2 && cx <= b.right + 2 && cy >= b.top - 2 && cy <= b.bottom + 2) { out = { node: node, off: off }; break; }
+        }
+      }
+    } finally { undo(); }
+    return out;
+  }
+  /* stretch the selection from start to the text under the point (keeps the last one when the point is between lines) */
+  function selectTo(start, cx, cy, unblock){
+    var f = textAt(cx, cy, unblock), sel = window.getSelection();
+    if (f && sel) sel.setBaseAndExtent(start.node, start.off, f.node, f.off);
+  }
+  function clearTextSel(){ var sel = window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); }
+  /* copy the selected text to the clipboard (Ctrl+C works too); returns true if there was text */
+  function copyTextSel(){
+    var t = String(window.getSelection() || '').trim();
+    if (!t) return false;
+    try { navigator.clipboard.writeText(t).catch(function(){}); } catch(e){}
+    return true;
+  }
+
   /* Keyboard history keys, the same in the PDF app and the overlay:
      Ctrl/⌘+Z undo; Ctrl/⌘+Shift+Z, Ctrl/⌘+Y or Ctrl/⌘+R redo. Reloading from the keyboard (F5, Ctrl/⌘+Shift+R)
      is turned off, so a slip can't throw the page away; the browser's reload button still works.
@@ -1465,10 +1650,6 @@
 
   function obStrings(){
     return {
-      "write": ["Write", "Escribir", "书写", "Sumulat", "Viết", "Écrire", "Escrever", "كتابة"],
-      "write_tip": ["Write: the pen writes and your palm erases", "Escribir: el lápiz escribe y la palma borra", "书写：用笔写字，用手掌擦除", "Sumulat: sumusulat ang pen at nagbubura ang palad mo", "Viết: bút để viết, lòng bàn tay để xóa", "Écrire : le stylet écrit et la paume efface", "Escrever: a caneta escreve e a palma da mão apaga", "كتابة: القلم يكتب وراحة اليد تمسح"],
-      "scroll": ["Scroll", "Desplazar", "滚动", "Mag-scroll", "Cuộn", "Défiler", "Rolar", "تمرير"],
-      "scroll_tip": ["Scroll: drag to move around the page; nothing is written", "Desplazar: arrastra para moverte por la página; no se escribe nada", "滚动：拖动以浏览页面，不会写字", "Mag-scroll: i-drag para gumalaw sa pahina; walang maisusulat", "Cuộn: kéo để di chuyển trên trang; không viết gì", "Défiler : faites glisser pour parcourir la page, sans écrire", "Rolar: arraste para se mover pela página; nada é escrito", "تمرير: اسحب للتنقل في الصفحة دون كتابة"],
       "prev_page": ["▲ Page", "▲ Página", "▲ 上一页", "▲ Pahina", "▲ Trang", "▲ Page", "▲ Página", "▲ صفحة"],
       "next_page": ["▼ Page", "▼ Página", "▼ 下一页", "▼ Pahina", "▼ Trang", "▼ Page", "▼ Página", "▼ صفحة"],
       "prev_tip": ["Previous page", "Página anterior", "上一页", "Nakaraang pahina", "Trang trước", "Page précédente", "Página anterior", "الصفحة السابقة"],
@@ -1477,7 +1658,15 @@
       "of_n": ["of {n}", "de {n}", "/ {n}", "sa {n}", "/ {n}", "sur {n}", "de {n}", "من {n}"],
       "finger_scrolls": ["Finger: scrolls", "Dedo: desplaza", "手指：滚动", "Daliri: scroll", "Ngón tay: cuộn", "Doigt : défile", "Dedo: rola", "الإصبع: تمرير"],
       "finger_draws": ["Finger: draws", "Dedo: dibuja", "手指：书写", "Daliri: guhit", "Ngón tay: vẽ", "Doigt : dessine", "Dedo: desenha", "الإصبع: رسم"],
-      "finger_tip": ["What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.", "Lo que hace tu dedo en modo Escribir: desplazar la página o dibujar como el lápiz. Toca para cambiar.", "书写模式下手指的作用：滚动页面或像笔一样书写。点按切换。", "Ang ginagawa ng daliri mo sa Sumulat: mag-scroll ng pahina o gumuhit tulad ng pen. I-tap para palitan.", "Ngón tay làm gì ở chế độ Viết: cuộn trang hoặc vẽ như bút. Chạm để đổi.", "Ce que fait votre doigt en mode Écrire : faire défiler la page ou dessiner comme le stylet. Touchez pour changer.", "O que o dedo faz no modo Escrever: rolar a página ou desenhar como a caneta. Toque para trocar.", "ما يفعله إصبعك في وضع الكتابة: تمرير الصفحة أو الرسم مثل القلم. اضغط للتبديل."],
+      "type": ["Type", "Teclear", "打字", "Mag-type", "Gõ chữ", "Taper", "Digitar", "كتابة نص"],
+      "type_tip": ["Type: tap the page to type a note there, or tap a note to change it. Drag on the page's text to copy it; drag anywhere else to scroll. Pen color and size set the note's color and size.", "Teclear: toca la página para escribir una nota ahí, o toca una nota para cambiarla. Arrastra sobre el texto de la página para copiarlo; arrastra en otro sitio para desplazarte. El color y tamaño del lápiz dan el color y tamaño de la nota.", "打字：点按页面在该处输入文字，或点按文字进行修改。在页面原有文字上拖动可复制；在其他地方拖动可滚动。笔的颜色和粗细决定文字的颜色和大小。", "Mag-type: i-tap ang pahina para mag-type ng tala doon, o i-tap ang tala para baguhin ito. I-drag sa teksto ng pahina para kopyahin ito; i-drag sa ibang lugar para mag-scroll. Ang kulay at laki ng pen ang kulay at laki ng tala.", "Gõ chữ: chạm vào trang để gõ ghi chú tại đó, hoặc chạm vào ghi chú để sửa. Kéo trên chữ của trang để chép; kéo chỗ khác để cuộn. Màu và cỡ bút là màu và cỡ chữ.", "Taper : touchez la page pour y taper une note, ou touchez une note pour la modifier. Glissez sur le texte de la page pour le copier ; glissez ailleurs pour défiler. La couleur et la taille du stylet donnent celles de la note.", "Digitar: toque a página para digitar uma nota ali, ou toque numa nota para mudá-la. Arraste sobre o texto da página para copiá-lo; arraste em outro lugar para rolar. A cor e o tamanho da caneta definem os da nota.", "كتابة نص: اضغط على الصفحة لكتابة ملاحظة هناك، أو اضغط على ملاحظة لتغييرها. اسحب على نص الصفحة لنسخه؛ اسحب في مكان آخر للتمرير. لون القلم وحجمه هما لون الملاحظة وحجمها."],
+      "note_label": ["Typed note", "Nota escrita", "文字", "Na-type na tala", "Ghi chú", "Note tapée", "Nota digitada", "ملاحظة مكتوبة"],
+      "st_type_how": ["Tap the page to type; tap a note to change it", "Toca la página para escribir; toca una nota para cambiarla", "点按页面打字；点按文字修改", "I-tap ang pahina para mag-type; i-tap ang tala para baguhin", "Chạm trang để gõ; chạm ghi chú để sửa", "Touchez la page pour taper ; touchez une note pour la modifier", "Toque a página para digitar; toque numa nota para mudar", "اضغط على الصفحة للكتابة؛ اضغط على ملاحظة لتغييرها"],
+      "st_text_copied": ["Text copied: paste it anywhere with Ctrl+V", "Texto copiado: pégalo donde quieras con Ctrl+V", "已复制文字：可用 Ctrl+V 粘贴到任何地方", "Nakopya ang teksto: i-paste kahit saan gamit ang Ctrl+V", "Đã chép chữ: dán vào bất cứ đâu bằng Ctrl+V", "Texte copié : collez-le où vous voulez avec Ctrl+V", "Texto copiado: cole onde quiser com Ctrl+V", "نُسخ النص: الصقه في أي مكان باستخدام Ctrl+V"],
+      "st_note_added": ["Note added", "Nota añadida", "已添加文字", "Naidagdag ang tala", "Đã thêm ghi chú", "Note ajoutée", "Nota adicionada", "أُضيفت الملاحظة"],
+      "st_note_changed": ["Note changed", "Nota cambiada", "已修改文字", "Nabago ang tala", "Đã sửa ghi chú", "Note modifiée", "Nota alterada", "تغيّرت الملاحظة"],
+      "st_note_deleted": ["Note removed (Undo brings it back)", "Nota quitada (Deshacer la recupera)", "已删除文字（撤销可恢复）", "Inalis ang tala (ibinabalik ng Undo)", "Đã xóa ghi chú (Hoàn tác để lấy lại)", "Note supprimée (Annuler la ramène)", "Nota removida (Desfazer a traz de volta)", "حُذفت الملاحظة (التراجع يعيدها)"],
+      "finger_tip": ["What your finger does: scroll the page (a tap on a link or a button on the page presses it) or draw like the pen. Tap to switch.", "Lo que hace tu dedo: desplazar la página (un toque en un enlace o botón de la página lo pulsa) o dibujar como el lápiz. Toca para cambiar.", "手指的作用：滚动页面（点按页面上的链接或按钮会打开它）或像笔一样书写。点按切换。", "Ang ginagawa ng daliri mo: mag-scroll ng pahina (ang pag-tap sa link o button sa pahina ay pumipindot dito) o gumuhit tulad ng pen. I-tap para palitan.", "Ngón tay làm gì: cuộn trang (chạm vào liên kết hay nút trên trang sẽ bấm nó) hoặc vẽ như bút. Chạm để đổi.", "Ce que fait votre doigt : faire défiler la page (toucher un lien ou un bouton de la page l'active) ou dessiner comme le stylet. Touchez pour changer.", "O que o dedo faz: rolar a página (um toque num link ou botão da página o aciona) ou desenhar como a caneta. Toque para trocar.", "ما يفعله إصبعك: تمرير الصفحة (الضغط على رابط أو زر في الصفحة يفعّله) أو الرسم مثل القلم. اضغط للتبديل."],
       "class_period": ["Class period", "Período de clase", "班级", "Klase", "Lớp học", "Classe", "Turma", "الحصة الدراسية"],
       "period_tip": ["Each class period gets its own ink on the same page", "Cada clase tiene su propia tinta en la misma página", "每个班级在同一页面上有各自的笔迹", "May sariling tinta ang bawat klase sa iisang pahina", "Mỗi lớp có nét mực riêng trên cùng một trang", "Chaque classe a sa propre encre sur la même page", "Cada turma tem sua própria tinta na mesma página", "لكل حصة حبرها الخاص على نفس الصفحة"],
       "period_menu_tip": ["Class period: {p} (tap to change)", "Clase: {p} (toca para cambiar)", "班级：{p}（点按更改）", "Klase: {p} (i-tap para palitan)", "Lớp: {p} (chạm để đổi)", "Classe : {p} (touchez pour changer)", "Turma: {p} (toque para trocar)", "الحصة: {p} (اضغط للتغيير)"],
@@ -1924,7 +2113,7 @@
   var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
   var penColor = startPen(PEN_COLOR);   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
-  var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, selecting = false, customColor = '', H = 0, scale = 1;
+  var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, selecting = false, typingOn = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function setLS(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
   var sw = parseFloat(getLS('ink-width')); if (sw >= 1 && sw <= 14) width = sw;
@@ -2081,7 +2270,8 @@
   var pv = null;   // Select: { hide, add } while a selection is being dragged
   function redraw(){
     clearCanvas(canvas, ctx); clearCanvas(hcan, hctx); showHl(false);   // drawing a highlight below shows it again
-    for (var i = 0; i < strokes.length; i++) if (inBand(strokes[i]) && !(pv && pv.hide.indexOf(strokes[i]) >= 0)) drawStroke(strokes[i]);
+    var gone = notesGone(strokes);   // notes an eraser touched go away whole
+    for (var i = 0; i < strokes.length; i++) if (inBand(strokes[i]) && !(pv && pv.hide.indexOf(strokes[i]) >= 0) && gone.indexOf(strokes[i]) < 0) drawStroke(strokes[i]);
     if (pv) pv.add.forEach(drawStroke);
     if (cur) drawStroke(cur);   // a stroke still being drawn when the band moves
   }
@@ -2113,6 +2303,7 @@
     selHost.style.width = FW + 'px';
     follow(true);
     if (sel) sel.layout();
+    if (typer) typer.layout();
   }
   // keep the band around what's on screen, with a screen to spare above and below; redraw when it moves
   function follow(force){
@@ -2137,7 +2328,12 @@
     var kind = pointerKind(e), palm = kind === 'palm', finger = kind === 'finger';
     active = e.pointerId;
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
-    if (finger && fingerScrolls) { drag = { y: e.screenY }; e.preventDefault(); return; }
+    // Type: a drag scrolls and a tap types a note (any pointer but the palm). A finger that scrolls: a tap presses what's under it on the worksheet.
+    if ((typingOn && !palm) || (finger && fingerScrolls)) {
+      drag = { y: e.screenY, x0: e.screenX, y0: e.screenY, type: typingOn && !palm };
+      if (drag.type) { clearTextSel(); drag.text = textAt(e.clientX, e.clientY, unblock); }   // starting on the worksheet's text: select it
+      e.preventDefault(); return;
+    }
     var q = pt(e);
     if (selecting && !palm) { selDown = true; sel.down(null, q[0], q[1], e.clientX, e.clientY); e.preventDefault(); return; }   // Select: circle ink, tap it, or drag the selection
     if (palm || erasing) cur = { c: color, w: (palm ? PALM_ERASER_W : 44) / Z, e: 1, p: [q[0], q[1]] };   // about the hand: same size on screen at any zoom
@@ -2149,6 +2345,10 @@
     drawStroke(cur); e.preventDefault();
   });
   canvas.addEventListener('pointermove', function(e){
+    if (e.pointerId === active && drag && drag.text) {   // a tap wobbles a little: select only once it's a drag
+      if (Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) selectTo(drag.text, e.clientX, e.clientY, unblock);
+      e.preventDefault(); return;
+    }
     if (e.pointerId === active && drag) { window.scrollBy(0, drag.y - e.screenY); drag.y = e.screenY; e.preventDefault(); return; }
     if (e.pointerId !== active || (!cur && !selDown)) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
@@ -2159,9 +2359,25 @@
     drawPieces(cur, livePieces(cur, live));
     e.preventDefault();
   });
+  // for a moment, let the worksheet be found under the ink canvases (a finger tap presses it; Type selects its text)
+  function unblock(){ canvas.style.pointerEvents = hcan.style.pointerEvents = 'none'; return function(){ canvas.style.pointerEvents = hcan.style.pointerEvents = ''; }; }
   function end(e){
     if (e.pointerId !== active) return;
+    var dr = drag;
     active = null; drag = null;
+    if (dr) {   // a tap (not a drag): type a note there, or press the link, button or box under the finger
+      var far = Math.abs(e.screenX - dr.x0) + Math.abs(e.screenY - dr.y0) >= 8;
+      if (dr.text && far && e.type === 'pointerup') { if (copyTextSel()) setStatus(tr('st_text_copied')); return; }
+      if (e.type !== 'pointerup' || far) return;
+      if (dr.type) { var tq = pt(e); typer.tap(null, tq[0], tq[1]); return; }
+      var back = unblock(), under = document.elementFromPoint(e.clientX, e.clientY);
+      back();
+      if (under && !bar.contains(under)) {
+        if (under.focus) under.focus();
+        if (under.click) under.click();
+      }
+      return;
+    }
     if (selDown) { selDown = false; if (e.type === 'pointerup') { var p = pt(e); sel.up(p[0], p[1], e.clientX, e.clientY); } else sel.cancel(); return; }
     if (!cur) return;
     var s = cur; cur = null;
@@ -2170,6 +2386,7 @@
     // the board sends a few-millisecond blip when you switch between hand and pen; drop it
     if (performance.now() - downAt < 15 && s.p.length <= 4) { redraw(); return; }
     strokes.push(s); lastCleared = null; redos = []; refreshRedo(); sel.drop(); save();   // new ink starts a new history
+    if (s.e && strokes.some(isNote)) redraw();   // a note it touched goes away whole
   }
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
@@ -2179,7 +2396,7 @@
   });
 
   function undo(){
-    sel.drop();
+    typer.close(); sel.drop();
     if (lastCleared) { redos.push({ after: strokes }); setStrokes(lastCleared); lastCleared = null; redraw(); save(); }   // bring back what Clear took
     else if (strokes.length) { redos.push(strokes.pop()); redraw(); save(); }
     refreshRedo();
@@ -2187,7 +2404,7 @@
   function redo(){   // puts back what Undo took, in order
     var r = redos.pop();
     if (!r) return;
-    sel.drop();
+    typer.close(); sel.drop();
     if (r.after) { lastCleared = strokes; setStrokes(r.after); }   // clear again
     else { strokes.push(r); lastCleared = null; }
     redraw(); save(); refreshRedo();
@@ -2196,6 +2413,7 @@
   function setCleared(keep){ lastCleared = strokes; setStrokes(keep); redos = []; refreshRedo(); redraw(); save(); }   // also Select's paste, move and delete: one Undo step
   function clearInk(keep){ sel.drop(); setCleared(keep); }
   function clearAll(){
+    typer.close();
     if (!strokes.length) { setStatus(tr('st_no_ink_clear', { p: D.active })); return; }
     clearInk([]); setStatus(tr(pages().length > 1 ? 'st_all_cleared' : 'st_cleared', { p: D.active }));
   }
@@ -2203,6 +2421,7 @@
      it count as that page); "this page" is the one at the middle of the screen */
   function pages(){ return [].slice.call(document.querySelectorAll('.page')); }
   function clearPage(){
+    typer.close();
     var ct = docTop();
     var tops = pages().map(function(pg){ return (pg.getBoundingClientRect().top - ct) / Z; });
     function band(y){ var i = 0; while (i + 1 < tops.length && tops[i + 1] <= y) i++; return i; }
@@ -2222,7 +2441,7 @@
   function renderPeriods(){ periodPicker.render(Object.keys(D.periods), D.active); }
   function switchTo(name){
     if (!D.periods[name] || name === D.active) return;
-    sel.drop();
+    typer.close(); sel.drop();
     D.active = name; strokes = D.periods[name]; lastCleared = null; redos = []; refreshRedo();
     redraw(); renderPeriods(); save();
   }
@@ -2240,6 +2459,22 @@
     onOpen: function(){ closeMenus('sel'); }
   });
   function selectOff(){ if (selecting) { selecting = false; sel.drop(); } }
+  /* Type: tap the worksheet to type a note (shared with the PDF app). Eraser, Highlighter and Select turn it off. */
+  var typer = makeTyping({
+    t: function(){ return tr; }, status: setStatus,
+    pageList: function(){ return strokes; }, all: function(){ return strokes; },
+    replace: function(next){ setCleared(next); },
+    preview: function(page, hide, add){ pv = hide ? { hide: hide, add: add } : null; redraw(); },
+    host: function(){ return [selHost, 1, OX, 0]; },
+    style: function(){ return { c: penColor, f: 10 + width * 4 }; },
+    page: function(){ return undefined; }
+  });
+  function typeOff(){ if (typingOn) { typingOn = false; typer.close(); } }
+  function typeOn(){
+    typingOn = true; erasing = false; selectOff();
+    if (hiliting) { hiliting = false; color = toolColor(); }   // notes use the pen color
+    setStatus(tr('st_type_how'));
+  }
 
   /* ---------- page jump ---------- */
   function pageTops(){
@@ -2358,23 +2593,19 @@
     smoothNum.textContent = smooth ? smooth : tr('off');
     bar.querySelector('[data-act="erase"]').classList.toggle('on', erasing);
     bar.querySelector('[data-act="select"]').classList.toggle('on', selecting);
+    bar.querySelector('[data-act="type"]').classList.toggle('on', typingOn);
+    canvas.classList.toggle('type-mode', typingOn);
     var hb = bar.querySelector('[data-act="hilite"]');
     hb.classList.toggle('on', hiliting && !erasing && !selecting); hb.classList.toggle('cover', HL.covering);
     hb.textContent = tr(HL.covering ? 'cover' : 'highlighter');   // the ▾ choice shows on the button
     hlm.sync();
     bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   }
-  function setMode(m){
-    if (m === 'scroll') sel.drop();
-    canvas.classList.toggle('scroll-mode', m === 'scroll');
-    bar.querySelector('[data-act="write"]').classList.toggle('on', m === 'write');
-    bar.querySelector('[data-act="scroll"]').classList.toggle('on', m === 'scroll');
-  }
   function pickColor(c){
     color = c;
     if (hiliting && HL.covering) { HL.coverColor = c; setLS('ink-cover-color', c); }
     else if (hiliting) { HL.hlColor = c; setLS('ink-hl-color', c); } else penColor = c;
-    erasing = false; selectOff(); setMode('write'); refresh();
+    erasing = false; selectOff(); if (typingOn) typer.restyle(); refresh();
   }
   /* - / + buttons: tap = one step; hold = keeps stepping, speeding up. Size controls the highlighter width while it's on. */
   function stepSize(dir){
@@ -2387,7 +2618,7 @@
       if (w === width && !erasing) return false;
       width = w; setLS('ink-width', width);
     }
-    erasing = false; selectOff(); setMode('write'); refresh();
+    erasing = false; selectOff(); if (typingOn) typer.restyle(); refresh();
     return true;
   }
   function stepSmooth(dir){
@@ -2406,7 +2637,7 @@
   var hlm = makeHlMenu(bar, HL, function(){
     setLS('ink-hl-mode', HL.covering ? 'cover' : 'hl'); setLS('ink-hl-strength', HL.hlStrength);
     if (HL.covering) setLS('ink-cover-color', HL.coverColor);
-    hiliting = true; erasing = false; selectOff(); color = toolColor(); setMode('write'); refresh();
+    typeOff(); hiliting = true; erasing = false; selectOff(); color = toolColor(); refresh();
   }, function(){ closeMenus('hl'); });
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
@@ -2416,17 +2647,16 @@
     if (b.dataset.color) pickColor(b.dataset.color);
     else if (b.dataset.period !== undefined) switchTo(b.dataset.period);
     else switch (b.dataset.act) {
-      case 'write': setMode('write'); break;
-      case 'scroll': setMode('scroll'); break;
-      case 'erase': erasing = !erasing; selectOff(); setMode('write'); break;
+      case 'type': if (typingOn) typeOff(); else typeOn(); break;
+      case 'erase': typeOff(); erasing = !erasing; selectOff(); break;
       case 'hilite':
         hiliting = erasing || selecting ? true : !hiliting;
         color = toolColor();   // highlighter (or cover) gets its own color back; turning it off restores your pen color
-        erasing = false; selectOff(); setMode('write'); break;
+        typeOff(); erasing = false; selectOff(); break;
       case 'select':
         if (selecting) selectOff();
-        else { selecting = true; erasing = false; setStatus(tr('st_sel_how')); }
-        setMode('write'); break;
+        else { typeOff(); selecting = true; erasing = false; setStatus(tr('st_sel_how')); }
+        break;
       case 'custom':
         if (customColor && (color !== customColor || erasing)) pickColor(customColor);
         else { picker.value = customColor || color; try { picker.showPicker ? picker.showPicker() : picker.click(); } catch(_){ picker.click(); } }
@@ -2504,7 +2734,7 @@
       return true;
     },
     tools: function(){ return { finger: fingerScrolls, width: width, smooth: smooth, hlColor: HL.hlColor, hlStrength: HL.hlStrength }; },
-    setPen: function(c){ penColor = c; if (!hiliting) color = c; erasing = false; setMode('write'); refresh(); },
+    setPen: function(c){ penColor = c; if (!hiliting) color = c; erasing = false; if (typingOn) typer.restyle(); refresh(); },
     resetTools: function(){
       width = 2.5; hlWidth = HIGHLIGHT_W; customColor = ''; smooth = SMOOTHING; fingerScrolls = FINGER_SCROLLS; penColor = PEN_COLOR; erasing = false;
       HL.hlColor = HIGHLIGHT_COLOR; HL.coverColor = '#111111'; HL.hlStrength = HIGHLIGHT_STRENGTH; HL.covering = false;
@@ -2610,8 +2840,10 @@
       (hasHl ? ['hl', 'ink'] : ['ink']).forEach(function(layer){
         var c = document.createElement('canvas'), cx = c.getContext('2d');
         c.className = 'ink-print'; c.width = Math.round(CW * ps); c.height = Math.round(ph * ps);
+        var gone = notesGone(strokes);
         strokes.forEach(function(s){
-          if (layer === 'hl' ? (seeThrough(s) || s.e) : (!seeThrough(s) || s.e)) paintStroke(cx, (PRINT_INK_BLACK && !s.e) ? { c: '#111', w: s.w, e: 0, p: s.p } : s, ps, 0, -top * ps);
+          if (gone.indexOf(s) >= 0) return;
+          if (layer === 'hl' ? (seeThrough(s) || s.e) : (!seeThrough(s) || s.e)) paintStroke(cx, (PRINT_INK_BLACK && !s.e) ? (isNote(s) ? makeNote(s.t, '#111', s.f, s.p[0], s.p[1]) : { c: '#111', w: s.w, e: 0, p: s.p }) : s, ps, 0, -top * ps);
         });
         c.style.cssText = 'position:absolute;top:0;left:' + (-(CW - pw) / 2) + 'px;width:' + CW + 'px;height:' + ph + 'px;pointer-events:none;z-index:5' + (layer === 'hl' ? ';mix-blend-mode:multiply' : '');
         pg.appendChild(c);
@@ -2627,7 +2859,7 @@
   document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') writeLocal(true, true); });
 
   /* ---------- start ---------- */
-  var src = load(); size(); translateAll(); renderPeriods(); refresh(); setMode('write'); layoutClear(); fitToolbar();
+  var src = load(); size(); translateAll(); renderPeriods(); refresh(); layoutClear(); fitToolbar();
   window.addEventListener('resize', size);
   window.addEventListener('scroll', function(){ follow(); }, { passive: true });
   window.addEventListener('load', size);

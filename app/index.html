@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="91422f9d328d">
+<meta name="ob-version" content="c91bf57398f9">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -45,7 +45,7 @@
     <p class="note"><span data-th="start_note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
       Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here.
       Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.</span>
-      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v44</span></p>
+      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v45</span></p>
     <p class="note ob-langpick"><label><span aria-hidden="true">🌐</span> <select id="ob-lang" aria-label="Language" data-ta="language" data-tt="language" title="Language"></select></label></p>
   </div>
 </main>
@@ -75,8 +75,6 @@
 </nav>
 
 <div id="ink-bar" role="toolbar" aria-label="Writing tools" hidden>
-  <button data-act="write" class="on" data-t="write" data-tt="write_tip" title="Write: the pen writes and your palm erases">Write</button>
-  <button data-act="scroll" data-t="scroll" data-tt="scroll_tip" title="Scroll: drag to move around the page; nothing is written">Scroll</button>
   <div id="ob-pagebox" class="wide"><button data-act="prev" aria-label="Previous page" title="Previous page" data-ta="prev_tip" data-tt="prev_tip">&#9650;</button><label><input id="ob-page" type="text" inputmode="numeric" aria-label="Page number" data-ta="page_number" data-tt="page_number" title="Page number" value="1"><span id="ob-pages-total">of 1</span></label><button data-act="next" aria-label="Next page" title="Next page" data-ta="next_tip" data-tt="next_tip">&#9660;</button></div>
   <button data-act="finger" class="sm wide" data-tt="finger_tip" title="What your finger does in Write mode: scroll the page or draw like the pen. Tap to switch.">Finger: scrolls</button>
   <div class="lbl" data-t="class_period" data-tt="period_tip" title="Each class period gets its own ink on the same page">Class period</div>
@@ -92,6 +90,7 @@
   </div>
   <div id="ink-size"><button data-act="thinner" aria-label="Thinner" title="Thinner" data-ta="thinner" data-tt="thinner">&minus;</button><div class="val" data-tt="size_tip" title="Pen size: the dot shows how thick your lines are"><span class="dot"></span><span class="num">2.5</span></div><button data-act="thicker" aria-label="Thicker" title="Thicker" data-ta="thicker" data-tt="thicker">+</button></div>
   <div id="ink-smooth"><button data-act="rougher" aria-label="Less smoothing" title="Less smoothing" data-ta="rougher" data-tt="rougher">&minus;</button><div class="val" data-tt="smooth_tip" title="Smoothing evens out shaky lines. Higher numbers make smoother, rounder lines, but may cause some lag in detecting and displaying the ink you draw. Off = no smoothing."><span class="num">3</span><svg class="cap" width="34" height="10" viewBox="0 0 34 10" aria-hidden="true"><path d="M2 5c3-4 6-4 9 0s6 4 9 0 6-4 9 0 3 2 3 2" fill="none" stroke="#bbb" stroke-width="2" stroke-linecap="round"/></svg></div><button data-act="smoother" aria-label="More smoothing" title="More smoothing" data-ta="smoother" data-tt="smoother">+</button></div>
+  <button data-act="type" class="wide" data-t="type" data-tt="type_tip" title="Type: tap the page to type a note there, or tap a note to change it. Drag on the page&#39;s text to copy it; drag anywhere else to scroll. Pen color and size set the note&#39;s color and size.">Type</button>
   <button data-act="erase" data-t="eraser" data-tt="eraser_tip" title="Eraser: the pen erases (your palm always erases)">Eraser</button>
   <div id="ink-undo"><button data-act="undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-ta="undo" data-tt="undo_tip">&#8630;</button><button data-act="redo" aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+R)" data-ta="redo" data-tt="redo_tip" disabled>&#8631;</button></div>
   <button data-act="toc" data-t="chapters" data-tt="chapters_tip" title="Chapters of this PDF">Chapters</button>

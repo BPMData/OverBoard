@@ -46,7 +46,7 @@ test.describe('HTML overlay', () => {
     await expect(page.locator('#ob-settings .ob-head strong')).toHaveText('Ajustes');
     await expect(page.locator('#ob-settings .ob-count b')).toHaveText('4 clases');
     await closeSettings(page);
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('Escribir');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Teclear');
     await expect(page.locator('#ink-bar [data-act="file"]')).toHaveText('Ajustes y ayuda ▸');
     await expect(page.locator('#ink-bar [data-act="finger"]')).toHaveText('Dedo: desplaza');
     await expect(page.locator('#ink-smooth .val')).toHaveAttribute('title', /^El suavizado/);
@@ -60,10 +60,10 @@ test.describe('HTML overlay', () => {
     await page.click('#ink-bar [data-act="clear-all"]');
     await expect(page.locator('#ink-bar [data-act="clear-all"]')).toHaveText('¿Seguro?');
     await page.reload(); await page.waitForSelector('#ink-bar[data-ready]', { state: 'attached' });
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('Escribir');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Teclear');
     await pickLang(page, 'en');
     await closeSettings(page);
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('Write');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Type');
   });
 
   test('every language fits a 1080p board', async ({ page }) => {
@@ -95,7 +95,7 @@ test.describe('in a Spanish browser', () => {
   test.use({ locale: 'es-MX' });
   test('OverBoard starts in Spanish until another language is picked', async ({ page }) => {
     await openOverlay(page);
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('Escribir');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Teclear');
     await openApp(page);
     await expect(page.locator('#ob-drop strong')).toHaveText('Suelta un PDF aquí');
   });
@@ -109,7 +109,7 @@ test.describe('PDF app', () => {
     await expect(page.locator('#ob-drop strong')).toHaveText('Déposez un PDF ici');
     await expect(page.locator('#ob-recent h2')).toHaveText('Rouvrir');
     await openPdf(page, 'book.pdf');
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('Écrire');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Taper');
     await expect(page.locator('#ob-pages-total')).toHaveText(/^sur \d+$/);
     await expect(page.locator('#ink-bar [data-act="clear"]')).toHaveText('Effacer ▸');
     await fileMenu(page, 'find');
@@ -120,7 +120,7 @@ test.describe('PDF app', () => {
       await closeSettings(page);
       expect({ code, ...(await fits(page)) }).toEqual({ code, scroll: true, wide: true, clipped: [] });
     }
-    await expect(page.locator('#ink-bar [data-act="write"]')).toHaveText('كتابة');
+    await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('كتابة نص');
     await pickLang(page, 'en');
     await closeSettings(page);
     await expect(page.locator('#ink-bar [data-act="file"]')).toHaveText('Settings & help ▸');
