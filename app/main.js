@@ -176,8 +176,9 @@ const linkBtn = $('[data-act="pdf-link"]'), dlg = $('#ob-embed');
 function refreshLink() {
   if (!doc) return;
   linkBtn.classList.toggle('good', !!doc.linkOn);
-  linkBtn.textContent = tr(doc.linkOn ? 'saving_into_pdf' : doc.link ? 'resume_saving' : FSA ? 'save_into_pdf' : 'download_pdf_ink');
-  linkBtn.title = doc.linkOn ? tr('saving_into_tip', { f: doc.link.name }) : doc.link ? tr('resume_tip', { f: doc.link.name }) : tr('save_into_pdf_tip');
+  // a blank notebook has no other PDF to put the ink "into", so until a file is chosen it says Save notebook…
+  linkBtn.textContent = tr(doc.linkOn ? 'saving_into_pdf' : doc.link ? 'resume_saving' : doc.notebook ? 'save_notebook' : FSA ? 'save_into_pdf' : 'download_pdf_ink');
+  linkBtn.title = doc.linkOn ? tr('saving_into_tip', { f: doc.link.name }) : doc.link ? tr('resume_tip', { f: doc.link.name }) : tr(doc.notebook ? 'save_notebook_tip' : 'save_into_pdf_tip');
   linkBtn._label = linkBtn.textContent;
 }
 const baseBlob = () => doc.file.slice(0, doc.base);
@@ -231,7 +232,7 @@ async function downloadWithInk() {   // browsers without file access: a one-time
     setStatus(tr('st_downloaded_with_ink', { f: boardPdfName() }));
   } catch (e) { setStatus(tr('st_could_not_make_pdf', { e: (e && e.message) || e })); }
 }
-const boardPdfName = () => stripExt(doc.name).replace(/_board$/, '') + '_board.pdf';
+const boardPdfName = () => doc.notebook ? doc.name : stripExt(doc.name).replace(/_board$/, '') + '_board.pdf';   // a notebook keeps its own name
 function onLinkButton(b) {
   if (doc.linkOn) { confirmTap(b, stopLink, tr('sure')); return; }
   if (doc.link) {   // reconnect: the browser asks again after a restart
@@ -240,7 +241,7 @@ function onLinkButton(b) {
     }).catch(() => setStatus(tr('st_could_not_reconnect', { f: doc.link.name })));
     return;
   }
-  $('.name', dlg).textContent = boardPdfName();
+  for (const n of dlg.querySelectorAll('.name')) n.textContent = boardPdfName();
   dlg.classList.toggle('nofsa', !FSA);
   $('[value="ok"]', dlg).textContent = tr(FSA ? 'choose_file' : 'download_it');
   dlg.showModal();

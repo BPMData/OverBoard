@@ -121,6 +121,7 @@ body.start #ob-pages { display: none; }
 :is(#ob-embed, #ob-coverwarn) ul { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
 :is(#ob-embed, #ob-coverwarn) .off { color: var(--mute); font-size: 15px; margin: 14px 0 0; }
 #ob-embed.nofsa .fsa, #ob-embed:not(.nofsa) .nofsa { display: none; }
+body.notebook #ob-embed .pdfonly, body:not(.notebook) #ob-embed .nbonly { display: none; }   /* a blank notebook has no original PDF */
 :is(#ob-embed, #ob-coverwarn) .row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
 :is(#ob-embed, #ob-coverwarn) .row button { min-height: 56px; min-width: 130px; border: 0; border-radius: 12px; font: 700 17px Inter, system-ui, sans-serif; cursor: pointer; background: #e6e4dc; color: #111; padding: 0 18px; }
 :is(#ob-embed, #ob-coverwarn) .row button.go { background: #111; color: #ffd400; }
