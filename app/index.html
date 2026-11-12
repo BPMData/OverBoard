@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard PDF</title>
 <meta name="description" content="OverBoard: write on any PDF on your smartboard. Runs in the browser; nothing is uploaded.">
-<meta name="ob-version" content="c91bf57398f9">
+<meta name="ob-version" content="05451620041f">
 <meta name="theme-color" content="#1f1f1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -45,7 +45,7 @@
     <p class="note"><span data-th="start_note">Your PDF and your ink stay in this browser on this computer. Nothing is uploaded.
       Have a Word file? In Word, choose File → Save as PDF, then drop the PDF here.
       Have an HTML worksheet? Drop it here to get a <i>_board.html</i> copy you can write on.</span>
-      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v45</span></p>
+      <br><a href="../" data-t="back_demo">Back to the HTML worksheet demo</a> · <a href="https://github.com/BPMData/OverBoard" data-t="about">About OverBoard</a> · <a href="report/?from=start" target="_blank" data-t="board_help">Board not working?</a> · <span id="ob-release" title="OverBoard version">v46</span></p>
     <p class="note ob-langpick"><label><span aria-hidden="true">🌐</span> <select id="ob-lang" aria-label="Language" data-ta="language" data-tt="language" title="Language"></select></label></p>
   </div>
 </main>
@@ -135,13 +135,15 @@
 </div>
 <button id="ink-show" aria-label="Show writing tools" title="Show writing tools" data-ta="show_tip" data-tt="show_tip">&#9998;</button>
 <dialog id="ob-embed" aria-labelledby="ob-embed-h">
-  <h2 id="ob-embed-h" data-t="embed_h">Keep the ink inside a PDF file?</h2>
+  <h2 id="ob-embed-h"><span class="pdfonly" data-t="embed_h">Keep the ink inside a PDF file?</span><span class="nbonly" data-t="nb_embed_h">Save this notebook as a PDF file?</span></h2>
   <ul>
     <li data-th="embed_1">OverBoard saves a PDF on this computer with <b>all class periods' ink</b> stored inside it.</li>
-    <li data-th="embed_2"><b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.</li>
+    <li class="nbonly" data-th="nb_embed_2"><b>Right now this notebook is only kept in this browser.</b> Saving it makes a real file you can copy, email or open on another computer. Preview, Acrobat and Chrome show the paper without your writing.</li>
+    <li class="pdfonly" data-th="embed_2"><b>Your pages are not changed.</b> The ink is added at the end of the file. Preview, Acrobat and Chrome show the plain PDF.</li>
     <li data-t="embed_3">Open that file in OverBoard on any computer and the ink comes back, ready to keep writing.</li>
     <li class="fsa" data-t="embed_4">While this is on, every change is saved into that file a few seconds after you stop writing. Tap the same button to turn it off.</li>
-    <li class="fsa" data-th="embed_5">We suggest a new file, <b class="name">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.</li>
+    <li class="fsa nbonly" data-th="nb_embed_5">We suggest the name <b class="name">Notebook.pdf</b>. Pages you add later are saved into it too.</li>
+    <li class="fsa pdfonly" data-th="embed_5">We suggest a new file, <b class="name">Name_board.pdf</b>. If you choose the original PDF instead, OverBoard adds the ink to the original.</li>
     <li class="nofsa" data-th="embed_6">This browser can't keep saving into a file, so you get a one-time download, <b class="name">Name_board.pdf</b>. Chrome or Edge can keep it saved automatically.</li>
   </ul>
   <p class="off" data-t="embed_off">Leave it off and nothing changes: ink still saves in this browser.</p>

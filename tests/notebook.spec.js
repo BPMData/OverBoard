@@ -148,3 +148,50 @@ test('Open again keeps 12 PDFs and 12 notebooks: notebooks never push PDFs off t
   expect(left.pdfs).not.toContain('p0.pdf');   // the oldest PDFs go first, only because of other PDFs
   expect(left.pdfs).toContain('p13.pdf');
 });
+
+test('a notebook is saved with "Save notebook…", under its own name, and reopens as a notebook', async ({ page, browser }, info) => {
+  test.setTimeout(90_000);
+  await openApp(page, { fakeFs: true });
+  await startBlank(page, 'lined');
+  const name = await page.evaluate(() => __overboard.doc.name);
+  await draw(page, 1, line(100, 200, 300, 200));
+  await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Save notebook…');
+  await fileMenu(page, 'pdf-link');
+  await expect(page.locator('#ob-embed h2 span:visible')).toHaveText('Save this notebook as a PDF file?');
+  await expect(page.locator('#ob-embed [data-th="nb_embed_5"] .name')).toHaveText(name);
+  await expect(page.locator('#ob-embed [data-th="embed_2"]')).toBeHidden();    // "your pages are not changed": not for a notebook
+  await expect(page.locator('#ob-embed [data-th="embed_5"]')).toBeHidden();    // there is no original PDF
+  await page.click('#ob-embed [value="ok"]');
+  await page.waitForFunction(() => window.__writes >= 1);
+  expect(await page.evaluate(() => window.__pickOpts.suggestedName)).toBe(name);
+  await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Saving into PDF ✓', { timeout: 5000 });
+  const file = info.outputPath(name);
+  fs.writeFileSync(file, Buffer.from(await page.evaluate((n) => __fileBytes(n), name)));
+
+  // turned off, it goes back to "Save notebook…"
+  await page.click('[data-act="file"]');
+  await page.click('#ob-filemenu [data-act="pdf-link"]');
+  await page.click('#ob-filemenu [data-act="pdf-link"]');
+  await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Save notebook…');
+
+  // a fresh browser opens the saved file: still a notebook, with its ink
+  const ctx = await browser.newContext();
+  const p2 = await ctx.newPage();
+  await p2.setViewportSize({ width: 1600, height: 1000 });
+  await openApp(p2);
+  await p2.setInputFiles('#ob-file', file);
+  await ready(p2, 1);
+  expect(await p2.evaluate(() => __overboard.doc.notebook)).toBe(true);
+  await expect(p2.locator('#ob-addpage')).toBeVisible();
+  expect(await strokes(p2)).toHaveLength(1);
+  await ctx.close();
+});
+
+test('an ordinary PDF keeps "Save ink into PDF…"', async ({ page }) => {
+  await page.setInputFiles('#ob-file', require('./support/app').fixture('worksheet.pdf'));
+  await page.waitForFunction(() => window.__overboard.viewer.stats().images >= 1);
+  await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Save ink into PDF…');
+  await fileMenu(page, 'pdf-link');
+  await expect(page.locator('#ob-embed h2 span:visible')).toHaveText('Keep the ink inside a PDF file?');
+  await expect(page.locator('#ob-embed [data-th="nb_embed_2"]')).toBeHidden();
+});
