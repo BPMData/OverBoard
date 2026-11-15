@@ -29,6 +29,8 @@ Everything is drawn by `generate-icons.mjs`. The SVGs in `src/` and everything i
 
 OverBoard and OverHeard use the identical boat in the identical spot. Only the sail changes.
 
+The main sail sits a little above the board (`sailFoot: -6`, a strip of background between them). AllAboard's two horizon sails are drawn from `B.sailFoot` too, so they keep their size if you move the sail.
+
 `overheard-megaphone` is an alternate OverHeard icon (a megaphone instead of the speech-bubble flag). It is built alongside the others but not used.
 
 ## Files for each app (`exports/<app>/`)
