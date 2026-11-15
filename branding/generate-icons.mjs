@@ -23,7 +23,7 @@ const CORNER = 13;
 const B = {
   hullW: 40, hullH: 18, hullR: 4, rim: 3.2,
   mastX: 9, mastW: 3.5, mastTop: -24,
-  sailX: 14, sailTop: -22, sailFoot: -4, sailReach: 22,
+  sailX: 14, sailTop: -22, sailFoot: -6, sailReach: 19.5,
 };
 
 const rect = (x, y, w, h, r, attrs) =>
@@ -148,7 +148,7 @@ const COMPOSE = {
   // distant sails breaking the horizon (no hulls, no masts).
   allaboard: (bg, small) => {
     const horizon = [[43, 16.5, 0.34], [50.5, 15.5, 0.27]]   // x, horizon y, scale
-      .map(([x, y, s]) => place(x - B.sailX * s, y - B.sailFoot * s, s, sailShape(tint(bg, 0.4), 0, { top: -24, reach: 13, belly: 0.4 }), 0))
+      .map(([x, y, s]) => place(x - B.sailX * s, y - B.sailFoot * s, s, sailShape(tint(bg, 0.4), 0, { top: B.sailFoot - 20, reach: 13, belly: 0.4 }), 0))
       .join('') +
       `<path d="M39 16.5H59" stroke="${tint(bg, 0.32)}" stroke-width="1.4" stroke-linecap="round"/>`;
     const mid = boat({ bg, small: true, fg: tint(bg, 0.55) });
