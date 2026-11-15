@@ -1,0 +1,12 @@
+{
+  "name": "whiteboat-icons",
+  "private": true,
+  "type": "module",
+  "description": "Icon family for OverBoard, AllAboard and OverHeard",
+  "scripts": {
+    "build": "node generate-icons.mjs"
+  },
+  "devDependencies": {
+    "sharp": "0.33.5"
+  }
+}
