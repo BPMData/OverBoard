@@ -26,7 +26,8 @@
 #ink-periods{grid-column:1 / 3;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 #ink-bar #ink-periods button{padding:0}
 #ink-status{grid-column:1 / 3;color:#bbb;font:600 11px Inter,system-ui,sans-serif;text-align:center;line-height:1.3}
-#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;border-radius:50%;border:0;background:#1f1f1f;color:#ffd400;font:700 26px Inter,system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85}
+#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;padding:0;border-radius:12px;border:0;background:#145DA0;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85;overflow:hidden}
+#ink-show svg{display:block;width:100%;height:100%;pointer-events:none}
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */

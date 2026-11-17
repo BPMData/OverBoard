@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OverBoard: board not working?</title>
 <meta name="description" content="A two-minute check that tells the OverBoard team how your board talks to the browser, so they can fix it.">
-<meta name="theme-color" content="#1f1f1f">
+<meta name="theme-color" content="#145da0">
 <link rel="icon" href="../icons/favicon.ico" sizes="32x32">
 <link rel="icon" href="../icons/favicon.svg" type="image/svg+xml">
 <!-- "Board not working?" (app start screen, Settings & help ▸ in the PDF app and the HTML overlay).
@@ -14,7 +14,7 @@
      Sending goes to a small Google Apps Script (tools/report-relay.gs, setup in docs/REPORTS.md) that emails
      the report and opens a GitHub issue. If it can't be reached, the person downloads the report instead. -->
 <style>
-:root { --desk: #e9e7e2; --ink: #111; --mute: #555; --line: #d6d3cc; --go: #111; --goText: #ffd400; --ok: #1b5e20; --okBg: #e8f5e9; --warn: #8a5a00; --warnBg: #fff4d6; --bad: #b71c1c; --badBg: #ffebee; }
+:root { --desk: #e3ecf5; --ink: #111; --mute: #555; --line: #d6d3cc; --go: #145da0; --goText: #fff; --brand: #145da0; --brand-pale: #e3ecf5; --ok: #1b5e20; --okBg: #e8f5e9; --warn: #8a5a00; --warnBg: #fff4d6; --bad: #b71c1c; --badBg: #ffebee; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--desk); color: var(--ink); font: 22px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: pan-y; overscroll-behavior: none; }
@@ -36,7 +36,7 @@ h2 { font-size: 30px; line-height: 1.2; margin: 30px 0 10px; }
 .mute { color: var(--mute); }
 .small { font-size: 17px; }
 .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 26px; }
-.brand-name { background: #111; color: #ffd400; border-radius: 8px; padding: 0 10px; }
+.brand-name { background: var(--brand); color: #fff; border-radius: 8px; padding: 0 10px; }
 
 /* ---------- drawing steps ---------- */
 #steps { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
@@ -59,14 +59,14 @@ h2 { font-size: 30px; line-height: 1.2; margin: 30px 0 10px; }
 .brands { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
 .brands button { min-height: 92px; padding: 10px; display: grid; place-items: center; gap: 4px; font-size: 22px; }
 .brands button img { max-width: 150px; max-height: 44px; }
-.brands button[aria-pressed="true"] { box-shadow: inset 0 0 0 4px #111; background: #fffbe0; }
+.brands button[aria-pressed="true"] { box-shadow: inset 0 0 0 4px var(--brand); background: var(--brand-pale); }
 label.field { display: block; margin-top: 14px; }
 input[type="text"], input[type="email"], textarea { width: 100%; border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
 textarea { min-height: 120px; resize: vertical; }
 .checks { display: grid; gap: 10px; }
 .checks label { display: flex; gap: 14px; align-items: center; min-height: 60px; padding: 8px 16px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; background: #fff; }
-.checks input { width: 30px; height: 30px; flex: none; accent-color: #111; }
-.checks label:has(input:checked) { box-shadow: inset 0 0 0 3px #111; background: #fffbe0; }
+.checks input { width: 30px; height: 30px; flex: none; accent-color: var(--brand); }
+.checks label:has(input:checked) { box-shadow: inset 0 0 0 3px var(--brand); background: var(--brand-pale); }
 .langpick { float: right; margin: 0 0 8px 16px; font-size: 18px; }
 .langpick select { font: inherit; min-height: 48px; padding: 0 10px; border: 2px solid var(--line); border-radius: 12px; background: #fff; }
 [dir="rtl"] .langpick { float: left; margin: 0 16px 8px 0; }
@@ -98,7 +98,7 @@ pre { font: 13px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; word
     <p data-th="r_intro2">If something doesn't work the way the page asks, that's fine. <b>That's exactly what I need to know.</b> Just keep going.</p>
     <p class="mute small" data-th="r_privacy">Nothing is sent until you press <b>Send</b> at the very end, and you'll see everything first. No worksheets, PDFs or ink are ever included.</p>
     <div class="row"><button class="go big" data-go="start" data-t="r_start">Start</button></div>
-    <p class="mute small" style="margin-top:28px">OverBoard <span id="ob-release" title="OverBoard version">v49</span></p>
+    <p class="mute small" style="margin-top:28px">OverBoard <span id="ob-release" title="OverBoard version">v50</span></p>
   </div></div>
 </section>
 
