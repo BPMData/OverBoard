@@ -8,15 +8,16 @@
 <link rel="icon" href="app/icons/favicon.ico" sizes="32x32">
 <link rel="icon" href="app/icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="app/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#145da0">
 <style>
-  :root { --ink: #111; --mute: #555; --line: #c9c9c9; --paper: #fff; --desk: #e9e7e2; }
+  :root { --ink: #111; --mute: #555; --line: #c9c9c9; --paper: #fff; --desk: #e3ecf5; --brand: #145da0; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--desk); color: var(--ink); font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
   .page { width: 816px; height: 1056px; margin: 24px auto; background: var(--paper); box-shadow: 0 2px 14px rgba(0,0,0,.18); padding: 64px 72px; position: relative; overflow: hidden; }
-  .banner { background: #111; color: #fff; border-radius: 10px; padding: 18px 22px; }
-  .banner small { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #ffd400; font-weight: 700; }
+  .banner { background: var(--brand); color: #fff; border-radius: 10px; padding: 18px 22px; }
+  .banner small { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #d6e4f2; font-weight: 700; }
   .banner h1 { margin: 2px 0 0; font-size: 34px; line-height: 1.1; }
-  h2 { font-size: 20px; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 3px solid #111; }
+  h2 { font-size: 20px; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 3px solid var(--brand); }
   ul { margin: 6px 0; padding-left: 22px; }
   li { margin: 3px 0; }
   .try { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
@@ -25,7 +26,7 @@
   .lines div { height: 44px; border-bottom: 1.5px solid var(--line); }
   .grid { margin-top: 10px; height: 420px; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 28px 28px; border: 1.5px solid var(--line); }
   .foot { position: absolute; bottom: 28px; left: 0; right: 0; text-align: center; font-size: 12px; letter-spacing: .08em; color: var(--mute); text-transform: uppercase; }
-  a { color: #1565c0; }
+  a { color: var(--brand); }
   @media print { body { background: #fff; } .page { margin: 0; box-shadow: none; break-after: page; } }
 </style>
 </head>
@@ -57,7 +58,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v49) =====
+<!-- ===== INK OVERLAY START (v50) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
