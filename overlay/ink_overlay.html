@@ -45,7 +45,8 @@
 #ink-periods{grid-column:1 / 3;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 #ink-bar #ink-periods button{padding:0}
 #ink-status{grid-column:1 / 3;color:#bbb;font:600 11px Inter,system-ui,sans-serif;text-align:center;line-height:1.3}
-#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;border-radius:50%;border:0;background:#1f1f1f;color:#ffd400;font:700 26px Inter,system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85}
+#ink-show{position:fixed;bottom:16px;left:16px;z-index:100;width:56px;height:56px;padding:0;border-radius:12px;border:0;background:#145DA0;box-shadow:0 2px 12px rgba(0,0,0,.45);cursor:pointer;display:none;touch-action:manipulation;opacity:.85;overflow:hidden}
+#ink-show svg{display:block;width:100%;height:100%;pointer-events:none}
 #ink-show.right{left:auto;right:16px}
 #ink-show.show{display:block}
 /* Highlighter split button: the main part toggles it; the ▾ (same row) opens the Highlight / Cover menu (built by makeHlMenu in ink-core.js) */
@@ -216,7 +217,7 @@
   <button data-act="select" class="sm" data-t="select" data-tt="select_tip" title="Select: circle ink with the pen (or tap one mark) to send a copy to another class period, copy it, move it or delete it">Select</button>
   <button data-act="timer" class="sm" data-t="timer_btn" data-tt="timer_tip" title="A big countdown for the class, with a sound at zero">&#9201; Timer</button>
   <button data-act="file" aria-haspopup="true" aria-expanded="false" data-t="menu" data-tt="menu_tip" title="Save PDF, save ink into the file, settings, language and help">Settings &amp; help &#9656;</button>
-  <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the ✎ button brings it back)">Hide</button>
+  <button data-act="hide" data-t="hide" data-tt="hide_tip" title="Hide the toolbar (the boat button brings it back)">Hide</button>
   <div id="ink-status" data-tt="status_tip" title="What OverBoard did last">Ink saves automatically</div>
 </div>
 <div id="ob-filemenu" role="menu" aria-label="Settings and help" data-ta="menu_name" hidden>
@@ -227,7 +228,8 @@
   <button data-act="settings" class="sm wide" data-t="settings_btn" data-tt="settings_tip" title="Language, class periods, the pen color at start, and resetting the tools">Settings…</button>
   <button data-act="report" class="sm wide" data-t="board_help" data-tt="board_help_tip" title="A two-minute check that tells the OverBoard maker what to fix">Board not working?</button>
 </div>
-<button id="ink-show" aria-label="Show writing tools" title="Show writing tools" data-ta="show_tip" data-tt="show_tip">&#9998;</button>
+<button id="ink-show" aria-label="Show writing tools" title="Show writing tools" data-ta="show_tip" data-tt="show_tip"><svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="13" fill="#145DA0"/>
+  <g transform="translate(12 29) scale(1) rotate(-3.5 20 18)"><rect x="9" y="-24" width="3.5" height="26" rx="1.75" fill="#FFFFFF"/><path d="M14 -22 Q25.27 -15.86 33.5 -6 L14 -6 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/><g transform="translate(2.58 0) skewX(-16)"><rect x="0" y="0" width="40" height="18" rx="4" fill="#FFFFFF"/></g><g transform="translate(2.58 0) skewX(-16)"><rect x="3.2" y="3.2" width="33.6" height="11.6" rx="1.5" fill="none" stroke="#145DA0" stroke-opacity="0.32" stroke-width="1.3"/><path d="M8 12.5 C11 8 14.5 5.5 16.5 7.5 C18 9 15.5 13.5 18.5 13 C21.5 12.5 23 8 26 8.5 C28.5 9 27 12.5 30 12 C31.5 11.8 32.5 11 33 10.5" fill="none" stroke="#145DA0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g></g><path d="M7.5 59 C11.5 58 13.5 52 17.5 52 C20.5 52 22 54.5 20 56.5 M24 60.5 C28 59.5 30 53.5 34 53.5 C37 53.5 38.5 56 36.5 58 M40.5 59 C44.5 58 46.5 52 50.5 52 C53.5 52 55 54.5 53 56.5" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <script id="ink-script">
 (function(){
   if (window.__inkLoaded) return; window.__inkLoaded = true;
@@ -1682,7 +1684,7 @@
       "menu_tip": ["Save PDF, save ink into the file, settings, language and help", "Guardar PDF, guardar la tinta en el archivo, ajustes, idioma y ayuda", "保存 PDF、把笔迹保存到文件、设置、语言和帮助", "I-save ang PDF, i-save ang tinta sa file, settings, wika, at tulong", "Lưu PDF, lưu nét mực vào tệp, cài đặt, ngôn ngữ và trợ giúp", "Enregistrer le PDF, enregistrer l'encre dans le fichier, réglages, langue et aide", "Salvar PDF, salvar a tinta no arquivo, ajustes, idioma e ajuda", "حفظ PDF، حفظ الحبر في الملف، الإعدادات، اللغة والمساعدة"],
       "menu_tip_app": ["Export PDF, ink files, open another PDF, settings, language and help", "Exportar PDF, archivos de tinta, abrir otro PDF, ajustes, idioma y ayuda", "导出 PDF、笔迹文件、打开其他 PDF、设置、语言和帮助", "I-export ang PDF, mga ink file, magbukas ng ibang PDF, settings, wika, at tulong", "Xuất PDF, tệp nét mực, mở PDF khác, cài đặt, ngôn ngữ và trợ giúp", "Exporter le PDF, fichiers d'encre, ouvrir un autre PDF, réglages, langue et aide", "Exportar PDF, arquivos de tinta, abrir outro PDF, ajustes, idioma e ajuda", "تصدير PDF، ملفات الحبر، فتح ملف PDF آخر، الإعدادات، اللغة والمساعدة"],
       "hide": ["Hide", "Ocultar", "隐藏", "Itago", "Ẩn", "Masquer", "Ocultar", "إخفاء"],
-      "hide_tip": ["Hide the toolbar (the ✎ button brings it back)", "Ocultar la barra (el botón ✎ la trae de vuelta)", "隐藏工具栏（点 ✎ 按钮可恢复）", "Itago ang toolbar (ibabalik ito ng ✎)", "Ẩn thanh công cụ (nút ✎ để hiện lại)", "Masquer la barre d'outils (le bouton ✎ la fait revenir)", "Ocultar a barra (o botão ✎ traz de volta)", "إخفاء شريط الأدوات (زر ✎ يعيده)"],
+      "hide_tip": ["Hide the toolbar (the boat button brings it back)", "Ocultar la barra (el botón del barco la trae de vuelta)", "隐藏工具栏（点小船按钮可恢复）", "Itago ang toolbar (ibabalik ito ng button na bangka)", "Ẩn thanh công cụ (nút hình thuyền để hiện lại)", "Masquer la barre d'outils (le bouton bateau la fait revenir)", "Ocultar a barra (o botão do barco traz de volta)", "إخفاء شريط الأدوات (زر القارب يعيده)"],
       "show_tip": ["Show writing tools", "Mostrar herramientas", "显示书写工具", "Ipakita ang mga pansulat", "Hiện công cụ viết", "Afficher les outils", "Mostrar ferramentas", "إظهار أدوات الكتابة"],
       "status_tip": ["What OverBoard did last", "Lo último que hizo OverBoard", "OverBoard 最近的操作", "Huling ginawa ng OverBoard", "Việc OverBoard vừa làm", "La dernière action d'OverBoard", "A última coisa que o OverBoard fez", "آخر ما فعله OverBoard"],
       "sure": ["Sure?", "¿Seguro?", "确定？", "Sigurado?", "Chắc chưa?", "Sûr ?", "Certeza?", "متأكد؟"],
