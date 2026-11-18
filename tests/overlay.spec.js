@@ -95,7 +95,7 @@ test('Cover: the ▾ menu works with pen and finger taps; covers are opaque on t
   await expect(page.locator('[data-act="hilite"]')).toHaveText('Highlighter');
   await page.keyboard.press('Escape');
   await expect(page.locator('#ob-hlmenu')).toBeHidden();
-  await page.click('[data-color="#fdd835"]');
+  expect(await on(page)).toBe('#fdd835');
   await stroke(page, line(500, 500, 800, 500));
   expect(await rgba(page, 650, 500, 'ink-hl')).toEqual([253, 216, 53, 255]);
 });

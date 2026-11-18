@@ -4,7 +4,7 @@
 // so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
 // layer, above the page and its text, instead of multiplied underneath.
 
-import { textAt, selectTo, clearTextSel, copyTextSel, seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
+import { makeLaser, textAt, selectTo, clearTextSel, copyTextSel, seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
 export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
@@ -25,6 +25,8 @@ export class Ink {
     this.typing = null;            // the Type tool (makeTyping), set by main.js
     this.selP = null;              // the page a Select gesture started on
     this.pv = null;                // { page, hide, add }: a selection being dragged, drawn in its new spot
+    this.laser = makeLaser();      // laser pointer marks: they fade away and are never ink
+    this.pointing = false;         // a laser mark is being drawn
   }
 
   /* for a moment, let the PDF's text be found under the pen (Type: drag on text to select it) */
@@ -167,6 +169,11 @@ export class Ink {
       if (typing) { clearTextSel(); this.drag.text = textAt(e.clientX, e.clientY, this.unblock); }   // starting on the PDF's text: select it
       e.preventDefault(); return;
     }
+    if (T.laser && kind !== 'palm') {   // the palm still erases
+      this.pointing = true;
+      this.laser.down(e.clientX, e.clientY, T.hiliting ? T.hlInk() : T.color, (T.hiliting ? T.hlWidth : T.width) * PT_PER_UNIT * this.v.zoom, T.hiliting);
+      e.preventDefault(); return;
+    }
     const el = e.target.closest('.pg');
     if (!el) { this.active = null; return; }
     const P = el._P, q = this.pt(e, P), z = this.v.zoom;
@@ -199,6 +206,12 @@ export class Ink {
     if (this.drag) {
       window.scrollBy(this.drag.x - e.screenX, this.drag.y - e.screenY);
       this.drag.x = e.screenX; this.drag.y = e.screenY;
+      e.preventDefault(); return;
+    }
+    if (this.pointing) {
+      let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+      if (!evs || !evs.length) evs = [e];
+      for (const ev of evs) this.laser.move(ev.clientX, ev.clientY);
       e.preventDefault(); return;
     }
     if (this.selP) {
@@ -235,6 +248,7 @@ export class Ink {
       if (a) a.click();
       return;
     }
+    if (this.pointing) { this.pointing = false; this.laser.up(); return; }
     if (this.selP) {
       const P = this.selP; this.selP = null;
       if (e.type === 'pointerup') { const q = this.pt(e, P); this.sel.up(q[0], q[1], e.clientX, e.clientY); } else this.sel.cancel();

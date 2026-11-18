@@ -2,7 +2,7 @@
 // Everything runs in this browser tab. Nothing is uploaded.
 
 import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
-import { makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods, makeSelect, makeTyping } from '../shared/ink-core.js';
+import { showLaser, makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods, makeSelect, makeTyping } from '../shared/ink-core.js';
 import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink, PT_PER_UNIT } from './ink.js';
@@ -45,6 +45,7 @@ const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 /* ---------- tool state (read by the ink layer) ---------- */
 const T = {
   typing: false, erasing: false, hiliting: false, covering: false,   // covering: the highlighter is in Cover mode
+  laser: false,                     // laser pointer: tap the selected color again, and marks fade away by themselves
   selecting: false,                 // the Select tool: the pen circles ink instead of writing
   penColor: PEN_COLOR, hlColor: HIGHLIGHT_COLOR, coverColor: COVER_COLOR,   // pen, highlighter and cover each remember their own color
   color: PEN_COLOR, width: 2.5, hlWidth: HIGHLIGHT_W, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS,
@@ -592,10 +593,10 @@ const settings = makeSettings({
     return true;
   },
   tools: () => ({ finger: T.fingerScrolls, width: T.width, smooth: T.smooth, hlColor: T.hlColor, hlStrength: T.hlStrength }),
-  setPen(c) { T.penColor = c; if (!T.hiliting) T.color = c; T.erasing = false; if (T.typing) typing.restyle(); refresh(); },
+  setPen(c) { T.penColor = c; if (!T.hiliting) T.color = c; T.erasing = false; T.laser = false; if (T.typing) typing.restyle(); refresh(); },
   resetTools() {
     Object.assign(T, { width: 2.5, hlWidth: HIGHLIGHT_W, hlColor: HIGHLIGHT_COLOR, customColor: '', covering: false, hlStrength: HIGHLIGHT_STRENGTH,
-      coverColor: COVER_COLOR, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS, penColor: PEN_COLOR, erasing: false });
+      coverColor: COVER_COLOR, smooth: SMOOTHING, fingerScrolls: FINGER_SCROLLS, penColor: PEN_COLOR, erasing: false, laser: false });
     T.color = toolColor(); refresh();
   },
   onOpen: () => { closeMenus(); timer.syncSound(); },
@@ -626,6 +627,7 @@ const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
 function refresh() {
   setPalette(bar, T.hiliting ? (T.covering ? 'cover' : 'hl') : 'pen', tr);   // the swatches change with the tool
   for (const b of bar.querySelectorAll('[data-color]')) b.classList.toggle('on', !T.erasing && b.dataset.color === T.color);
+  showLaser(bar, T.laser, laserReady(), tr);
   $('[data-act="custom"]', bar).classList.toggle('on', !T.erasing && !!T.customColor && T.color === T.customColor && !isPreset(T.color));
   customFill.style.background = T.customColor || 'transparent';
   const w = T.hiliting ? T.hlWidth : T.width, shown = T.hiliting && !T.covering ? T.hlInk() : T.color;
@@ -652,8 +654,15 @@ function typeOn() {
 }
 function selectOff() { if (T.selecting) { T.selecting = false; ink.dropSel(); } }
 function toolColor() { return T.hiliting ? (T.covering ? T.coverColor : T.hlColor) : T.penColor; }
+function laserReady() { return !T.erasing && !T.selecting && !T.typing && !(T.hiliting && T.covering); }   // pen and highlighter colors only
+/* a tap on a color swatch: the color you already have selected turns the laser pointer on or off; any other color just picks it */
+function tapColor(c) {
+  const again = c === T.color && laserReady(), was = T.laser;
+  pickColor(c);
+  if (again) { T.laser = !was; setStatus(tr(T.laser ? 'st_laser_on' : 'st_laser_off')); }
+}
 function pickColor(c) {
-  T.color = c;
+  T.color = c; T.laser = false;
   if (T.hiliting && T.covering) { T.coverColor = c; setLS('ink-cover-color', c); }
   else if (T.hiliting) { T.hlColor = c; setLS('ink-hl-color', c); } else T.penColor = c;
   T.erasing = false; selectOff(); if (T.typing) typing.restyle(); refresh();
@@ -703,7 +712,7 @@ const hlMenu = makeHlMenu(bar, T, () => {
   setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
   setLS('ink-hl-strength', T.hlStrength);
   if (T.covering) setLS('ink-cover-color', T.coverColor);
-  typeOff(); T.hiliting = true; T.erasing = false; selectOff(); T.color = toolColor(); refresh();
+  typeOff(); T.hiliting = true; T.erasing = false; T.laser = false; selectOff(); T.color = toolColor(); refresh();
 }, () => closeMenus('hl'));
 for (const m of [fileMenu, clearMenu.el]) m.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -717,7 +726,8 @@ for (const m of [fileMenu, clearMenu.el]) m.addEventListener('click', (e) => {
 bar.addEventListener('click', onToolbarClick);
 function onToolbarClick(e) {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.color) pickColor(b.dataset.color);
+  if (/^(type|erase|hilite|select)$/.test(b.dataset.act)) T.laser = false;   // another tool puts the laser pointer away
+  if (b.dataset.color) tapColor(b.dataset.color);
   else if (b.dataset.period !== undefined) { if (ink.switchTo(b.dataset.period)) renderPeriods(); }
   else switch (b.dataset.act) {
     case 'type': if (T.typing) typeOff(); else typeOn(); break;

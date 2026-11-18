@@ -157,6 +157,70 @@ function liveLift(s, x, y){
   if (n >= 4 && Math.abs(x - s.p[n-2]) + Math.abs(y - s.p[n-1]) >= 0.5) s.p.push(x, y);
 }
 
+/* ---- Laser pointer: tap the color you already have selected, and what you draw fades away by itself. ----
+   Marks live only on their own see-through canvas over the page, in screen px. They are never ink: no undo,
+   no saving, no class period, no printing. A mark stays while the pen is down and for LASER_HOLD_MS after it
+   lifts, then fades over LASER_FADE_MS. The canvas is hidden, and nothing runs, while there are no marks. */
+var LASER_HOLD_MS = 2000, LASER_FADE_MS = 1000;
+function makeLaser(){
+  var el = null, g = null, marks = [], cur = null, raf = 0, dirty = false, sx = 0, sy = 0, d = 1;
+  function fit(){   // cover the window exactly, even when the overlay's zoom scales everything inside the page
+    if (!el) {
+      el = document.createElement('canvas'); el.id = 'ob-laser'; el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(el); g = el.getContext('2d');
+    }
+    el.hidden = false; el.style.width = '100px';
+    var k = el.getBoundingClientRect().width / 100 || 1;
+    d = window.devicePixelRatio || 1;
+    el.style.width = innerWidth / k + 'px'; el.style.height = innerHeight / k + 'px';
+    var w = Math.round(innerWidth * d), h = Math.round(innerHeight * d);
+    if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+  }
+  function paint(now){
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, el.width, el.height);
+    for (var i = 0; i < marks.length; i++) {
+      var m = marks[i], a = m.end ? Math.min(1, 1 - (now - m.end - LASER_HOLD_MS) / LASER_FADE_MS) : 1;
+      g.globalAlpha = a * 0.3; paintStroke(g, { c: m.c, w: m.w + 10, e: 0, p: m.p }, d, -sx * d, -sy * d);   // the soft glow
+      g.globalAlpha = a * (m.soft ? 0.6 : 1); paintStroke(g, { c: m.c, w: m.w, e: 0, p: m.p }, d, -sx * d, -sy * d);
+    }
+    g.globalAlpha = 1;
+  }
+  function tick(now){
+    raf = 0;
+    marks = marks.filter(function(m){ return !m.end || now - m.end < LASER_HOLD_MS + LASER_FADE_MS; });
+    if (!marks.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, el.width, el.height); el.hidden = true; return; }
+    var x = window.pageXOffset, y = window.pageYOffset;
+    var fading = marks.some(function(m){ return m.end && now - m.end > LASER_HOLD_MS; });
+    if (dirty || fading || x !== sx || y !== sy) { sx = x; sy = y; dirty = false; paint(now); }   // marks stay on their spot when the page scrolls
+    raf = requestAnimationFrame(tick);
+  }
+  function wake(){ dirty = true; if (!raf) raf = requestAnimationFrame(tick); }
+  return {
+    /* x, y: screen px; w: line width in screen px; soft: see-through, for the highlighter */
+    down: function(x, y, c, w, soft){
+      fit(); sx = window.pageXOffset; sy = window.pageYOffset;
+      cur = { c: c, w: Math.max(w, 4), soft: !!soft, end: 0, p: [x + sx, y + sy] };
+      marks.push(cur); wake();
+    },
+    move: function(x, y){
+      if (!cur) return;
+      var p = cur.p, px = x + window.pageXOffset, py = y + window.pageYOffset;
+      if (Math.abs(px - p[p.length-2]) + Math.abs(py - p[p.length-1]) < 1) return;
+      p.push(px, py); wake();
+    },
+    up: function(){ if (cur) { cur.end = performance.now(); cur = null; wake(); } }
+  };
+}
+/* the selected swatch shows the laser's black-red-black ring, and its tooltip says what another tap does */
+function showLaser(bar, on, can, t){
+  var bs = bar.querySelectorAll('#ink-colors [data-color]');
+  for (var i = 0; i < bs.length; i++) {
+    var b = bs[i], picked = b.classList.contains('on');
+    b.classList.toggle('laser', on && picked);
+    if (picked && (on || can)) b.title = t(on ? 'laser_on_tip' : 'laser_tip', { c: b.title });
+  }
+}
+
 /* ---- toolbar helpers ---- */
 
 /* - / + buttons: tap = one step; hold = keeps stepping, speeding up, until step() returns false */
@@ -1292,4 +1356,4 @@ function historyKey(e) {
   return null;
 }
 
-export { textAt, selectTo, clearTextSel, copyTextSel, makeTyping, isNote, notesGone, makeNote, applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline
+export { makeLaser, showLaser, textAt, selectTo, clearTextSel, copyTextSel, makeTyping, isNote, notesGone, makeNote, applyErasers, pointInLoop, lassoPick, makeSelect, makeTimer, paletteColors, setPalette, fitLabels, periodPreset, cleanPeriods, loadPeriods, startPen, remapPeriods, makePeriodPicker, makeSettings, fitTools, makePopMenu, historyKey, seeThrough, hlInk, placeMenu, makeHlMenu, tint, pointerKind, inkStyle, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift, holdRepeat, confirmTap, flashBtn };   // @strip-inline

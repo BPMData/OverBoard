@@ -58,7 +58,7 @@
   <div class="lines"><div></div><div></div><div></div><div></div></div>
   <div class="foot">OverBoard · page 2 / 2 · Your ink saves in this browser only. Nothing is uploaded.</div>
 </div>
-<!-- ===== INK OVERLAY START (v51) =====
+<!-- ===== INK OVERLAY START (v52) =====
   Smartboard writing layer. Paste this whole block just before </body> in any .html file.
   SMART BOARD: pen tip writes. Palm, fist or side of hand erases (the board reports it as an eraser).
   Finger (and the round end of the SMART pen) scrolls the page; the "Finger" button switches it to drawing if you lose the pen.
@@ -94,6 +94,11 @@
 #ink-colors{grid-column:1 / 3;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 #ink-bar #ink-colors button{min-height:46px;height:46px;padding:0;border:3px solid rgba(255,255,255,.35)}
 #ink-bar #ink-colors button.on{border-color:#fff;box-shadow:0 0 0 3px #082A4A,0 0 0 6px #fff}
+/* Laser pointer on: the selected swatch's ring turns black, red, black */
+#ink-bar #ink-colors button.on.laser{border-color:#000;box-shadow:0 0 0 3px #ff1a1a,0 0 0 6px #000}
+#ob-laser{position:fixed;left:0;top:0;z-index:98;pointer-events:none}
+#ob-laser[hidden]{display:none}
+@media print{#ob-laser{display:none!important}}
 #ink-colors .cwrap{position:relative;display:grid}
 #ink-bar #ink-colors button[data-act="custom"]{background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336);display:flex;align-items:center;justify-content:center}
 #ink-colors .fill{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:transparent}
@@ -456,6 +461,70 @@
   function liveLift(s, x, y){
     var n = s.p.length;
     if (n >= 4 && Math.abs(x - s.p[n-2]) + Math.abs(y - s.p[n-1]) >= 0.5) s.p.push(x, y);
+  }
+
+  /* ---- Laser pointer: tap the color you already have selected, and what you draw fades away by itself. ----
+     Marks live only on their own see-through canvas over the page, in screen px. They are never ink: no undo,
+     no saving, no class period, no printing. A mark stays while the pen is down and for LASER_HOLD_MS after it
+     lifts, then fades over LASER_FADE_MS. The canvas is hidden, and nothing runs, while there are no marks. */
+  var LASER_HOLD_MS = 2000, LASER_FADE_MS = 1000;
+  function makeLaser(){
+    var el = null, g = null, marks = [], cur = null, raf = 0, dirty = false, sx = 0, sy = 0, d = 1;
+    function fit(){   // cover the window exactly, even when the overlay's zoom scales everything inside the page
+      if (!el) {
+        el = document.createElement('canvas'); el.id = 'ob-laser'; el.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(el); g = el.getContext('2d');
+      }
+      el.hidden = false; el.style.width = '100px';
+      var k = el.getBoundingClientRect().width / 100 || 1;
+      d = window.devicePixelRatio || 1;
+      el.style.width = innerWidth / k + 'px'; el.style.height = innerHeight / k + 'px';
+      var w = Math.round(innerWidth * d), h = Math.round(innerHeight * d);
+      if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+    }
+    function paint(now){
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, el.width, el.height);
+      for (var i = 0; i < marks.length; i++) {
+        var m = marks[i], a = m.end ? Math.min(1, 1 - (now - m.end - LASER_HOLD_MS) / LASER_FADE_MS) : 1;
+        g.globalAlpha = a * 0.3; paintStroke(g, { c: m.c, w: m.w + 10, e: 0, p: m.p }, d, -sx * d, -sy * d);   // the soft glow
+        g.globalAlpha = a * (m.soft ? 0.6 : 1); paintStroke(g, { c: m.c, w: m.w, e: 0, p: m.p }, d, -sx * d, -sy * d);
+      }
+      g.globalAlpha = 1;
+    }
+    function tick(now){
+      raf = 0;
+      marks = marks.filter(function(m){ return !m.end || now - m.end < LASER_HOLD_MS + LASER_FADE_MS; });
+      if (!marks.length) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, el.width, el.height); el.hidden = true; return; }
+      var x = window.pageXOffset, y = window.pageYOffset;
+      var fading = marks.some(function(m){ return m.end && now - m.end > LASER_HOLD_MS; });
+      if (dirty || fading || x !== sx || y !== sy) { sx = x; sy = y; dirty = false; paint(now); }   // marks stay on their spot when the page scrolls
+      raf = requestAnimationFrame(tick);
+    }
+    function wake(){ dirty = true; if (!raf) raf = requestAnimationFrame(tick); }
+    return {
+      /* x, y: screen px; w: line width in screen px; soft: see-through, for the highlighter */
+      down: function(x, y, c, w, soft){
+        fit(); sx = window.pageXOffset; sy = window.pageYOffset;
+        cur = { c: c, w: Math.max(w, 4), soft: !!soft, end: 0, p: [x + sx, y + sy] };
+        marks.push(cur); wake();
+      },
+      move: function(x, y){
+        if (!cur) return;
+        var p = cur.p, px = x + window.pageXOffset, py = y + window.pageYOffset;
+        if (Math.abs(px - p[p.length-2]) + Math.abs(py - p[p.length-1]) < 1) return;
+        p.push(px, py); wake();
+      },
+      up: function(){ if (cur) { cur.end = performance.now(); cur = null; wake(); } }
+    };
+  }
+  /* the selected swatch shows the laser's black-red-black ring, and its tooltip says what another tap does */
+  function showLaser(bar, on, can, t){
+    var bs = bar.querySelectorAll('#ink-colors [data-color]');
+    for (var i = 0; i < bs.length; i++) {
+      var b = bs[i], picked = b.classList.contains('on');
+      b.classList.toggle('laser', on && picked);
+      if (picked && (on || can)) b.title = t(on ? 'laser_on_tip' : 'laser_tip', { c: b.title });
+    }
   }
 
   /* ---- toolbar helpers ---- */
@@ -1949,6 +2018,10 @@
       "paste_here_tip": ["Put the copied ink where you tapped", "Pon la tinta copiada donde tocaste", "把复制的笔迹放在你点的位置", "Ilagay ang kinopyang tinta kung saan ka nag-tap", "Đặt nét mực đã sao chép vào chỗ bạn vừa chạm", "Mettre l'encre copiée là où vous avez touché", "Colocar a tinta copiada onde você tocou", "ضع الحبر المنسوخ حيث نقرت"],
       "paste_same": ["Same spot", "Mismo lugar", "原位置", "Dating puwesto", "Chỗ cũ", "Même endroit", "Mesmo lugar", "المكان نفسه"],
       "paste_same_tip": ["Put the copied ink in the same spot it was copied from, on this page (Ctrl+V)", "Pon la tinta copiada en el mismo lugar de donde la copiaste, en esta página (Ctrl+V)", "把复制的笔迹放回复制时的位置，放在这一页（Ctrl+V）", "Ilagay ang kinopyang tinta sa parehong puwesto kung saan ito kinopya, sa pahinang ito (Ctrl+V)", "Đặt nét mực đã sao chép vào đúng chỗ đã sao chép, trên trang này (Ctrl+V)", "Mettre l'encre copiée au même endroit que l'original, sur cette page (Ctrl+V)", "Colocar a tinta copiada no mesmo lugar de onde foi copiada, nesta página (Ctrl+V)", "ضع الحبر المنسوخ في المكان نفسه الذي نُسخ منه، في هذه الصفحة (Ctrl+V)"],
+      "laser_tip": ["{c}: tap again for the laser pointer", "{c}: toca otra vez para el puntero láser", "{c}：再点一下使用激光笔", "{c}: i-tap ulit para sa laser pointer", "{c}: chạm lần nữa để dùng bút laser", "{c} : touchez à nouveau pour le pointeur laser", "{c}: toque de novo para usar o apontador laser", "{c}: انقر مرة أخرى لاستخدام مؤشر الليزر"],
+      "laser_on_tip": ["{c} laser pointer: marks fade away by themselves. Tap again to go back to writing", "Puntero láser {c}: las marcas se desvanecen solas. Toca otra vez para volver a escribir", "{c}激光笔：笔迹会自动消失。再点一下恢复书写", "{c} na laser pointer: kusang nawawala ang mga marka. I-tap ulit para bumalik sa pagsulat", "Bút laser {c}: nét vẽ tự mờ dần. Chạm lần nữa để viết lại", "Pointeur laser {c} : les traits s'effacent tout seuls. Touchez à nouveau pour revenir à l'écriture", "Apontador laser {c}: as marcas somem sozinhas. Toque de novo para voltar a escrever", "مؤشر الليزر {c}: تختفي العلامات تلقائيًا. انقر مرة أخرى للعودة إلى الكتابة"],
+      "st_laser_on": ["Laser pointer on: marks fade away", "Puntero láser activado: las marcas se desvanecen", "激光笔已打开：笔迹会自动消失", "Naka-on ang laser pointer: nawawala ang mga marka", "Đã bật bút laser: nét vẽ tự mờ dần", "Pointeur laser activé : les traits s'effacent", "Apontador laser ligado: as marcas somem", "تم تشغيل مؤشر الليزر: تختفي العلامات"],
+      "st_laser_off": ["Laser pointer off", "Puntero láser desactivado", "激光笔已关闭", "Naka-off ang laser pointer", "Đã tắt bút laser", "Pointeur laser désactivé", "Apontador laser desligado", "تم إيقاف مؤشر الليزر"],
       "st_sel_how": ["Select: draw a loop around ink with the pen, or tap one mark", "Seleccionar: rodea la tinta con el lápiz o toca un trazo", "选择：用笔圈住笔迹，或点一下某一笔", "Piliin: gumuhit ng bilog sa paligid ng tinta gamit ang pen, o i-tap ang isang guhit", "Chọn: khoanh quanh nét mực bằng bút, hoặc chạm vào một nét", "Sélection : entourez l'encre avec le stylet, ou touchez un trait", "Selecionar: circule a tinta com a caneta ou toque num traço", "تحديد: ارسم دائرة حول الحبر بالقلم، أو انقر على خط واحد"],
       "st_sel_none": ["No ink inside that loop. Circle the ink you want.", "No hay tinta dentro de ese círculo. Rodea la tinta que quieras.", "圈里没有笔迹。请圈住你想要的笔迹。", "Walang tinta sa loob ng bilog na iyon. Bilugan ang tintang gusto mo.", "Không có nét mực nào trong vòng đó. Hãy khoanh nét mực bạn muốn.", "Pas d'encre dans cette boucle. Entourez l'encre voulue.", "Nenhuma tinta dentro desse círculo. Circule a tinta que quiser.", "لا يوجد حبر داخل هذه الدائرة. أحِط الحبر الذي تريده."],
       "st_sel_n": ["{n} selected · drag the box to move it", "{n} seleccionados · arrastra el recuadro para moverlo", "已选 {n} 笔 · 拖动方框即可移动", "{n} ang napili · i-drag ang kahon para ilipat", "Đã chọn {n} · kéo khung để di chuyển", "{n} sélectionné(s) · faites glisser le cadre pour le déplacer", "{n} selecionados · arraste a caixa para mover", "تم تحديد {n} · اسحب الإطار لنقله"],
@@ -2129,6 +2202,7 @@
   var D, strokes, lastCleared = null, redos = [], cur = null, active = null, Z = 1;   // lastCleared: the strokes before the last Clear; redos: what Undo took back, newest last; Z: zoom
   var penColor = startPen(PEN_COLOR);   // pen, highlighter (HL.hlColor) and cover (HL.coverColor) each remember their own color
   var HL = { covering: false, coverColor: '#111111', hlColor: HIGHLIGHT_COLOR, hlStrength: HIGHLIGHT_STRENGTH };   // Highlighter ▾ settings
+  var laser = makeLaser(), laserOn = false, pointing = false;   // laser pointer: tap the selected color again; pointing: a laser mark is being drawn
   var color = penColor, width = 2.5, hlWidth = HIGHLIGHT_W, erasing = false, hiliting = false, selecting = false, typingOn = false, customColor = '', H = 0, scale = 1;
   function getLS(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function setLS(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
@@ -2350,6 +2424,11 @@
       if (drag.type) { clearTextSel(); drag.text = textAt(e.clientX, e.clientY, unblock); }   // starting on the worksheet's text: select it
       e.preventDefault(); return;
     }
+    if (laserOn && !palm) {   // the palm still erases
+      pointing = true;
+      laser.down(e.clientX, e.clientY, hiliting ? hlInk(color, HL.hlStrength) : color, (hiliting ? hlWidth : width) * Z, hiliting);
+      e.preventDefault(); return;
+    }
     var q = pt(e);
     if (selecting && !palm) { selDown = true; sel.down(null, q[0], q[1], e.clientX, e.clientY); e.preventDefault(); return; }   // Select: circle ink, tap it, or drag the selection
     if (palm || erasing) cur = { c: color, w: (palm ? PALM_ERASER_W : 44) / Z, e: 1, p: [q[0], q[1]] };   // about the hand: same size on screen at any zoom
@@ -2366,9 +2445,10 @@
       e.preventDefault(); return;
     }
     if (e.pointerId === active && drag) { window.scrollBy(0, drag.y - e.screenY); drag.y = e.screenY; e.preventDefault(); return; }
-    if (e.pointerId !== active || (!cur && !selDown)) return;
+    if (e.pointerId !== active || (!cur && !selDown && !pointing)) return;
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
     if (!evs || !evs.length) evs = [e];
+    if (pointing) { evs.forEach(function(ev){ laser.move(ev.clientX, ev.clientY); }); e.preventDefault(); return; }
     var r = canvas.getBoundingClientRect();   // once for all the samples in this move
     if (selDown) { evs.forEach(function(ev){ var q = pt(ev, r); sel.move(q[0], q[1], ev.clientX, ev.clientY); }); e.preventDefault(); return; }
     for (var i = 0; i < evs.length; i++) { var q = pt(evs[i], r); liveAdd(cur, live, q[0], q[1], smooth); }   // smoothing steadies board jitter
@@ -2394,6 +2474,7 @@
       }
       return;
     }
+    if (pointing) { pointing = false; laser.up(); return; }
     if (selDown) { selDown = false; if (e.type === 'pointerup') { var p = pt(e); sel.up(p[0], p[1], e.clientX, e.clientY); } else sel.cancel(); return; }
     if (!cur) return;
     var s = cur; cur = null;
@@ -2602,6 +2683,7 @@
   function refresh(){
     setPalette(bar, hiliting ? (HL.covering ? 'cover' : 'hl') : 'pen', tr);   // the swatches change with the tool
     [].forEach.call(bar.querySelectorAll('[data-color]'), function(b){ b.classList.toggle('on', !erasing && b.dataset.color === color); });
+    showLaser(bar, laserOn, laserReady(), tr);
     bar.querySelector('[data-act="custom"]').classList.toggle('on', !erasing && !!customColor && color === customColor && !isPreset(color));
     customFill.style.background = customColor || 'transparent';
     var w = hiliting ? hlWidth : width, shown = hiliting && !HL.covering ? hlInk(color, HL.hlStrength) : color;
@@ -2617,8 +2699,15 @@
     hlm.sync();
     bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
   }
+  function laserReady(){ return !erasing && !selecting && !typingOn && !(hiliting && HL.covering); }   // pen and highlighter colors only
+  /* a tap on a color swatch: the color you already have selected turns the laser pointer on or off; any other color just picks it */
+  function tapColor(c){
+    var again = c === color && laserReady(), was = laserOn;
+    pickColor(c);
+    if (again) { laserOn = !was; setStatus(tr(laserOn ? 'st_laser_on' : 'st_laser_off')); }
+  }
   function pickColor(c){
-    color = c;
+    color = c; laserOn = false;
     if (hiliting && HL.covering) { HL.coverColor = c; setLS('ink-cover-color', c); }
     else if (hiliting) { HL.hlColor = c; setLS('ink-hl-color', c); } else penColor = c;
     erasing = false; selectOff(); if (typingOn) typer.restyle(); refresh();
@@ -2653,14 +2742,15 @@
   var hlm = makeHlMenu(bar, HL, function(){
     setLS('ink-hl-mode', HL.covering ? 'cover' : 'hl'); setLS('ink-hl-strength', HL.hlStrength);
     if (HL.covering) setLS('ink-cover-color', HL.coverColor);
-    typeOff(); hiliting = true; erasing = false; selectOff(); color = toolColor(); refresh();
+    typeOff(); hiliting = true; erasing = false; laserOn = false; selectOff(); color = toolColor(); refresh();
   }, function(){ closeMenus('hl'); });
   // custom color: the rainbow square opens the color picker; once you've picked one, a tap selects it and a second tap reopens the picker
   picker.addEventListener('input', function(){ customColor = picker.value; setLS('ink-custom', customColor); pickColor(customColor); });
   function onBarClick(e){   // the toolbar, the File menu and the Clear menu
     if (!ready) return;
     var b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.color) pickColor(b.dataset.color);
+    if (/^(type|erase|hilite|select)$/.test(b.dataset.act)) laserOn = false;   // another tool puts the laser pointer away
+    if (b.dataset.color) tapColor(b.dataset.color);
     else if (b.dataset.period !== undefined) switchTo(b.dataset.period);
     else switch (b.dataset.act) {
       case 'type': if (typingOn) typeOff(); else typeOn(); break;
@@ -2750,9 +2840,9 @@
       return true;
     },
     tools: function(){ return { finger: fingerScrolls, width: width, smooth: smooth, hlColor: HL.hlColor, hlStrength: HL.hlStrength }; },
-    setPen: function(c){ penColor = c; if (!hiliting) color = c; erasing = false; if (typingOn) typer.restyle(); refresh(); },
+    setPen: function(c){ penColor = c; if (!hiliting) color = c; erasing = false; laserOn = false; if (typingOn) typer.restyle(); refresh(); },
     resetTools: function(){
-      width = 2.5; hlWidth = HIGHLIGHT_W; customColor = ''; smooth = SMOOTHING; fingerScrolls = FINGER_SCROLLS; penColor = PEN_COLOR; erasing = false;
+      width = 2.5; hlWidth = HIGHLIGHT_W; customColor = ''; smooth = SMOOTHING; fingerScrolls = FINGER_SCROLLS; penColor = PEN_COLOR; erasing = false; laserOn = false;
       HL.hlColor = HIGHLIGHT_COLOR; HL.coverColor = '#111111'; HL.hlStrength = HIGHLIGHT_STRENGTH; HL.covering = false;
       bar.querySelector('[data-act="finger"]').textContent = tr(fingerScrolls ? 'finger_scrolls' : 'finger_draws');
       color = toolColor(); refresh();
