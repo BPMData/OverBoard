@@ -229,7 +229,7 @@ test.describe('HTML overlay', () => {
     await page.click('#ink-bar [data-act="hilite"]');
     expect(await swatches(page)).toEqual(['#fdd835', '#2e7d32', '#e0218a', '#1565c0', '#e8441a']);
     expect(await onSwatch(page)).toBe('#fdd835');                           // the highlighter starts yellow
-    await expect(page.locator('#ink-colors [data-color="#fdd835"]')).toHaveAttribute('title', 'Yellow');
+    await expect(page.locator('#ink-colors [data-color="#fdd835"]')).toHaveAttribute('title', /^Yellow: /);   // the selected color's tooltip offers the laser pointer
     await page.click('#ink-bar [data-act="hl-menu"]');
     await page.click('#ob-hlmenu [data-mode="cover"][data-cover="#111111"]');
     expect(await swatches(page)).toEqual(['#111111', '#a6a6a6', '#ffffff', '#fdd835', '#e0218a']);
