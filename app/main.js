@@ -659,7 +659,7 @@ function laserReady() { return !T.erasing && !T.selecting && !T.typing && !(T.hi
 function tapColor(c) {
   const again = c === T.color && laserReady(), was = T.laser;
   pickColor(c);
-  if (again) { T.laser = !was; setStatus(tr(T.laser ? 'st_laser_on' : 'st_laser_off')); }
+  if (again) { T.laser = !was; if (T.laser) ink.laser.sound(); setStatus(tr(T.laser ? 'st_laser_on' : 'st_laser_off')); }
 }
 function pickColor(c) {
   T.color = c; T.laser = false;

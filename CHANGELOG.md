@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Laser pointer sound** (v53, PDF app and HTML overlay). Turning on the laser pointer now plays a short, quiet, low laser sound, so it is clear what just happened. Turning it off is silent.
 - **Laser pointer** (v52, PDF app and HTML overlay). Tap the pen or highlighter color you already have selected, and its ring turns black, red, black. What you draw now stays for two seconds after you lift the pen, then fades away by itself. It is never saved, printed or added to Undo. Tap the color again, or pick another color or tool, to go back to writing. Your palm still erases.
 - **Blue toolbar and pink eraser** (v51, PDF app and HTML overlay). The toolbar, its menus, Settings, the Timer and the Chapters / Find panel are now dark navy with light sky-blue buttons and black text, instead of black and yellow, to match the boat icon. The Eraser button is eraser pink. A selected tool has a white ring. Pen, highlighter and cover colors are unchanged.
 - **New boat icon** (v48). The PDF app, the demo page and the "Board not working?" page now use the OverBoard sailboat icon in the browser tab, on the home screen and when installed. The PDF app's start screen shows it next to the OverBoard PDF title. The sail is a little smaller and sits a little higher than in the first version of the icon.
