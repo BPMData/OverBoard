@@ -163,7 +163,7 @@ function liveLift(s, x, y){
    lifts, then fades over LASER_FADE_MS. The canvas is hidden, and nothing runs, while there are no marks. */
 var LASER_HOLD_MS = 2000, LASER_FADE_MS = 1000;
 function makeLaser(){
-  var el = null, g = null, marks = [], cur = null, raf = 0, dirty = false, sx = 0, sy = 0, d = 1;
+  var el = null, g = null, marks = [], cur = null, raf = 0, dirty = false, sx = 0, sy = 0, d = 1, actx = null;
   function fit(){   // cover the window exactly, even when the overlay's zoom scales everything inside the page
     if (!el) {
       el = document.createElement('canvas'); el.id = 'ob-laser'; el.setAttribute('aria-hidden', 'true');
@@ -195,7 +195,26 @@ function makeLaser(){
     raf = requestAnimationFrame(tick);
   }
   function wake(){ dirty = true; if (!raf) raf = requestAnimationFrame(tick); }
+  /* a quiet "pew" when the laser turns on: one tone sliding quickly from high to low. No sound file needed. */
+  function sound(){
+    var C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return;
+    try {
+      if (!actx) actx = new C();
+      if (actx.state === 'suspended') actx.resume();
+      var t = actx.currentTime + 0.01, o = actx.createOscillator(), v = actx.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(900, t);
+      o.frequency.exponentialRampToValueAtTime(110, t + 0.38);
+      v.gain.setValueAtTime(0.0001, t);
+      v.gain.exponentialRampToValueAtTime(0.04, t + 0.01);
+      v.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o.connect(v); v.connect(actx.destination);
+      o.start(t); o.stop(t + 0.42);
+    } catch(e){}   // no sound is fine: the ring and the status line still say the laser is on
+  }
   return {
+    sound: sound,
     /* x, y: screen px; w: line width in screen px; soft: see-through, for the highlighter */
     down: function(x, y, c, w, soft){
       fit(); sx = window.pageXOffset; sy = window.pageYOffset;

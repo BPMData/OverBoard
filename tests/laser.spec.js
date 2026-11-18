@@ -43,6 +43,21 @@ test.describe('HTML overlay', () => {
     expect((await savedInk(page))?.periods.P1 || []).toHaveLength(0);
   });
 
+  test('a short sound plays when the laser turns on, and not when it turns off', async ({ page }) => {
+    await page.evaluate(() => {
+      const make = BaseAudioContext.prototype.createOscillator;
+      window.__tones = 0;
+      BaseAudioContext.prototype.createOscillator = function () { window.__tones++; return make.call(this); };
+    });
+    const tones = () => page.evaluate(() => window.__tones);
+    await swatch(page, '#1565c0').click();                     // just picking a color is silent
+    expect(await tones()).toBe(0);
+    await swatch(page, '#1565c0').click();                     // on
+    expect(await tones()).toBe(1);
+    await swatch(page, '#1565c0').click();                     // off
+    expect(await tones()).toBe(1);
+  });
+
   test('tap again, another color or another tool goes back to writing', async ({ page }) => {
     await swatch(page, '#e0218a').click();
     await swatch(page, '#e0218a').click();
