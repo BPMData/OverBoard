@@ -23,6 +23,25 @@ export function loadPdfjs() {
   return pdfjsPromise;
 }
 
+/* One PDF reader for every PDF this tab opens. Starting one means loading and starting the 1.4 MB
+   pdf.worker file, so sharing it makes opening a PDF, Open again, and adding a notebook page faster.
+   Closing a PDF doesn't stop it (PDF.js only stops readers it made itself). */
+let worker = null;
+export function pdfWorker(lib) {
+  if (!worker || worker.destroyed) worker = new lib.PDFWorker({ name: 'overboard' });
+  return worker;
+}
+export function dropPdfWorker() {   // after a PDF failed to open: the next one gets a fresh reader, in case this one broke
+  if (worker) { try { worker.destroy(); } catch (e) { /* already gone */ } }
+  worker = null;
+}
+
+/* get PDF.js and its reader ready while the start screen is up, so the first PDF opens sooner */
+export function warmPdfjs() {
+  const go = () => loadPdfjs().then(pdfWorker, () => {});
+  if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
+}
+
 let pdflibPromise = null;
 export function loadPdfLib() {   // only needed for exporting and "Save ink into PDF", so it loads on first use
   if (!pdflibPromise) {
