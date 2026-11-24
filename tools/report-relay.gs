@@ -15,11 +15,19 @@
    and the titles of the pull requests that fixed it; fixed text adds how to make sure OverBoard has the new version.
    An issue closed as "not planned" (or a duplicate) sends nothing.
 
+   It also relays AllAboard's "Something not working?" reports (see allAboardReport below). Those come from the
+   AllAboard server, not a browser, carry a shared secret, and arrive with the issue and email already written. They
+   open an issue in the AllAboard repository and email the same inbox. No thank-you or follow-up emails for them.
+
    Script properties (Project Settings ▸ Script properties):
-     GITHUB_TOKEN       a fine-grained GitHub token: this repository only, Issues: read and write
+     GITHUB_TOKEN       a fine-grained GitHub token: Issues: read and write on OverBoard (and AllAboard, for its reports)
      GITHUB_REPO        BPMData/OverBoard
      ANTHROPIC_API_KEY  (optional) for Claude Haiku's paragraph; without it the follow-up uses a plain fixed paragraph
      NOTIFY_EMAIL       (optional) where to email reports; leave it out to use this Google account's own inbox
+     ALLABOARD_TOKEN    (optional) turns on AllAboard reports: a long random secret, the same value as AllAboard's
+                        REPORT_RELAY_TOKEN GitHub secret. Without it, AllAboard reports are refused.
+     ALLABOARD_REPO     (optional) default BPMData/AllAboard
+     ALLABOARD_GITHUB_TOKEN (optional) a separate token for AllAboard issues; without it GITHUB_TOKEN is used
 */
 
 var MAX_CHARS = 300000;    // a report is usually 20-60 KB; refuse anything far bigger
@@ -38,6 +46,7 @@ function doPost(e) {
     var text = (e && e.postData && e.postData.contents) || '';
     if (text.length > MAX_CHARS) return reply({ ok: false, error: 'too big' });
     var r = JSON.parse(text);
+    if (r && r.app === 'AllAboard') return reply(allAboardReport(r));
     if (!r || r.app !== 'OverBoard' || r.kind !== 'board-report') return reply({ ok: false, error: 'not a report' });
     if (r.website) return reply({ ok: true });   // the hidden "leave this empty" box was filled in: a robot. Pretend it worked.
     if (!underLimit()) return reply({ ok: false, error: 'busy' });
@@ -225,6 +234,74 @@ function emailReport(r, priv, issue, issueError, props) {
     attachments: [Utilities.newBlob(full, 'application/json', 'OverBoard-board-report.json')] };
   if (okEmail) opts.replyTo = email;
   MailApp.sendEmail(opts);
+}
+
+/* ---------- AllAboard reports ---------- */
+/* AllAboard's server (problemReportRoute.ts in BPMData/AllAboard) posts
+     { app: 'AllAboard', kind: 'problem-report', token, issue: { title, body, labels }, email: { subject, body, replyTo? } }
+   The server has already removed anything private from the issue; contact details and comments are only in the email.
+   Counts toward the same hourly and daily limits as OverBoard reports, since both send from this one Gmail account. */
+function allAboardReport(r) {
+  var props = PropertiesService.getScriptProperties();
+  var secret = props.getProperty('ALLABOARD_TOKEN');
+  if (!secret || r.kind !== 'problem-report' || !sameText(String(r.token || ''), secret)) return { ok: false, error: 'not allowed' };
+  var issueIn = r.issue || {}, mail = r.email || {};
+  if (typeof issueIn.title !== 'string' || typeof mail.subject !== 'string') return { ok: false, error: 'not a report' };
+  if (!underLimit()) return { ok: false, error: 'busy' };
+
+  var issue = null, issueError = '';
+  try {
+    issue = openAllAboardIssue(issueIn, props);
+  } catch (err) { issueError = String(err).slice(0, 500); }
+
+  var emailed = false;
+  try {
+    var to = props.getProperty('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
+    var replyTo = String(mail.replyTo || '').trim();
+    var opts = {
+      to: to, name: 'AllAboard reports',
+      subject: (String(mail.subject).slice(0, 180) + (issue ? ' (issue #' + issue.number + ')' : '')),
+      body: [
+        issue ? 'GitHub issue: ' + issue.html_url : 'The GitHub issue could not be made: ' + (issueError || 'unknown reason'),
+        EMAIL_RE.test(replyTo) ? 'Reply to this message to answer them.' : '',
+        '',
+        String(mail.body || '').slice(0, 20000),
+      ].join('\n'),
+    };
+    if (EMAIL_RE.test(replyTo)) opts.replyTo = replyTo;
+    MailApp.sendEmail(opts);
+    emailed = true;
+  } catch (err) { Logger.log('AllAboard email failed: ' + err); }
+
+  if (!issue && !emailed) return { ok: false, error: 'could not deliver' };
+  return { ok: true, issue: issue ? issue.number : null, url: issue ? issue.html_url : null, emailed: emailed };
+}
+
+function openAllAboardIssue(issueIn, props) {
+  var token = props.getProperty('ALLABOARD_GITHUB_TOKEN') || props.getProperty('GITHUB_TOKEN');
+  var repo = props.getProperty('ALLABOARD_REPO') || 'BPMData/AllAboard';
+  if (!token) throw new Error('GITHUB_TOKEN is not set');
+  var labels = (issueIn.labels || []).slice(0, 5).map(function (l) { return String(l).slice(0, 50); });
+  function post(withLabels) {
+    return UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/issues', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      payload: JSON.stringify({ title: String(issueIn.title).slice(0, 200), body: String(issueIn.body || '').slice(0, ISSUE_LIMIT),
+        labels: withLabels ? labels : [] }),
+    });
+  }
+  var res = post(true);
+  if (res.getResponseCode() === 422 && labels.length) res = post(false);   // a label GitHub won't take: try without
+  if (res.getResponseCode() !== 201) throw new Error('GitHub said ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 300));
+  return JSON.parse(res.getContentText());
+}
+
+/* compares two secrets without stopping at the first difference */
+function sameText(a, b) {
+  if (a.length !== b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /* ---------- emails to the teacher ---------- */
@@ -471,4 +548,14 @@ function checkSetup() {
   MailApp.sendEmail(to, 'OverBoard relay: setup check', 'If you can read this, the relay can email you. Next: Deploy ▸ New deployment (see docs/REPORTS.md).');
   Logger.log('Sent a test email to ' + to + '. All set.');
   if (!props.getProperty('ANTHROPIC_API_KEY')) Logger.log('No ANTHROPIC_API_KEY: follow-up emails will use the plain fixed paragraph.');
+  if (props.getProperty('ALLABOARD_TOKEN')) {
+    var aaRepo = props.getProperty('ALLABOARD_REPO') || 'BPMData/AllAboard';
+    var aaToken = props.getProperty('ALLABOARD_GITHUB_TOKEN') || token;
+    var aa = UrlFetchApp.fetch('https://api.github.com/repos/' + aaRepo, { muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + aaToken, Accept: 'application/vnd.github+json' } });
+    if (aa.getResponseCode() !== 200) throw new Error('AllAboard reports are on, but the token can\'t reach ' + aaRepo + ' (' + aa.getResponseCode() + '). Add ' + aaRepo + ' to the token\'s repositories.');
+    Logger.log('AllAboard reports are on: issues go to ' + aaRepo + '.');
+  } else {
+    Logger.log('No ALLABOARD_TOKEN: AllAboard reports are off.');
+  }
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **AllAboard reports** (v55, report script only). The report script can also file AllAboard's "Something not working?" reports: an issue in the AllAboard repository and an email to the same reports inbox. It is off until the `ALLABOARD_TOKEN` script property is set (see docs/REPORTS.md). Nothing changes for teachers using OverBoard.
 - **PDFs open a little faster** (v54, PDF app). The PDF reader now gets ready while the start screen is up, instead of when you pick a file, and one reader is kept for every PDF you open, so Open again and adding a notebook page no longer start a new one each time. Checking which PDF it is (to find its ink) now happens while the PDF opens, not before.
 - **Laser pointer sound** (v53, PDF app and HTML overlay). Turning on the laser pointer now plays a short, quiet, low laser sound, so it is clear what just happened. Turning it off is silent.
 - **Laser pointer** (v52, PDF app and HTML overlay). Tap the pen or highlighter color you already have selected, and its ring turns black, red, black. What you draw now stays for two seconds after you lift the pen, then fades away by itself. It is never saved, printed or added to Undo. Tap the color again, or pick another color or tool, to go back to writing. Your palm still erases.
