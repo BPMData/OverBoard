@@ -3,7 +3,7 @@
 
 import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
 import { showLaser, makeTimer, paletteColors, setPalette, fitTools, makePopMenu, historyKey, hlInk, makeHlMenu, holdRepeat, confirmTap, flashBtn, makePeriodPicker, makeSettings, loadPeriods, startPen, remapPeriods, makeSelect, makeTyping } from '../shared/ink-core.js';
-import { loadPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
+import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink, PT_PER_UNIT } from './ink.js';
 import { Finder } from './find.js';
@@ -310,16 +310,19 @@ async function openFile(file, handlePromise) {
   drop.textContent = tr('opening', { f: file.name });
   try {
     if (doc) await closeDoc(false);
+    const libP = loadPdfjs();   // usually ready already (warmPdfjs); if not, it loads while the file is read
     const buf = await file.arrayBuffer();
     const base = findBase(new Uint8Array(buf));   // a PDF OverBoard saved ink into: the original bytes come first
-    let hash = await store.hashBytes(new Uint8Array(buf, 0, base));
-    const lib = await loadPdfjs();
-    const task = lib.getDocument({ data: new Uint8Array(buf), ...PDF_OPTS });
+    const hashP = store.hashBytes(new Uint8Array(buf, 0, base));   // copies the bytes now, so the PDF can open meanwhile
+    const lib = await libP;
+    const task = lib.getDocument({ data: new Uint8Array(buf), worker: pdfWorker(lib), ...PDF_OPTS });   // hands the bytes to the reader
     task.onPassword = (give, reason) => {
       const pw = prompt(reason === 2 ? 'Wrong password. Try again:' : 'This PDF has a password:');
       if (pw === null) task.destroy(); else give(pw);
     };
+    hashP.catch(() => {});   // (if the PDF fails first, that's the error to show)
     const pdf = await task.promise;
+    let hash = await hashP;
     // a blank notebook OverBoard made: its ink is kept under the notebook's ID, which stays the same as pages are added
     // a picture OverBoard turned into a PDF: its ink is kept under the picture's ID (app/image.js)
     let nb = null, im = null;
@@ -362,6 +365,7 @@ async function openFile(file, handlePromise) {
   } catch (e) {
     console.error(e);
     doc = null; D = null;
+    if (!e || e.name !== 'PasswordException') dropPdfWorker();
     document.body.classList.add('start'); bar.hidden = true; addPageEl.hidden = true;
     showError(e && e.name === 'PasswordException' ? tr('err_password') :
       e && /fetch|import|module/i.test(String(e.message)) ? tr('err_pdf_reader') :
@@ -858,7 +862,7 @@ async function changePages(change, at, by, show, msg) {
   try {
     const bytes = await change(new Uint8Array(await baseBlob().arrayBuffer()));
     const lib = await loadPdfjs();
-    const pdf = await lib.getDocument({ data: bytes.slice(), ...PDF_OPTS }).promise;
+    const pdf = await lib.getDocument({ data: bytes.slice(), worker: pdfWorker(lib), ...PDF_OPTS }).promise;
     if (doc !== d) { pdf.destroy(); return; }   // closed in the meantime
     const old = d.pdf;
     d.file = new File([bytes], d.name, { type: 'application/pdf' });
@@ -999,6 +1003,7 @@ $('#ob-inkfile').addEventListener('change', (e) => { const f = e.target.files[0]
 
 /* ---------- start ---------- */
 translateAll(); refresh(); renderRecent();
+warmPdfjs();
 setupOffline(openFile);
 (() => {   // reopen the PDF after a reload; typing or clicking the address shows the start screen
   const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
