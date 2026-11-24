@@ -57,6 +57,19 @@ To check it's live: open the Web app URL in a browser. It should show `{"ok":tru
 
 Edit the code, save, then **Deploy ▸ Manage deployments ▸ ✏️ (edit) ▸ Version: New version ▸ Deploy**. This keeps the same URL, so the page doesn't need to change. (A *New deployment* gets a new URL.)
 
+## AllAboard reports (optional)
+
+The same script also files AllAboard's **Something not working?** reports, so both apps share one inbox, one GitHub key and one deployment. AllAboard's server sends each report with a shared secret; the script opens an issue in the AllAboard repository (label `user-report`) and emails the private part to the reports inbox with `[AllAboard]` in the subject. No thank-you or follow-up emails for these. Without the steps below, the script turns AllAboard reports away and AllAboard shows its copy / download / email fallback.
+
+1. **Let the key reach AllAboard.** On GitHub, open the `OverBoard reports` token ([fine-grained tokens](https://github.com/settings/personal-access-tokens)) ▸ **Edit** ▸ *Repository access* ▸ also tick **AllAboard** ▸ **Update**. Issues: *Read and write* already covers it. (Or make a separate AllAboard-only token and add it as the script property `ALLABOARD_GITHUB_TOKEN`.)
+2. In the AllAboard repository, **Issues ▸ Labels ▸ New label** `user-report` (optional: without it, issues are opened unlabeled).
+3. **Make a secret.** Any long random string, for example from `openssl rand -hex 32`. In the script's **Project Settings ▸ Script properties**, add `ALLABOARD_TOKEN` with that value.
+4. Paste in the new `tools/report-relay.gs`, save, and run **checkSetup**. The log should say "AllAboard reports are on".
+5. **Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy** (same URL as before).
+6. In the AllAboard repository, add two Actions secrets: `REPORT_RELAY_URL` (this script's Web app URL) and `REPORT_RELAY_TOKEN` (the same secret as `ALLABOARD_TOKEN`). The next AllAboard deploy picks them up.
+
+AllAboard reports count toward the same 20-an-hour, 40-a-day limits.
+
 ## Good to know
 
 - **Limits.** A gmail.com account can send about 100 emails a day, so the script keeps well under that even if a robot floods it: at most 20 reports an hour and 40 a day (more is turned away, and the page offers Download / Copy instead), at most 25 thank-you emails a day, and only one thank-you per email address a week. A teacher who sends a second report that week still gets the follow-up when it's fixed. The counts are kept in Script properties as `day:…` and `thanked:…` (a scrambled form of the address); the daily check deletes old ones. To change a limit, edit the numbers near the top of the script.
