@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **AllAboard reports** (v55, report script only). The report script can also file AllAboard's "Something not working?" reports: an issue in the AllAboard repository and an email to the same reports inbox. It is off until the `ALLABOARD_TOKEN` script property is set (see docs/REPORTS.md). Nothing changes for teachers using OverBoard.
 - **Laser pointer sound** (v53, PDF app and HTML overlay). Turning on the laser pointer now plays a short, quiet, low laser sound, so it is clear what just happened. Turning it off is silent.
 - **Laser pointer** (v52, PDF app and HTML overlay). Tap the pen or highlighter color you already have selected, and its ring turns black, red, black. What you draw now stays for two seconds after you lift the pen, then fades away by itself. It is never saved, printed or added to Undo. Tap the color again, or pick another color or tool, to go back to writing. Your palm still erases.
 - **Blue toolbar and pink eraser** (v51, PDF app and HTML overlay). The toolbar, its menus, Settings, the Timer and the Chapters / Find panel are now dark navy with light sky-blue buttons and black text, instead of black and yellow, to match the boat icon. The Eraser button is eraser pink. A selected tool has a white ring. Pen, highlighter and cover colors are unchanged.
