@@ -147,6 +147,9 @@ No accounts, no uploads; your ink stays on your machine.
 
 Issues and pull requests are welcome, especially reports from boards other than SMART (Promethean, ViewSonic, Surface, iPad). The easiest way is **Settings & help ▸ Board not working?** on the board itself.
 
+Before sending a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md): submitting one gives the project's owner the
+right to relicense your contribution, including under commercial terms.
+
 ## License
 
 Copyright (C) 2026 Bryan Murphy. OverBoard's code is licensed under the
