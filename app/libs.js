@@ -18,7 +18,9 @@ export function loadPdfjs() {
       lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
       return lib;
     });
-    pdfjsPromise.catch(() => { pdfjsPromise = null; });
+    pdfjsPromise.catch(() => {
+      pdfjsPromise = null;
+    });
   }
   return pdfjsPromise;
 }
@@ -31,22 +33,33 @@ export function pdfWorker(lib) {
   if (!worker || worker.destroyed) worker = new lib.PDFWorker({ name: 'overboard' });
   return worker;
 }
-export function dropPdfWorker() {   // after a PDF failed to open: the next one gets a fresh reader, in case this one broke
-  if (worker) { try { worker.destroy(); } catch (e) { /* already gone */ } }
+export function dropPdfWorker() {
+  // after a PDF failed to open: the next one gets a fresh reader, in case this one broke
+  if (worker) {
+    try {
+      worker.destroy();
+    } catch (e) {
+      /* already gone */
+    }
+  }
   worker = null;
 }
 
 /* get PDF.js and its reader ready while the start screen is up, so the first PDF opens sooner */
 export function warmPdfjs() {
   const go = () => loadPdfjs().then(pdfWorker, () => {});
-  if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
+  if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 });
+  else setTimeout(go, 500);
 }
 
 let pdflibPromise = null;
-export function loadPdfLib() {   // only needed for exporting and "Save ink into PDF", so it loads on first use
+export function loadPdfLib() {
+  // only needed for exporting and "Save ink into PDF", so it loads on first use
   if (!pdflibPromise) {
     pdflibPromise = import(PDFLIB_URL);
-    pdflibPromise.catch(() => { pdflibPromise = null; });
+    pdflibPromise.catch(() => {
+      pdflibPromise = null;
+    });
   }
   return pdflibPromise;
 }

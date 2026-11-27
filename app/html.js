@@ -4,13 +4,15 @@
 
 const OVERLAY_URL = new URL('../overlay/ink_overlay.html', import.meta.url);
 const BLOCK_RE = /<!-- ===== INK OVERLAY START[\s\S]*?<!-- ===== INK OVERLAY END ===== -->/;
-const DATA_RE = /<script\b[^>]*\bid\s*=\s*["']ink-data["'][^>]*>[\s\S]*?<\/script>/i;   // any attribute order or quotes
+const DATA_RE = /<script\b[^>]*\bid\s*=\s*["']ink-data["'][^>]*>[\s\S]*?<\/script>/i; // any attribute order or quotes
 const VERSION_RE = /INK OVERLAY START \((v[\d.]+)\)/;
 
 export const isHtml = (file) => /\.html?$/i.test(file.name) || file.type === 'text/html';
 
 export function boardName(name) {
-  const m = /^(.*?)(\.html?)?$/i.exec(name), root = m[1], ext = m[2] || '.html';
+  const m = /^(.*?)(\.html?)?$/i.exec(name),
+    root = m[1],
+    ext = m[2] || '.html';
   return /_board$/.test(root) ? name : root + '_board' + ext;
 }
 
@@ -23,7 +25,8 @@ export async function addOverlay(html) {
   const version = (VERSION_RE.exec(overlay) || [0, '?'])[1];
   const m = BLOCK_RE.exec(html);
   if (m) {
-    const old = m[0], oldVersion = (VERSION_RE.exec(old) || [0, 'old'])[1];
+    const old = m[0],
+      oldVersion = (VERSION_RE.exec(old) || [0, 'old'])[1];
     const oldData = DATA_RE.exec(old);
     const block = oldData ? overlay.replace(DATA_RE, () => oldData[0]) : overlay;
     if (block === old) return { status: 'same', html, message: 'already has the current overlay (' + version + ')' };
@@ -35,8 +38,13 @@ export async function addOverlay(html) {
     };
   }
   const i = html.toLowerCase().lastIndexOf('</body>');
-  if (i === -1) return { status: 'added', html: html.replace(/\n*$/, '\n') + overlay + '\n', message: 'added overlay ' + version };
-  return { status: 'added', html: html.slice(0, i) + overlay + '\n' + html.slice(i), message: 'added overlay ' + version };
+  if (i === -1)
+    return { status: 'added', html: html.replace(/\n*$/, '\n') + overlay + '\n', message: 'added overlay ' + version };
+  return {
+    status: 'added',
+    html: html.slice(0, i) + overlay + '\n' + html.slice(i),
+    message: 'added overlay ' + version,
+  };
 }
 
 /* Signs that ink would drift: the page scrolls inside a box instead of scrolling the whole page. Mirrors the installer. */
@@ -46,8 +54,13 @@ export function layoutWarnings(html) {
   css += ' ' + [...page.matchAll(/style="([^"]*)"/gi)].map((x) => x[1]).join(' ');
   css = css.toLowerCase().replace(/\s+/g, ' ');
   const w = [];
-  if (/(^|[\s,}])(html|body)\s*(,\s*(html|body)\s*)?\{[^}]*overflow(-y)?\s*:\s*hidden/.test(css)) w.push('the page turns off normal scrolling');
-  if (/height\s*:\s*100(vh|%)[^}]*overflow(-y)?\s*:\s*(auto|scroll)/.test(css) || /overflow(-y)?\s*:\s*(auto|scroll)[^}]*height\s*:\s*100(vh|%)/.test(css)) w.push('a full-screen box scrolls by itself');
+  if (/(^|[\s,}])(html|body)\s*(,\s*(html|body)\s*)?\{[^}]*overflow(-y)?\s*:\s*hidden/.test(css))
+    w.push('the page turns off normal scrolling');
+  if (
+    /height\s*:\s*100(vh|%)[^}]*overflow(-y)?\s*:\s*(auto|scroll)/.test(css) ||
+    /overflow(-y)?\s*:\s*(auto|scroll)[^}]*height\s*:\s*100(vh|%)/.test(css)
+  )
+    w.push('a full-screen box scrolls by itself');
   if (/<iframe/i.test(page)) w.push('it has an iframe; ink cannot draw inside it');
   return w;
 }
@@ -60,11 +73,13 @@ export async function saveBoardCopy(text, name, startIn) {
     try {
       // start in the original's folder when we know it; otherwise the folder used last time
       const h = await window.showSaveFilePicker({
-        suggestedName: name, ...(startIn ? { startIn } : { id: 'overboard-html' }),
+        suggestedName: name,
+        ...(startIn ? { startIn } : { id: 'overboard-html' }),
         types: [{ description: 'Board copy (.html)', accept: { 'text/html': ['.html', '.htm'] } }],
       });
       const w = await h.createWritable();
-      await w.write(blob); await w.close();
+      await w.write(blob);
+      await w.close();
       return 'saved as ' + h.name;
     } catch (e) {
       if (e && e.name === 'AbortError') return null;
@@ -72,8 +87,11 @@ export async function saveBoardCopy(text, name, startIn) {
     }
   }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
   return 'downloaded ' + name;
 }
@@ -84,12 +102,23 @@ export function localFiles(html) {
   const page = html.replace(BLOCK_RE, '').replace(/<!--[\s\S]*?-->/g, '');
   const found = new Set();
   const local = (u) => u && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(u.trim()) && u.trim() !== '';
-  const add = (u) => { u = (u || '').trim().replace(/^["']|["']$/g, ''); if (local(u)) found.add(u.split(/[?#]/)[0]); };
-  for (const m of page.matchAll(/<(?:img|source|script|video|audio|track|embed|iframe|input)\b[^>]*?\s(?:src|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi)) add(m[1]);
-  for (const m of page.matchAll(/<(?:img|source)\b[^>]*?\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi)) m[1].slice(1, -1).split(',').forEach((c) => add(c.trim().split(/\s+/)[0]));
+  const add = (u) => {
+    u = (u || '').trim().replace(/^["']|["']$/g, '');
+    if (local(u)) found.add(u.split(/[?#]/)[0]);
+  };
+  for (const m of page.matchAll(
+    /<(?:img|source|script|video|audio|track|embed|iframe|input)\b[^>]*?\s(?:src|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi
+  ))
+    add(m[1]);
+  for (const m of page.matchAll(/<(?:img|source)\b[^>]*?\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi))
+    m[1]
+      .slice(1, -1)
+      .split(',')
+      .forEach((c) => add(c.trim().split(/\s+/)[0]));
   for (const m of page.matchAll(/<link\b[^>]*>/gi)) {
     if (!/\brel\s*=\s*["']?[^"'>]*(?:stylesheet|icon|preload)/i.test(m[0])) continue;
-    const h = /\shref\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i.exec(m[0]); if (h) add(h[1]);
+    const h = /\shref\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i.exec(m[0]);
+    if (h) add(h[1]);
   }
   for (const m of page.matchAll(/url\(\s*("[^"]*"|'[^']*'|[^)]*)\s*\)/gi)) add(m[1]);
   return [...found];

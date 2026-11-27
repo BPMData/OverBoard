@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04   # Playwright 1.56 has no browsers for Ubuntu 26.04, which ubuntu-latest became
+    runs-on: ubuntu-24.04 # Playwright 1.56 has no browsers for Ubuntu 26.04, which ubuntu-latest became
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +39,8 @@ jobs:
         run: python3 tools/vendor_libs.py --check
 
       - run: npm ci
+      - name: Code is formatted (fix with npx prettier --write .)
+        run: npx prettier --check .
       - run: npx playwright install --with-deps chromium
       - name: Browser tests
         run: npx playwright test

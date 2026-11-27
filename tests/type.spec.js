@@ -9,15 +9,22 @@ const box = (page) => page.locator('.ob-note-edit');
 test.describe('PDF app', () => {
   const draw = (page, pts, o) => page.evaluate(([pts, o]) => __t.stroke(1, pts, o), [pts, o || {}]);
   const at = (page, x, y) => page.evaluate(([x, y]) => __t.client(1, x, y), [x, y]);
-  const ink = async (page, x, y) => (await page.evaluate(([x, y]) => __t.px(1, x, y), [x, y]) || [0, 0, 0, 0])[3];
-  const notePx = async (page, s) => {   // the darkest ink pixel inside the note's box
+  const ink = async (page, x, y) => ((await page.evaluate(([x, y]) => __t.px(1, x, y), [x, y])) || [0, 0, 0, 0])[3];
+  const notePx = async (page, s) => {
+    // the darkest ink pixel inside the note's box
     let best = 0;
-    for (let x = s.p[0]; x < s.p[2]; x += 2) for (let y = s.p[1]; y < s.p[3]; y += 2) best = Math.max(best, await ink(page, x, y));
+    for (let x = s.p[0]; x < s.p[2]; x += 2)
+      for (let y = s.p[1]; y < s.p[3]; y += 2) best = Math.max(best, await ink(page, x, y));
     return best;
   };
-  test.beforeEach(async ({ page }) => { await openApp(page); await openPdf(page, 'worksheet.pdf'); });
+  test.beforeEach(async ({ page }) => {
+    await openApp(page);
+    await openPdf(page, 'worksheet.pdf');
+  });
 
-  test('tap to type a note; Escape keeps it; Undo and Redo; tap it to change it; empty removes it', async ({ page }) => {
+  test('tap to type a note; Escape keeps it; Undo and Redo; tap it to change it; empty removes it', async ({
+    page,
+  }) => {
     await page.click('[data-act="type"]');
     await expect(page.locator('[data-act="type"]')).toHaveClass(/on/);
     await tap(page, ...(await at(page, 100, 200)), 'pen');
@@ -31,7 +38,7 @@ test.describe('PDF app', () => {
     expect(s).toHaveLength(1);
     expect(s[0]).toMatchObject({ t: 'Hello\nworld', page: 1 });
     expect(s[0].p[0]).toBeCloseTo(100, 0);
-    expect(s[0].p[3] - s[0].p[1]).toBeGreaterThan(2 * s[0].f);   // two lines
+    expect(s[0].p[3] - s[0].p[1]).toBeGreaterThan(2 * s[0].f); // two lines
     expect(await notePx(page, s[0])).toBeGreaterThan(200);
 
     await page.click('[data-act="undo"]');
@@ -56,10 +63,15 @@ test.describe('PDF app', () => {
     expect(await strokes(page)).toHaveLength(0);
   });
 
-  test('a drag scrolls instead of typing; a tap beside an open note only finishes it; the Eraser turns Type off', async ({ page }) => {
+  test('a drag scrolls instead of typing; a tap beside an open note only finishes it; the Eraser turns Type off', async ({
+    page,
+  }) => {
     await page.click('[data-act="type"]');
     const y0 = await page.evaluate(() => scrollY);
-    await draw(page, Array.from({ length: 10 }, (_, i) => [200, 500 - i * 20]));
+    await draw(
+      page,
+      Array.from({ length: 10 }, (_, i) => [200, 500 - i * 20])
+    );
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y0);
     expect(await strokes(page)).toHaveLength(0);
     await expect(box(page)).toHaveCount(0);
@@ -80,7 +92,7 @@ test.describe('PDF app', () => {
     await tap(page, ...(await at(page, 100, 200)), 'pen');
     await page.keyboard.type('Answer: 42');
     await page.keyboard.press('Escape');
-    await page.click('[data-act="type"]');   // off: the pen writes again
+    await page.click('[data-act="type"]'); // off: the pen writes again
     let s = (await strokes(page))[0];
 
     // Select: tap the note, drag it 100 points down
@@ -88,7 +100,10 @@ test.describe('PDF app', () => {
     const mid = [(s.p[0] + s.p[2]) / 2, (s.p[1] + s.p[3]) / 2];
     await draw(page, [mid]);
     await expect(page.locator('#ob-selmenu')).toContainText('1 mark selected');
-    await draw(page, Array.from({ length: 11 }, (_, i) => [mid[0], mid[1] + i * 10]));
+    await draw(
+      page,
+      Array.from({ length: 11 }, (_, i) => [mid[0], mid[1] + i * 10])
+    );
     s = (await strokes(page))[0];
     expect(s.t).toBe('Answer: 42');
     expect(s.p[1]).toBeCloseTo(200 - s.f * 0.625 + 100, 0);
@@ -98,13 +113,23 @@ test.describe('PDF app', () => {
     expect((await dl.createReadStream()) !== null).toBe(true);
 
     // a palm swipe across one corner removes the whole note
-    await draw(page, [[s.p[0] - 10, s.p[1] + 2], [s.p[0] + 4, s.p[1] + 2]], { buttons: 32 });
+    await draw(
+      page,
+      [
+        [s.p[0] - 10, s.p[1] + 2],
+        [s.p[0] + 4, s.p[1] + 2],
+      ],
+      { buttons: 32 }
+    );
     expect(await notePx(page, s)).toBe(0);
   });
 });
 
 test.describe('HTML overlay', () => {
-  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await openOverlay(page); });
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openOverlay(page);
+  });
 
   test('tap to type a note, Escape keeps it (saved), Undo removes it', async ({ page }) => {
     await page.click('#ink-bar [data-act="type"]');
@@ -125,18 +150,48 @@ test.describe('HTML overlay', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.evaluate(() => {
       const p = document.createElement('p');
-      p.id = 'ws-text'; p.textContent = 'Photosynthesis makes sugar'; p.style.cssText = 'font-size:32px;margin:40px';
+      p.id = 'ws-text';
+      p.textContent = 'Photosynthesis makes sugar';
+      p.style.cssText = 'font-size:32px;margin:40px';
       (document.querySelector('.page') || document.body).prepend(p);
     });
     await page.click('#ink-bar [data-act="type"]');
-    const r = await page.evaluate(() => { const t = document.getElementById('ws-text').firstChild, g = document.createRange(); g.selectNodeContents(t); const b = g.getBoundingClientRect(); return [b.left, b.right, b.top + b.height / 2]; });
-    await page.evaluate(([x0, x1, y]) => new Promise(async (res) => {
-      const c = document.getElementById('ink-canvas');
-      const ev = (t, x) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y, screenX: x, screenY: y }));
-      ev('pointerdown', x0 + 2);
-      for (let i = 1; i <= 10; i++) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', x0 + 2 + (x1 - x0) * i / 10); }
-      ev('pointerup', x1 - 1); res();
-    }), r);
+    const r = await page.evaluate(() => {
+      const t = document.getElementById('ws-text').firstChild,
+        g = document.createRange();
+      g.selectNodeContents(t);
+      const b = g.getBoundingClientRect();
+      return [b.left, b.right, b.top + b.height / 2];
+    });
+    await page.evaluate(
+      ([x0, x1, y]) =>
+        new Promise(async (res) => {
+          const c = document.getElementById('ink-canvas');
+          const ev = (t, x) =>
+            c.dispatchEvent(
+              new PointerEvent(t, {
+                bubbles: true,
+                cancelable: true,
+                pointerType: 'pen',
+                pointerId: 3,
+                buttons: t === 'pointerup' ? 0 : 1,
+                button: 0,
+                clientX: x,
+                clientY: y,
+                screenX: x,
+                screenY: y,
+              })
+            );
+          ev('pointerdown', x0 + 2);
+          for (let i = 1; i <= 10; i++) {
+            await new Promise((r) => setTimeout(r, 4));
+            ev('pointermove', x0 + 2 + ((x1 - x0) * i) / 10);
+          }
+          ev('pointerup', x1 - 1);
+          res();
+        }),
+      r
+    );
     expect(await page.evaluate(() => getSelection().toString())).toContain('Photosynthesis makes suga');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Photosynthesis');
     await expect(page.locator('.ob-note-edit')).toHaveCount(0);
@@ -145,7 +200,11 @@ test.describe('HTML overlay', () => {
   test('with Type off, a finger tap presses a button on the worksheet', async ({ page }) => {
     await page.evaluate(() => {
       const b = document.createElement('button');
-      b.id = 'ws-btn'; b.textContent = 'Reveal'; b.onclick = () => { window.__pressed = (window.__pressed || 0) + 1; };
+      b.id = 'ws-btn';
+      b.textContent = 'Reveal';
+      b.onclick = () => {
+        window.__pressed = (window.__pressed || 0) + 1;
+      };
       (document.querySelector('.page') || document.body).prepend(b);
     });
     const r = await page.locator('#ws-btn').boundingBox();

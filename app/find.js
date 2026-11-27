@@ -7,29 +7,47 @@ const flat = (s) => s.replace(/\s+/g, ' ');
 
 export class Finder {
   constructor(viewer, panel, setStatus, words) {
-    this.words = words || (() => (k) => k);   // () => the current translator (shared/strings.js)
+    this.words = words || (() => (k) => k); // () => the current translator (shared/strings.js)
     this.v = viewer;
     this.panel = panel;
     this.input = panel.querySelector('input');
     this.list = panel.querySelector('ul');
     this.msg = panel.querySelector('.msg');
     this.setStatus = setStatus;
-    this.texts = new Map();   // page -> text with runs of spaces collapsed
+    this.texts = new Map(); // page -> text with runs of spaces collapsed
     this.token = 0;
-    this.jumpTo = null;       // { n, k }: scroll to the k-th mark on page n once its text layer is ready
-    panel.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); this.run(this.input.value); });
+    this.jumpTo = null; // { n, k }: scroll to the k-th mark on page n once its text layer is ready
+    panel.querySelector('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.run(this.input.value);
+    });
     let t = 0;
-    this.input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => this.run(this.input.value), 350); });
+    this.input.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => this.run(this.input.value), 350);
+    });
   }
 
-  reset() { this.token++; this.texts = new Map(); this.list.textContent = ''; this.msg.textContent = ''; this.input.value = ''; this.jumpTo = null; }
+  reset() {
+    this.token++;
+    this.texts = new Map();
+    this.list.textContent = '';
+    this.msg.textContent = '';
+    this.input.value = '';
+    this.jumpTo = null;
+  }
 
   open() {
     this.panel.hidden = false;
-    this.input.focus(); this.input.select();
+    this.input.focus();
+    this.input.select();
     if (this.input.value) this.v.setQuery(flat(this.input.value.trim().toLowerCase()));
   }
-  close() { this.panel.hidden = true; this.token++; this.v.setQuery(''); }
+  close() {
+    this.panel.hidden = true;
+    this.token++;
+    this.v.setQuery('');
+  }
 
   async pageText(n) {
     if (!this.texts.has(n)) {
@@ -40,34 +58,54 @@ export class Finder {
   }
 
   async run(raw) {
-    const token = ++this.token, pdf = this.v.pdf;
+    const token = ++this.token,
+      pdf = this.v.pdf;
     const q = flat(raw.trim().toLowerCase());
     this.list.textContent = '';
     this.v.setQuery(q);
-    if (!q || !pdf) { this.msg.textContent = ''; return; }
+    if (!q || !pdf) {
+      this.msg.textContent = '';
+      return;
+    }
     const N = this.v.pages.length;
-    let hits = 0, pagesHit = 0;
+    let hits = 0,
+      pagesHit = 0;
     for (let n = 1; n <= N; n++) {
       let text;
-      try { text = await this.pageText(n); } catch (e) { continue; }
+      try {
+        text = await this.pageText(n);
+      } catch (e) {
+        continue;
+      }
       if (token !== this.token || pdf !== this.v.pdf) return;
-      const low = text.toLowerCase(), same = low.length === text.length;
-      let i = low.indexOf(q), k = 0;
+      const low = text.toLowerCase(),
+        same = low.length === text.length;
+      let i = low.indexOf(q),
+        k = 0;
       if (i >= 0) pagesHit++;
       while (i >= 0 && hits < MAX_HITS) {
         this.addHit(n, k, same ? text : low, i, q.length);
-        hits++; k++;
+        hits++;
+        k++;
         i = low.indexOf(q, i + q.length);
       }
-      if (n % 25 === 0 || n === N) this.msg.textContent = (n < N ? this.words()('searching', { n, m: N }) : '') + summary(this.words(), hits, pagesHit);
-      if (hits >= MAX_HITS) { this.msg.textContent = this.words()('first_matches', { n: MAX_HITS }); return; }
+      if (n % 25 === 0 || n === N)
+        this.msg.textContent =
+          (n < N ? this.words()('searching', { n, m: N }) : '') + summary(this.words(), hits, pagesHit);
+      if (hits >= MAX_HITS) {
+        this.msg.textContent = this.words()('first_matches', { n: MAX_HITS });
+        return;
+      }
     }
   }
 
   addHit(n, k, text, i, len) {
-    const li = document.createElement('li'), b = document.createElement('button');
-    const t = document.createElement('span'), num = document.createElement('small');
-    const from = Math.max(0, i - 40), to = Math.min(text.length, i + len + 40);
+    const li = document.createElement('li'),
+      b = document.createElement('button');
+    const t = document.createElement('span'),
+      num = document.createElement('small');
+    const from = Math.max(0, i - 40),
+      to = Math.min(text.length, i + len + 40);
     const m = document.createElement('b');
     m.textContent = text.slice(i, i + len);
     t.append((from ? '…' : '') + text.slice(from, i), m, text.slice(i + len, to) + (to < text.length ? '…' : ''));

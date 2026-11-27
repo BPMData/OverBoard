@@ -15,21 +15,26 @@ async function pickLang(page, code) {
 const closeSettings = (page) => page.click('#ob-settings [data-s="done"]');
 
 /* the toolbar fits a 1080p board in this language: no scrolling, no stretching, no clipped words */
-const fits = (page) => page.evaluate(() => {
-  const b = document.getElementById('ink-bar');
-  const clipped = [...b.querySelectorAll('button')].filter((x) => x.offsetParent && x.textContent.trim() && x.scrollWidth > x.clientWidth + 1)
-    .map((x) => x.textContent.trim());
-  return { scroll: b.scrollHeight <= b.clientHeight, wide: b.scrollWidth <= b.clientWidth, clipped };
-});
+const fits = (page) =>
+  page.evaluate(() => {
+    const b = document.getElementById('ink-bar');
+    const clipped = [...b.querySelectorAll('button')]
+      .filter((x) => x.offsetParent && x.textContent.trim() && x.scrollWidth > x.clientWidth + 1)
+      .map((x) => x.textContent.trim());
+    return { scroll: b.scrollHeight <= b.clientHeight, wide: b.scrollWidth <= b.clientWidth, clipped };
+  });
 
 test('every translation is filled in and keeps the {placeholders} of the English', async ({ page }) => {
   await openOverlay(page);
   const bad = await page.evaluate(() => {
-    const out = [], all = window.__obStrings();
+    const out = [],
+      all = window.__obStrings();
     const vars = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
     for (const [key, row] of Object.entries(all)) {
       if (row.length !== 8) out.push(key + ': ' + row.length + ' languages');
-      row.forEach((s, i) => { if (!s || vars(s) !== vars(row[0])) out.push(key + ' [' + i + ']'); });
+      row.forEach((s, i) => {
+        if (!s || vars(s) !== vars(row[0])) out.push(key + ' [' + i + ']');
+      });
     }
     return out;
   });
@@ -37,9 +42,14 @@ test('every translation is filled in and keeps the {placeholders} of the English
 });
 
 test.describe('HTML overlay', () => {
-  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1920, height: 950 }); await openOverlay(page); });
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 950 });
+    await openOverlay(page);
+  });
 
-  test('Settings ▸ Language changes the toolbar, menus, tooltips and messages at once, and is remembered', async ({ page }) => {
+  test('Settings ▸ Language changes the toolbar, menus, tooltips and messages at once, and is remembered', async ({
+    page,
+  }) => {
     await expect(page.locator('#ink-bar [data-act="file"]')).toHaveText('Settings & help ▸');
     await pickLang(page, 'es');
     await expect(page.locator('#ob-settings [data-lang="es"]')).toHaveClass(/on/);
@@ -59,7 +69,8 @@ test.describe('HTML overlay', () => {
     await page.keyboard.press('Escape');
     await page.click('#ink-bar [data-act="clear-all"]');
     await expect(page.locator('#ink-bar [data-act="clear-all"]')).toHaveText('¿Seguro?');
-    await page.reload(); await page.waitForSelector('#ink-bar[data-ready]', { state: 'attached' });
+    await page.reload();
+    await page.waitForSelector('#ink-bar[data-ready]', { state: 'attached' });
     await expect(page.locator('#ink-bar [data-act="type"]')).toHaveText('Teclear');
     await pickLang(page, 'en');
     await closeSettings(page);
@@ -85,8 +96,11 @@ test.describe('HTML overlay', () => {
   });
 
   test('every toolbar control has a tooltip', async ({ page }) => {
-    const missing = await page.evaluate(() => [...document.querySelectorAll('#ink-bar button, #ink-bar .val, #ink-bar .lbl, #ink-status')]
-      .filter((e) => e.offsetParent && !e.dataset.period && !e.title).map((e) => e.outerHTML.slice(0, 80)));
+    const missing = await page.evaluate(() =>
+      [...document.querySelectorAll('#ink-bar button, #ink-bar .val, #ink-bar .lbl, #ink-status')]
+        .filter((e) => e.offsetParent && !e.dataset.period && !e.title)
+        .map((e) => e.outerHTML.slice(0, 80))
+    );
     expect(missing).toEqual([]);
   });
 });
@@ -130,8 +144,11 @@ test.describe('PDF app', () => {
   test('every toolbar control has a tooltip', async ({ page }) => {
     await openApp(page);
     await openPdf(page, 'book.pdf');
-    const missing = await page.evaluate(() => [...document.querySelectorAll('#ink-bar button, #ink-bar .val, #ink-bar .lbl, #ink-status')]
-      .filter((e) => e.offsetParent && !e.dataset.period && !e.title).map((e) => e.outerHTML.slice(0, 80)));
+    const missing = await page.evaluate(() =>
+      [...document.querySelectorAll('#ink-bar button, #ink-bar .val, #ink-bar .lbl, #ink-status')]
+        .filter((e) => e.offsetParent && !e.dataset.period && !e.title)
+        .map((e) => e.outerHTML.slice(0, 80))
+    );
     expect(missing).toEqual([]);
   });
 });

@@ -5,7 +5,8 @@ const { test } = require('@playwright/test');
 const { expect, fixture, openApp, openPdf, strokes, fileMenu, download } = require('./support/app');
 const { pdfPixels, white } = require('./support/render');
 
-const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
+const line = (x0, y0, x1, y1) =>
+  Array.from({ length: 31 }, (_, i) => [x0 + ((x1 - x0) * i) / 30, y0 + ((y1 - y0) * i) / 30]);
 const writes = (page) => page.evaluate(() => window.__writes || 0);
 const fileBytes = async (page, name) => Buffer.from(await page.evaluate((n) => __fileBytes(n), name));
 
@@ -17,10 +18,10 @@ for (const name of ['worksheet.pdf', 'book.pdf']) {
     await openPdf(page, name);
     const key = await page.evaluate(() => __overboard.doc.hash);
     await page.evaluate((p) => __t.stroke(1, p), line(100, 190, 300, 190));
-    expect(await writes(page)).toBe(0);                       // nothing written before opting in
+    expect(await writes(page)).toBe(0); // nothing written before opting in
 
     await fileMenu(page, 'pdf-link');
-    await expect(page.locator('#ob-embed')).toBeVisible();     // explains first
+    await expect(page.locator('#ob-embed')).toBeVisible(); // explains first
     await page.click('#ob-embed [value="cancel"]');
     expect(await page.evaluate(() => window.__pickOpts)).toBeUndefined();
 
@@ -32,17 +33,18 @@ for (const name of ['worksheet.pdf', 'book.pdf']) {
     await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Saving into PDF ✓', { timeout: 5000 });
 
     await page.evaluate((p) => __t.stroke(1, p), line(100, 250, 300, 250));
-    await page.waitForFunction(() => window.__writes >= 2, null, { timeout: 15000 });   // autosaves
-    const orig = fs.readFileSync(fixture(name)), first = await fileBytes(page, saved);
-    expect(first.subarray(0, orig.length).equals(orig)).toBe(true);   // the original bytes come first, untouched
+    await page.waitForFunction(() => window.__writes >= 2, null, { timeout: 15000 }); // autosaves
+    const orig = fs.readFileSync(fixture(name)),
+      first = await fileBytes(page, saved);
+    expect(first.subarray(0, orig.length).equals(orig)).toBe(true); // the original bytes come first, untouched
     await page.evaluate((p) => __t.stroke(1, p), line(100, 300, 120, 300));
     await page.waitForFunction(() => window.__writes >= 3, null, { timeout: 15000 });
     const again = await fileBytes(page, saved);
-    expect(Math.abs(again.length - first.length)).toBeLessThan(200);   // replaces the tail, doesn't grow
+    expect(Math.abs(again.length - first.length)).toBeLessThan(200); // replaces the tail, doesn't grow
     const file = info.outputPath(saved);
     fs.writeFileSync(file, again);
 
-    await page.click('[data-act="file"]');                    // turn it off (two taps)
+    await page.click('[data-act="file"]'); // turn it off (two taps)
     await page.click('#ob-filemenu [data-act="pdf-link"]');
     await page.click('#ob-filemenu [data-act="pdf-link"]');
     await expect(page.locator('[data-act="pdf-link"]')).toHaveText('Save ink into PDF…');
@@ -61,7 +63,7 @@ for (const name of ['worksheet.pdf', 'book.pdf']) {
     expect(await p2.evaluate(() => __overboard.doc.hash)).toBe(key);
     const r = await pdfPixels(p2, file, 1, [[200, 190]]);
     expect(r.attachments).toContain('overboard-ink.json');
-    expect(white(r.px[0])).toBe(true);                        // stored, not drawn: the page looks like the original
+    expect(white(r.px[0])).toBe(true); // stored, not drawn: the page looks like the original
     const dl = await download(p2, () => fileMenu(p2, 'export'));
     const exp = info.outputPath('export.pdf');
     await dl.saveAs(exp);

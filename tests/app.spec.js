@@ -12,8 +12,13 @@ test.beforeEach(async ({ page }) => {
 
 const px = (page, x, y, layer = 'ink') => page.evaluate(([x, y, l]) => __t.px(1, x, y, l), [x, y, layer]);
 const draw = (page, n, pts, o) => page.evaluate(([n, pts, o]) => __t.stroke(n, pts, o), [n, pts, o]);
-const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
-const top = (page, n = 1) => page.evaluate(async (n) => { __overboard.viewer.goTo(n); await new Promise((r) => setTimeout(r, 250)); }, n);
+const line = (x0, y0, x1, y1) =>
+  Array.from({ length: 31 }, (_, i) => [x0 + ((x1 - x0) * i) / 30, y0 + ((y1 - y0) * i) / 30]);
+const top = (page, n = 1) =>
+  page.evaluate(async (n) => {
+    __overboard.viewer.goTo(n);
+    await new Promise((r) => setTimeout(r, 250));
+  }, n);
 
 test('a pen stroke is stored in page points and drawn', async ({ page }) => {
   await draw(page, 1, line(100, 200, 300, 200));
@@ -44,9 +49,9 @@ test('highlighter keeps its own color, separate from the pen', async ({ page }) 
   await draw(page, 1, line(80, 300, 400, 300));
   const s = await last(page);
   expect(s.h).toBe(1);
-  expect(s.c).toBe('#feec9a');   // yellow mixed halfway to white
+  expect(s.c).toBe('#feec9a'); // yellow mixed halfway to white
   expect((await px(page, 200, 300, 'hl'))[3]).toBeGreaterThan(200);
-  await page.click('[data-color="#e0218a"]');                     // pink: on the highlighter's swatches too
+  await page.click('[data-color="#e0218a"]'); // pink: on the highlighter's swatches too
   await page.click('[data-act="hilite"]');
   expect(await on()).toBe('#1565c0');
   await page.click('[data-act="hilite"]');
@@ -57,7 +62,8 @@ test('highlighter keeps its own color, separate from the pen', async ({ page }) 
 test('palm erases under the hand only, at screen size', async ({ page }) => {
   await draw(page, 1, line(100, 200, 300, 200));
   await draw(page, 1, line(150, 170, 150, 230), { buttons: 32 });
-  const s = await last(page), z = await page.evaluate(() => __overboard.viewer.zoom);
+  const s = await last(page),
+    z = await page.evaluate(() => __overboard.viewer.zoom);
   expect(s.e).toBe(1);
   expect(s.w).toBeCloseTo(92 / z, 1);
   expect((await px(page, 150, 200))[3]).toBe(0);
@@ -66,7 +72,17 @@ test('palm erases under the hand only, at screen size', async ({ page }) => {
 
 test('a finger scrolls and never draws', async ({ page }) => {
   const y0 = await page.evaluate(() => scrollY);
-  await draw(page, 1, [[200, 600], [200, 500], [200, 400], [200, 300]], { type: 'mouse' });
+  await draw(
+    page,
+    1,
+    [
+      [200, 600],
+      [200, 500],
+      [200, 400],
+      [200, 300],
+    ],
+    { type: 'mouse' }
+  );
   expect(await strokes(page)).toHaveLength(0);
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y0 + 100);
 });
@@ -76,7 +92,7 @@ test('undo, clear page and undo-clear; periods keep separate ink', async ({ page
   await draw(page, 1, line(100, 250, 300, 250));
   await page.click('[data-act="undo"]');
   expect(await strokes(page)).toHaveLength(1);
-  await page.click('[data-act="clear-page"]');                   // no chapters: Clear page | Clear all
+  await page.click('[data-act="clear-page"]'); // no chapters: Clear page | Clear all
   expect(await strokes(page)).toHaveLength(0);
   await page.click('[data-act="undo"]');
   expect(await strokes(page)).toHaveLength(1);
@@ -120,21 +136,26 @@ test('ink file (.overboard.json) round-trips into a fresh browser', async ({ pag
 });
 
 test('Export PDF draws the ink into the PDF, named for the period', async ({ page }, info) => {
-  await page.click('[data-color="#111111"]');      // black, so the check below can look for dark ink (the pen starts pink)
-  await draw(page, 1, line(100, 190, 300, 190));   // y = 190: a blank strip between the printed text and its underline
+  await page.click('[data-color="#111111"]'); // black, so the check below can look for dark ink (the pen starts pink)
+  await draw(page, 1, line(100, 190, 300, 190)); // y = 190: a blank strip between the printed text and its underline
   await page.click('[data-act="hilite"]');
   await draw(page, 1, line(80, 300, 400, 300));
   await page.click('[data-act="hilite"]');
-  await draw(page, 1, line(150, 160, 150, 220), { buttons: 32 });   // palm cut through the pen line
+  await draw(page, 1, line(150, 160, 150, 220), { buttons: 32 }); // palm cut through the pen line
   const dl = await download(page, () => fileMenu(page, 'export'));
   expect(dl.suggestedFilename()).toBe('worksheet_annotated_P1.pdf');
   const file = info.outputPath('out.pdf');
   await dl.saveAs(file);
-  const r = await pdfPixels(page, file, 1, [[250, 190], [150, 190], [300, 300], [300, 330]]);
+  const r = await pdfPixels(page, file, 1, [
+    [250, 190],
+    [150, 190],
+    [300, 300],
+    [300, 330],
+  ]);
   expect(r.pages).toBe(3);
-  expect(dark(r.px[0])).toBe(true);    // pen ink
-  expect(white(r.px[1])).toBe(true);   // erased by the palm
-  expect(r.px[2]).toEqual([254, 236, 154]);   // highlight
+  expect(dark(r.px[0])).toBe(true); // pen ink
+  expect(white(r.px[1])).toBe(true); // erased by the palm
+  expect(r.px[2]).toEqual([254, 236, 154]); // highlight
   expect(white(r.px[3])).toBe(true);
   await page.click('[data-period="P2"]');
   await fileMenu(page, 'export');

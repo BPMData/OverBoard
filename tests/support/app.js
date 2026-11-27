@@ -9,7 +9,7 @@ async function openApp(page, { fakeFs = false } = {}) {
   await page.addInitScript({ path: path.join(__dirname, 'pointer.js') });
   if (fakeFs) await page.addInitScript({ path: path.join(__dirname, 'fakefs.js') });
   await page.goto('app/');
-  await page.waitForFunction(() => window.__overboard);   // the loader has started the app
+  await page.waitForFunction(() => window.__overboard); // the loader has started the app
 }
 
 async function openPdf(page, name) {
@@ -36,9 +36,25 @@ async function download(page, action) {
 async function tap(page, x, y, pointerType = 'pen') {
   const s = await page.context().newCDPSession(page);
   await s.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType });
-  await s.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, pointerType });
-  await new Promise((r) => setTimeout(r, 40));   // the app drops sub-15 ms blips (hand/pen switching)
-  await s.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1, pointerType });
+  await s.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x,
+    y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1,
+    pointerType,
+  });
+  await new Promise((r) => setTimeout(r, 40)); // the app drops sub-15 ms blips (hand/pen switching)
+  await s.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x,
+    y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+    pointerType,
+  });
   await s.detach();
 }
 async function tapOn(page, selector, pointerType) {

@@ -8,13 +8,19 @@
 import { loadPdfLib } from './libs.js';
 
 export const PAPERS = ['blank', 'lined', 'graph', 'dots', 'iso'];
-export const NB_RE = /overboard-notebook-([0-9a-f]{16})/;   // in the PDF's Keywords
-const W = 612, H = 792;            // US Letter, portrait, in points (72 per inch)
-const STEP = 18;                   // graph squares and dot spacing: 1/4 inch
-const LINE = 24.75;                // lined paper: wide ruled (11/32 inch), easy to see on a board
-const TOP = 72, MARGIN = 72;       // lined paper: room for a heading, and the red margin line, 1 inch in
+export const NB_RE = /overboard-notebook-([0-9a-f]{16})/; // in the PDF's Keywords
+const W = 612,
+  H = 792; // US Letter, portrait, in points (72 per inch)
+const STEP = 18; // graph squares and dot spacing: 1/4 inch
+const LINE = 24.75; // lined paper: wide ruled (11/32 inch), easy to see on a board
+const TOP = 72,
+  MARGIN = 72; // lined paper: room for a heading, and the red margin line, 1 inch in
 
-const hex = (c) => [parseInt(c.slice(1, 3), 16) / 255, parseInt(c.slice(3, 5), 16) / 255, parseInt(c.slice(5, 7), 16) / 255];
+const hex = (c) => [
+  parseInt(c.slice(1, 3), 16) / 255,
+  parseInt(c.slice(3, 5), 16) / 255,
+  parseInt(c.slice(5, 7), 16) / 255,
+];
 
 /* the paper's lines as PDF drawing operators (PDF y goes up from the bottom) */
 function paperOps(L, paper) {
@@ -29,21 +35,28 @@ function paperOps(L, paper) {
     seg(MARGIN, 0, MARGIN, H);
     ops.push(L.stroke());
   } else if (paper === 'graph') {
-    for (const major of [false, true]) {   // a slightly darker line every inch
+    for (const major of [false, true]) {
+      // a slightly darker line every inch
       pen(major ? '#8fb3d9' : '#c3d8ec', major ? 0.75 : 0.5);
       for (let i = 1; i * STEP < W; i++) if ((i % 4 === 0) === major) seg(i * STEP, 0, i * STEP, H);
       for (let i = 1; i * STEP < H; i++) if ((i % 4 === 0) === major) seg(0, H - i * STEP, W, H - i * STEP);
       ops.push(L.stroke());
     }
-  } else if (paper === 'iso') {   // isometric: triangles 1/4 inch on a side (vertical lines and lines at ±30°)
-    const s = STEP, h = s * Math.sqrt(3) / 2, rise = W / Math.sqrt(3);
+  } else if (paper === 'iso') {
+    // isometric: triangles 1/4 inch on a side (vertical lines and lines at ±30°)
+    const s = STEP,
+      h = (s * Math.sqrt(3)) / 2,
+      rise = W / Math.sqrt(3);
     pen('#b0c9e3', 0.5);
     for (let x = h; x < W; x += h) seg(x, 0, x, H);
-    for (let c = -Math.ceil(rise / s) * s; c <= H + rise; c += s) { seg(0, c, W, c + rise); seg(0, c, W, c - rise); }
+    for (let c = -Math.ceil(rise / s) * s; c <= H + rise; c += s) {
+      seg(0, c, W, c + rise);
+      seg(0, c, W, c - rise);
+    }
     ops.push(L.stroke());
   } else if (paper === 'dots') {
     pen('#8a9bb0', 2.4);
-    ops.push(L.setLineCap(L.LineCapStyle.Round));   // a zero-length line with a round cap is a dot
+    ops.push(L.setLineCap(L.LineCapStyle.Round)); // a zero-length line with a round cap is a dot
     for (let x = STEP; x < W; x += STEP) for (let y = STEP; y < H; y += STEP) seg(x, H - y, x, H - y);
     ops.push(L.stroke());
   }
@@ -56,7 +69,8 @@ function addPaper(L, pdf, paper, index) {
   if (ops.length) page.pushOperators(...ops);
 }
 
-const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('');
+const newId = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('');
 
 /* a new one-page notebook: returns the PDF's bytes */
 export async function newNotebook(paper, title) {
