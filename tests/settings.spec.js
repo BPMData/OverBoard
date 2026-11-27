@@ -4,21 +4,49 @@ const { test } = require('@playwright/test');
 const { expect, openApp, openPdf, fileMenu } = require('./support/app');
 const { openOverlay, savedInk } = require('./support/overlay');
 
-const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
-const stroke = (page, pts) => page.evaluate((pts) => new Promise(async (res) => {
-  const c = document.getElementById('ink-canvas');
-  const ev = (t, x, y) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 3, buttons: t === 'pointerup' ? 0 : 1, button: 0, clientX: x, clientY: y }));
-  ev('pointerdown', ...pts[0]);
-  for (const p of pts.slice(1)) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', ...p); }
-  await new Promise((r) => setTimeout(r, 20));
-  ev('pointerup', ...pts[pts.length - 1]); res();
-}), pts);
+const line = (x0, y0, x1, y1) =>
+  Array.from({ length: 31 }, (_, i) => [x0 + ((x1 - x0) * i) / 30, y0 + ((y1 - y0) * i) / 30]);
+const stroke = (page, pts) =>
+  page.evaluate(
+    (pts) =>
+      new Promise(async (res) => {
+        const c = document.getElementById('ink-canvas');
+        const ev = (t, x, y) =>
+          c.dispatchEvent(
+            new PointerEvent(t, {
+              bubbles: true,
+              cancelable: true,
+              pointerType: 'pen',
+              pointerId: 3,
+              buttons: t === 'pointerup' ? 0 : 1,
+              button: 0,
+              clientX: x,
+              clientY: y,
+            })
+          );
+        ev('pointerdown', ...pts[0]);
+        for (const p of pts.slice(1)) {
+          await new Promise((r) => setTimeout(r, 4));
+          ev('pointermove', ...p);
+        }
+        await new Promise((r) => setTimeout(r, 20));
+        ev('pointerup', ...pts[pts.length - 1]);
+        res();
+      }),
+    pts
+  );
 const periodButtons = (page) => page.locator('#ink-periods button').allTextContents();
-const openSettings = async (page) => { await fileMenu(page, 'settings'); await expect(page.locator('#ob-settings')).toBeVisible(); };
+const openSettings = async (page) => {
+  await fileMenu(page, 'settings');
+  await expect(page.locator('#ob-settings')).toBeVisible();
+};
 const done = (page) => page.click('#ob-settings [data-s="done"]');
 
 test.describe('HTML overlay', () => {
-  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1400, height: 900 }); await openOverlay(page); });
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await openOverlay(page);
+  });
 
   test('a name style and more periods: 5 periods become one "▾" button with a list', async ({ page }) => {
     await openSettings(page);
@@ -31,7 +59,13 @@ test.describe('HTML overlay', () => {
     await expect(page.locator('#ob-settings')).toBeHidden();
     expect(await periodButtons(page)).toEqual(['Block A ▾']);
     await page.click('#ink-periods [data-act="period-menu"]');
-    await expect(page.locator('#ob-permenu button')).toHaveText(['Block A', 'Block B', 'Block C', 'Block D', 'Block E']);
+    await expect(page.locator('#ob-permenu button')).toHaveText([
+      'Block A',
+      'Block B',
+      'Block C',
+      'Block D',
+      'Block E',
+    ]);
     await page.click('#ob-permenu [data-period="Block C"]');
     await expect(page.locator('#ob-permenu')).toBeHidden();
     expect(await periodButtons(page)).toEqual(['Block C ▾']);
@@ -42,7 +76,12 @@ test.describe('HTML overlay', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ob-periods')))).toEqual(Object.keys(d.periods));
     // the toolbar still fits a 1080p board
     await page.setViewportSize({ width: 1920, height: 950 });
-    expect(await page.evaluate(() => { const b = document.getElementById('ink-bar'); return b.scrollHeight <= b.clientHeight; })).toBe(true);
+    expect(
+      await page.evaluate(() => {
+        const b = document.getElementById('ink-bar');
+        return b.scrollHeight <= b.clientHeight;
+      })
+    ).toBe(true);
   });
 
   test('renaming a period keeps its ink; typing does not undo ink', async ({ page }) => {
@@ -50,7 +89,7 @@ test.describe('HTML overlay', () => {
     await openSettings(page);
     const first = page.locator('#ob-settings .ob-names input').first();
     await first.fill('Gold');
-    await first.press('Control+z');                                // the text box's own undo, not the ink's
+    await first.press('Control+z'); // the text box's own undo, not the ink's
     await first.fill('Gold');
     await done(page);
     expect(await periodButtons(page)).toEqual(['Gold', 'P2', 'P3', 'P4']);
@@ -75,7 +114,7 @@ test.describe('HTML overlay', () => {
     await page.click('#ob-settings [data-s="fewer"]');
     page.once('dialog', (d) => d.dismiss());
     await done(page);
-    await expect(page.locator('#ob-settings')).toBeVisible();      // said no: nothing changed
+    await expect(page.locator('#ob-settings')).toBeVisible(); // said no: nothing changed
     expect(await periodButtons(page)).toEqual(['P1', 'P2', 'P3', 'P4']);
     page.once('dialog', (d) => d.accept());
     await done(page);
@@ -127,6 +166,6 @@ test('PDF app: the same Settings in File ▸; new PDFs start with the saved peri
   await page.click('[data-period="B1"]');
   expect(await page.evaluate(() => window.__overboard.data.active)).toBe('B1');
   await fileMenu(page, 'close');
-  await openPdf(page, 'book.pdf');                                 // a PDF opened for the first time
+  await openPdf(page, 'book.pdf'); // a PDF opened for the first time
   expect(await periodButtons(page)).toEqual(['A1', 'A2', 'B1', 'B2']);
 });

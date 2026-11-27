@@ -11,33 +11,57 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
 });
 
-const textReady = (page, n) => page.waitForFunction((n) => {
-  const v = __overboard.viewer, P = v.pages[n - 1];
-  return P.text && P.text.div.querySelector('.endOfContent') && P.imgZoom === v.zoom;
-}, n);
-const go = async (page, n) => { await page.evaluate((n) => __overboard.viewer.goTo(n), n); await textReady(page, n); };
+const textReady = (page, n) =>
+  page.waitForFunction((n) => {
+    const v = __overboard.viewer,
+      P = v.pages[n - 1];
+    return P.text && P.text.div.querySelector('.endOfContent') && P.imgZoom === v.zoom;
+  }, n);
+const go = async (page, n) => {
+  await page.evaluate((n) => __overboard.viewer.goTo(n), n);
+  await textReady(page, n);
+};
 
 /* where a text span is on screen: its rect, and screen points 10%/50%/90% along its text */
-const span = (page, n, start) => page.evaluate(([n, start]) => {
-  const P = __overboard.viewer.pages[n - 1];
-  const el = [...P.text.div.querySelectorAll('span')].find((s) => s.textContent.startsWith(start));
-  const r = el.getBoundingClientRect();
-  const along = (f) => r.width > r.height ? [r.left + f * r.width, r.top + r.height / 2] : [r.left + r.width / 2, r.top + f * r.height];
-  return { w: r.width, h: r.height, pts: [0.1, 0.5, 0.9].map(along) };
-}, [n, start]);
+const span = (page, n, start) =>
+  page.evaluate(
+    ([n, start]) => {
+      const P = __overboard.viewer.pages[n - 1];
+      const el = [...P.text.div.querySelectorAll('span')].find((s) => s.textContent.startsWith(start));
+      const r = el.getBoundingClientRect();
+      const along = (f) =>
+        r.width > r.height
+          ? [r.left + f * r.width, r.top + r.height / 2]
+          : [r.left + r.width / 2, r.top + f * r.height];
+      return { w: r.width, h: r.height, pts: [0.1, 0.5, 0.9].map(along) };
+    },
+    [n, start]
+  );
 
 /* brightness of the rendered page image under a screen point */
-const imgAt = (page, n, [x, y]) => page.evaluate(([n, x, y]) => {
-  const P = __overboard.viewer.pages[n - 1], r = P.sheet.getBoundingClientRect();
-  const d = P.img.getContext('2d').getImageData(Math.floor((x - r.left) * P.img.width / r.width), Math.floor((y - r.top) * P.img.height / r.height), 1, 1).data;
-  return d[0] + d[1] + d[2];
-}, [n, x, y]);
+const imgAt = (page, n, [x, y]) =>
+  page.evaluate(
+    ([n, x, y]) => {
+      const P = __overboard.viewer.pages[n - 1],
+        r = P.sheet.getBoundingClientRect();
+      const d = P.img
+        .getContext('2d')
+        .getImageData(
+          Math.floor(((x - r.left) * P.img.width) / r.width),
+          Math.floor(((y - r.top) * P.img.height) / r.height),
+          1,
+          1
+        ).data;
+      return d[0] + d[1] + d[2];
+    },
+    [n, x, y]
+  );
 
 const linkCenter = async (page, i) => {
   await page.waitForFunction(() => __overboard.viewer.pages[0].text?.links);
   return page.evaluate((i) => {
-  const r = __overboard.viewer.pages[0].text.links.children[i].getBoundingClientRect();
-  return [r.left + r.width / 2, r.top + r.height / 2];
+    const r = __overboard.viewer.pages[0].text.links.children[i].getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height / 2];
   }, i);
 };
 
@@ -54,7 +78,8 @@ test('text lines up with the page image at every zoom, on portrait, landscape an
       expect(long / zoom, `page ${n} zoom ${z}: text length in points`).toBeGreaterThan(150);
       expect(long / zoom, `page ${n} zoom ${z}: text length in points`).toBeLessThan(260);
       expect(s.h > s.w, `page ${n}: runs down the page only when rotated`).toBe(n === 4);
-      for (const p of s.pts) expect(await imgAt(page, n, p), `page ${n} zoom ${z}: over the scanned heading`).toBeLessThan(200);
+      for (const p of s.pts)
+        expect(await imgAt(page, n, p), `page ${n} zoom ${z}: over the scanned heading`).toBeLessThan(200);
     }
   }
 });
@@ -66,29 +91,57 @@ test('the text never takes the pen, palm or a Type tap', async ({ page }) => {
   const [x, y] = (await span(page, 2, 'Answer key line 1')).pts[1];
   const onText = () => page.evaluate(([x, y]) => !!document.elementFromPoint(x, y).closest('.textLayer'), [x, y]);
   expect(await onText()).toBe(false);
-  await page.evaluate(() => __t.stroke(2, __t.line(80, 170, 400, 170)));   // right across the text
+  await page.evaluate(() => __t.stroke(2, __t.line(80, 170, 400, 170))); // right across the text
   expect(await strokes(page)).toHaveLength(1);
-  await page.evaluate(() => __t.stroke(2, __t.line(200, 150, 200, 200), { buttons: 32 }));   // palm
+  await page.evaluate(() => __t.stroke(2, __t.line(200, 150, 200, 200), { buttons: 32 })); // palm
   expect((await strokes(page)).slice(-1)[0].e).toBe(1);
   await page.click('[data-act="type"]');
   expect(await onText()).toBe(false);
 });
 
-test('Type: a drag on the PDF text selects and copies it; a tap on it types a note; a drag beside it scrolls', async ({ page, context }) => {
+test('Type: a drag on the PDF text selects and copies it; a tap on it types a note; a drag beside it scrolls', async ({
+  page,
+  context,
+}) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openApp(page);
   await openPdf(page, 'links.pdf');
   await go(page, 2);
   await page.click('[data-act="type"]');
   const s = await span(page, 2, 'Answer key line 1:');
-  const from = [s.pts[0][0] - 0.08 * s.w, s.pts[0][1]], to = [s.pts[2][0] + 0.09 * s.w, s.pts[2][1]];
+  const from = [s.pts[0][0] - 0.08 * s.w, s.pts[0][1]],
+    to = [s.pts[2][0] + 0.09 * s.w, s.pts[2][1]];
   const y0 = await page.evaluate(() => scrollY);
-  await page.evaluate(([a, b]) => new Promise(async (res) => {   // a pen drag in screen coordinates
-    const ev = (t, x, y) => (document.elementFromPoint(x, y) || document.body).dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerType: 'pen', pointerId: 5, isPrimary: true, buttons: t === 'pointerup' ? 0 : 1, button: t === 'pointermove' ? -1 : 0, clientX: x, clientY: y, screenX: x, screenY: y }));
-    ev('pointerdown', ...a);
-    for (let i = 1; i <= 10; i++) { await new Promise((r) => setTimeout(r, 4)); ev('pointermove', a[0] + (b[0] - a[0]) * i / 10, a[1] + (b[1] - a[1]) * i / 10); }
-    ev('pointerup', ...b); res();
-  }), [from, to]);
+  await page.evaluate(
+    ([a, b]) =>
+      new Promise(async (res) => {
+        // a pen drag in screen coordinates
+        const ev = (t, x, y) =>
+          (document.elementFromPoint(x, y) || document.body).dispatchEvent(
+            new PointerEvent(t, {
+              bubbles: true,
+              cancelable: true,
+              pointerType: 'pen',
+              pointerId: 5,
+              isPrimary: true,
+              buttons: t === 'pointerup' ? 0 : 1,
+              button: t === 'pointermove' ? -1 : 0,
+              clientX: x,
+              clientY: y,
+              screenX: x,
+              screenY: y,
+            })
+          );
+        ev('pointerdown', ...a);
+        for (let i = 1; i <= 10; i++) {
+          await new Promise((r) => setTimeout(r, 4));
+          ev('pointermove', a[0] + ((b[0] - a[0]) * i) / 10, a[1] + ((b[1] - a[1]) * i) / 10);
+        }
+        ev('pointerup', ...b);
+        res();
+      }),
+    [from, to]
+  );
   expect(await page.evaluate(() => getSelection().toString())).toContain('Answer key line 1');
   expect(await page.evaluate(() => scrollY)).toBe(y0);
   await expect(page.locator('#ink-status')).toContainText('Text copied');
@@ -101,7 +154,10 @@ test('Type: a drag on the PDF text selects and copies it; a tap on it types a no
   expect(await page.evaluate(() => getSelection().toString())).toBe('');
 });
 
-test('links: a finger tap follows them (contents entries jump inside the PDF, web links open a new tab); the pen writes over them', async ({ page, context }) => {
+test('links: a finger tap follows them (contents entries jump inside the PDF, web links open a new tab); the pen writes over them', async ({
+  page,
+  context,
+}) => {
   await context.route('https://example.org/**', (r) => r.fulfill({ body: 'ok' }));
   await openApp(page);
   await openPdf(page, 'links.pdf');
@@ -116,10 +172,10 @@ test('links: a finger tap follows them (contents entries jump inside the PDF, we
   expect(await current(page)).toBe(1);
   await page.click('[data-act="undo"]');
 
-  await tap(page, ...(await linkCenter(page, 1)), 'mouse');   // finger (the board sends "mouse"): Chapter 2 -> page 3
+  await tap(page, ...(await linkCenter(page, 1)), 'mouse'); // finger (the board sends "mouse"): Chapter 2 -> page 3
   await expect.poll(current).toBe(3);
   await go(page, 1);
-  await tap(page, ...(await linkCenter(page, 2)), 'mouse');   // Chapter 3 -> page 4
+  await tap(page, ...(await linkCenter(page, 2)), 'mouse'); // Chapter 3 -> page 4
   await expect.poll(current).toBe(4);
   await go(page, 1);
   const [tab] = await Promise.all([context.waitForEvent('page'), tap(page, ...(await linkCenter(page, 3)), 'mouse')]);
@@ -184,7 +240,9 @@ test('Find text searches the whole book and jumps to the match', async ({ page }
   await expect(page.locator('#ob-find')).toBeHidden();
   expect(await page.locator('mark.hit').count()).toBe(0);
 
-  await fileMenu(page, 'find');                                // also in the File menu
+  await fileMenu(page, 'find'); // also in the File menu
   await page.fill('#ob-find-q', 'chapter 16. lorem');
-  await expect(page.locator('#ob-find .msg')).toHaveText('Showing the first 500 matches. Try more words.', { timeout: 30000 });   // 600 in chapter 16
+  await expect(page.locator('#ob-find .msg')).toHaveText('Showing the first 500 matches. Try more words.', {
+    timeout: 30000,
+  }); // 600 in chapter 16
 });

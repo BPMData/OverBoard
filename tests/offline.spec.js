@@ -18,7 +18,7 @@ async function visit(page) {
 }
 /* one online visit (the offline copy downloads), then open the app again so the copy serves it */
 async function firstVisit(page) {
-  site = site || await serveCopy();
+  site = site || (await serveCopy());
   await page.addInitScript({ path: path.join(__dirname, 'support', 'pointer.js') });
   await visit(page);
   await swReady(page);
@@ -26,12 +26,15 @@ async function firstVisit(page) {
   expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 }
 const appCss = (page) => page.evaluate(() => fetch('app.css').then((r) => r.text()));
-function deploy() {   // a new version of the site, built the way a real release is
+function deploy() {
+  // a new version of the site, built the way a real release is
   site.write('app/app.css', site.read('app/app.css') + '/* v2 */\n');
   site.build();
 }
 
-test.beforeEach(() => { site = null; });
+test.beforeEach(() => {
+  site = null;
+});
 
 test('the manifest is valid and Chrome can install the app', async ({ page }) => {
   await firstVisit(page);
@@ -42,10 +45,16 @@ test('the manifest is valid and Chrome can install the app', async ({ page }) =>
   expect(data.display).toBe('standalone');
   expect(data.icons.map((i) => i.purpose + ' ' + i.sizes)).toEqual(['any 192x192', 'any 512x512', 'maskable 512x512']);
   const { installabilityErrors } = await s.send('Page.getInstallabilityErrors');
-  expect(installabilityErrors.filter((e) => e.errorId !== 'in-incognito')).toEqual([]);   // test browsers are always incognito
+  expect(installabilityErrors.filter((e) => e.errorId !== 'in-incognito')).toEqual([]); // test browsers are always incognito
   // "Install app" appears only when the browser offers installing
   await expect(page.locator('#ob-install')).toBeHidden();
-  await page.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__asked = true; }; window.dispatchEvent(e); });
+  await page.evaluate(() => {
+    const e = new Event('beforeinstallprompt', { cancelable: true });
+    e.prompt = () => {
+      window.__asked = true;
+    };
+    window.dispatchEvent(e);
+  });
   await expect(page.locator('#ob-install')).toBeVisible();
   await page.click('#ob-install button');
   expect(await page.evaluate(() => window.__asked)).toBe(true);
@@ -67,7 +76,7 @@ test('offline, a PDF opens, takes ink and exports', async ({ page, context }) =>
   await page.setInputFiles('#ob-file', fixture('book.pdf'));
   await page.waitForFunction(() => window.__overboard.viewer.stats().images >= 1);
   await page.evaluate(() => __t.stroke(1, __t.line(100, 100, 300, 100)));
-  const dl = await download(page, () => fileMenu(page, 'export'));   // export.js and pdf-lib come from the offline copy
+  const dl = await download(page, () => fileMenu(page, 'export')); // export.js and pdf-lib come from the offline copy
   expect(dl.suggestedFilename()).toBe('book_annotated_P1.pdf');
   expect((await fs.promises.readFile(await dl.path())).subarray(0, 5).toString()).toBe('%PDF-');
 });
@@ -89,15 +98,19 @@ test('a new version downloads completely, then replaces the old one in one step'
   await visit(page);
   expect(await appCss(page)).toContain('/* v2 */');
   await expect.poll(() => cacheNames(page)).toEqual(['overboard-' + v2]);
-  const stamps = await page.evaluate(async () => [document.querySelector('meta[name="ob-version"]').content, (await (await fetch('version.json')).json()).v]);
+  const stamps = await page.evaluate(async () => [
+    document.querySelector('meta[name="ob-version"]').content,
+    (await (await fetch('version.json')).json()).v,
+  ]);
   expect(stamps[0]).toBe(stamps[1]);
 });
 
 test('a half-finished update on the site is not used; the old version stays', async ({ page }) => {
   await firstVisit(page);
-  const v1 = site.swVersion(), css = site.read('app/app.css');
+  const v1 = site.swVersion(),
+    css = site.read('app/app.css');
   deploy();
-  site.write('app/app.css', css);   // sw.js is new but app.css is still the old file
+  site.write('app/app.css', css); // sw.js is new but app.css is still the old file
   expect(await swUpdate(page)).toBe('redundant');
   expect(await cacheNames(page)).toEqual(['overboard-' + v1]);
   await visit(page);
@@ -112,7 +125,7 @@ test('with a second OverBoard page open, reloading keeps the current version', a
   await other.waitForFunction(() => window.__overboard);
   deploy();
   expect(await swUpdate(page)).toBe('installed');
-  await visit(page);   // the other page still uses the current version, so no switch
+  await visit(page); // the other page still uses the current version, so no switch
   expect(await appCss(page)).not.toContain('/* v2 */');
   expect(await appCss(other)).not.toContain('/* v2 */');
 });
@@ -122,12 +135,22 @@ test('with a second OverBoard page open, reloading keeps the current version', a
    in a plain headless Chrome: a page on the site drives the app in a frame and reports back. */
 test('reopening the app switches to a downloaded update before the app starts (plain Chrome)', async () => {
   let report, chrome;
-  const got = new Promise((r) => { report = r; });
-  site = await serveCopy({
-    '/__deploy': (u, res) => { deploy(); res.end('ok'); },
-    '/__report': (u, res) => { res.end('ok'); report(JSON.parse(u.searchParams.get('r'))); },
+  const got = new Promise((r) => {
+    report = r;
   });
-  site.write('driver.html', `<!doctype html><iframe id="f" width="900" height="700"></iframe><script>
+  site = await serveCopy({
+    '/__deploy': (u, res) => {
+      deploy();
+      res.end('ok');
+    },
+    '/__report': (u, res) => {
+      res.end('ok');
+      report(JSON.parse(u.searchParams.get('r')));
+    },
+  });
+  site.write(
+    'driver.html',
+    `<!doctype html><iframe id="f" width="900" height="700"></iframe><script>
     const f = document.getElementById('f'), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     async function until(fn) { for (let t = Date.now(); Date.now() - t < 20000; await sleep(50)) { try { const v = await fn(); if (v) return v; } catch (e) {} } return null; }
     async function open() { f.src = 'app/?' + Math.random(); await sleep(50); return until(() => f.contentWindow.__overboard); }
@@ -149,13 +172,32 @@ test('reopening the app switches to a downloaded update before the app starts (p
       r.caches = (await until(async () => { const k = await caches.keys(); return k.length === 1 && k; })) || await caches.keys();
       fetch('__report?r=' + encodeURIComponent(JSON.stringify(r)));
     })();
-  </script>`);
+  </script>`
+  );
   const profile = path.join(site.dir, 'profile');
-  chrome = spawn(process.env.PW_CHROMIUM || chromium.executablePath(), ['--headless=new', '--no-sandbox', '--no-first-run',
-    '--disable-background-networking', '--disable-component-update', '--user-data-dir=' + profile, site.url.replace('app/', 'driver.html')], { stdio: 'ignore' });
+  chrome = spawn(
+    process.env.PW_CHROMIUM || chromium.executablePath(),
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--no-first-run',
+      '--disable-background-networking',
+      '--disable-component-update',
+      '--user-data-dir=' + profile,
+      site.url.replace('app/', 'driver.html'),
+    ],
+    { stdio: 'ignore' }
+  );
   try {
     const r = await got;
-    expect(r).toEqual({ installed: true, controlled: true, waiting: true, oldBefore: true, newAfter: true, caches: ['overboard-' + site.swVersion()] });
+    expect(r).toEqual({
+      installed: true,
+      controlled: true,
+      waiting: true,
+      oldBefore: true,
+      newAfter: true,
+      caches: ['overboard-' + site.swVersion()],
+    });
   } finally {
     chrome.kill();
     await new Promise((r) => chrome.once('exit', r));

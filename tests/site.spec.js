@@ -8,7 +8,7 @@ test('every app module loads at the current version', async ({ page }) => {
   page.on('request', (r) => urls.push(r.url()));
   await openApp(page);
   const mods = urls.filter((u) => /\/(app|shared)\/[\w-]+\.js(\?|$)/.test(u));
-  expect(mods.length).toBeGreaterThanOrEqual(version.js.length - 1);   // export.js loads on first export
+  expect(mods.length).toBeGreaterThanOrEqual(version.js.length - 1); // export.js loads on first export
   for (const u of mods) expect(u).toMatch(new RegExp(`\\?v=${version.v}$`));
 });
 
@@ -31,7 +31,10 @@ test('the app still starts if version.json cannot be read', async ({ page }) => 
 
 test('opening and exporting a PDF contacts no other site', async ({ page }) => {
   const outside = [];
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => { outside.push(r.request().url()); r.abort(); });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => {
+    outside.push(r.request().url());
+    r.abort();
+  });
   await openApp(page);
   await openPdf(page, 'book.pdf');
   await page.evaluate(() => __t.stroke(1, __t.line(100, 100, 300, 100)));
@@ -41,13 +44,17 @@ test('opening and exporting a PDF contacts no other site', async ({ page }) => {
 });
 
 test('the toolbar fits a 1080p board without scrolling; File menu opens beside it', async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 950 });   // Chrome's page area on a 1920x1080 screen
+  await page.setViewportSize({ width: 1920, height: 950 }); // Chrome's page area on a 1920x1080 screen
   await openApp(page);
   await openPdf(page, 'book.pdf');
-  const bar = await page.evaluate(() => { const b = document.getElementById('ink-bar'); return { scroll: b.scrollHeight, client: b.clientHeight }; });
+  const bar = await page.evaluate(() => {
+    const b = document.getElementById('ink-bar');
+    return { scroll: b.scrollHeight, client: b.clientHeight };
+  });
   expect(bar.scroll).toBeLessThanOrEqual(bar.client);
   await page.click('[data-act="file"]');
-  const box = await page.locator('#ob-filemenu').boundingBox(), barBox = await page.locator('#ink-bar').boundingBox();
+  const box = await page.locator('#ob-filemenu').boundingBox(),
+    barBox = await page.locator('#ink-bar').boundingBox();
   expect(box.x).toBeGreaterThan(barBox.x + barBox.width);
   expect(box.y + box.height).toBeLessThanOrEqual(950);
   await page.mouse.click(1000, 500);

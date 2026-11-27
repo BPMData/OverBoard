@@ -24,19 +24,33 @@ const r3 = (v) => Math.round(v * 1000) / 1000;
 
 /* same curve as paintStroke: quadratic curves through midpoints, written as cubic Béziers */
 function strokeOps(L, s) {
-  const p = s.p, ops = [];
+  const p = s.p,
+    ops = [];
   ops.push(L.setStrokingRgbColor(...rgb01(s.c)), L.setLineWidth(r3(s.w)));
   ops.push(L.moveTo(r3(p[0]), r3(p[1])));
-  if (p.length < 4) { ops.push(L.lineTo(r3(p[0]), r3(p[1]))); }   // a dot: zero-length line with a round cap
+  if (p.length < 4) {
+    ops.push(L.lineTo(r3(p[0]), r3(p[1])));
+  } // a dot: zero-length line with a round cap
   else {
-    let x = p[0], y = p[1];
+    let x = p[0],
+      y = p[1];
     for (let i = 2; i < p.length - 2; i += 2) {
-      const qx = p[i], qy = p[i + 1], mx = (p[i] + p[i + 2]) / 2, my = (p[i + 1] + p[i + 3]) / 2;
-      ops.push(L.appendBezierCurve(
-        r3(x + 2 / 3 * (qx - x)), r3(y + 2 / 3 * (qy - y)),
-        r3(mx + 2 / 3 * (qx - mx)), r3(my + 2 / 3 * (qy - my)),
-        r3(mx), r3(my)));
-      x = mx; y = my;
+      const qx = p[i],
+        qy = p[i + 1],
+        mx = (p[i] + p[i + 2]) / 2,
+        my = (p[i + 1] + p[i + 3]) / 2;
+      ops.push(
+        L.appendBezierCurve(
+          r3(x + (2 / 3) * (qx - x)),
+          r3(y + (2 / 3) * (qy - y)),
+          r3(mx + (2 / 3) * (qx - mx)),
+          r3(my + (2 / 3) * (qy - my)),
+          r3(mx),
+          r3(my)
+        )
+      );
+      x = mx;
+      y = my;
     }
     ops.push(L.lineTo(r3(p[p.length - 2]), r3(p[p.length - 1])));
   }
@@ -47,9 +61,11 @@ function strokeOps(L, s) {
 /* a typed note as a PNG (4 pixels per point), so any language's letters come out as they look on screen */
 const NOTE_PX = 4;
 async function notePng(s) {
-  const [x0, y0, x1, y1] = s.p, pad = s.f * 0.3;
+  const [x0, y0, x1, y1] = s.p,
+    pad = s.f * 0.3;
   const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.ceil((x1 - x0 + 2 * pad) * NOTE_PX)); c.height = Math.max(1, Math.ceil((y1 - y0 + 2 * pad) * NOTE_PX));
+  c.width = Math.max(1, Math.ceil((x1 - x0 + 2 * pad) * NOTE_PX));
+  c.height = Math.max(1, Math.ceil((y1 - y0 + 2 * pad) * NOTE_PX));
   paintStroke(c.getContext('2d'), s, NOTE_PX, (pad - x0) * NOTE_PX, (pad - y0) * NOTE_PX);
   const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
   return { bytes: new Uint8Array(await blob.arrayBuffer()), box: [x0 - pad, y0 - pad, x1 + pad, y1 + pad] };
@@ -67,7 +83,7 @@ export function hasCovers(byPage) {
 export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) {
   const L = await loadPdfLib();
   const out = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
-  if (NB_RE.test(out.getKeywords() || '') || IMG_RE.test(out.getKeywords() || '')) out.setKeywords([]);   // an exported notebook or picture is a plain PDF, so its ink isn't drawn twice when reopened
+  if (NB_RE.test(out.getKeywords() || '') || IMG_RE.test(out.getKeywords() || '')) out.setKeywords([]); // an exported notebook or picture is a plain PDF, so its ink isn't drawn twice when reopened
   const pages = out.getPages();
   const shown = (pg) => (pg.rotate + ((turns && turns[pg.pageNumber]) || 0)) % 360;
   for (const [k, t] of Object.entries(turns || {})) {
@@ -80,13 +96,20 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) 
     if (!page || !list.length) continue;
     const drawn = applyErasers(list);
     if (!drawn.length) continue;
-    const pg = await pdf.getPage(n), vp = pg.getViewport({ scale: 1, rotation: shown(pg) });
-    const m = invert(vp.transform);            // page-as-shown points -> PDF user space
-    const ops = [L.pushGraphicsState(), L.concatTransformationMatrix(...m.map(r3)),
-      L.setLineCap(L.LineCapStyle.Round), L.setLineJoin(L.LineJoinStyle.Round)];
+    const pg = await pdf.getPage(n),
+      vp = pg.getViewport({ scale: 1, rotation: shown(pg) });
+    const m = invert(vp.transform); // page-as-shown points -> PDF user space
+    const ops = [
+      L.pushGraphicsState(),
+      L.concatTransformationMatrix(...m.map(r3)),
+      L.setLineCap(L.LineCapStyle.Round),
+      L.setLineJoin(L.LineJoinStyle.Round),
+    ];
     // covers (o: 1) are opaque and drawn in order with the pen ink, over the page's text, like on screen
-    const hl = drawn.filter(seeThrough), pen = drawn.filter((s) => !seeThrough(s) && !isNote(s));
-    if (hl.length) {   // highlights go under the pen ink and multiply, so printed text stays readable
+    const hl = drawn.filter(seeThrough),
+      pen = drawn.filter((s) => !seeThrough(s) && !isNote(s));
+    if (hl.length) {
+      // highlights go under the pen ink and multiply, so printed text stays readable
       const gs = page.doc.context.obj({ Type: 'ExtGState', BM: 'Multiply' });
       const key = page.node.newExtGState('GS', gs);
       ops.push(L.pushGraphicsState(), L.setGraphicsState(key));
@@ -94,10 +117,18 @@ export async function exportAnnotatedPdf(bytes, pdf, byPage, turns, onProgress) 
       ops.push(L.popGraphicsState());
     }
     for (const s of pen) ops.push(...strokeOps(L, s));
-    for (const s of drawn.filter(isNote)) {   // y runs down here, so the picture is flipped back upright
-      const png = await notePng(s), img = await out.embedPng(png.bytes), [a, b, c, d] = png.box;
+    for (const s of drawn.filter(isNote)) {
+      // y runs down here, so the picture is flipped back upright
+      const png = await notePng(s),
+        img = await out.embedPng(png.bytes),
+        [a, b, c, d] = png.box;
       const name = page.node.newXObject('Note', img.ref);
-      ops.push(L.pushGraphicsState(), L.concatTransformationMatrix(r3(c - a), 0, 0, r3(b - d), r3(a), r3(d)), L.drawObject(name), L.popGraphicsState());
+      ops.push(
+        L.pushGraphicsState(),
+        L.concatTransformationMatrix(r3(c - a), 0, 0, r3(b - d), r3(a), r3(d)),
+        L.drawObject(name),
+        L.popGraphicsState()
+      );
     }
     ops.push(L.popGraphicsState());
     page.pushOperators(...ops);

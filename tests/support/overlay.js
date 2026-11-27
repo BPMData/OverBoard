@@ -8,18 +8,30 @@ async function openOverlay(page, url = './') {
 const overlayReady = (page) => page.waitForSelector('#ink-bar[data-ready]', { state: 'attached' });
 
 /* save now (as if the tab closed) and return this worksheet's ink as saved in IndexedDB */
-const savedInk = (page) => page.evaluate(async () => {
-  window.dispatchEvent(new Event('pagehide'));
-  const key = Object.keys(localStorage).find((k) => k.startsWith('ink-v2:'));
-  for (let i = 0; i < 100 && key && localStorage.getItem(key) !== null; i++) await new Promise((r) => setTimeout(r, 20));   // the backup goes once IndexedDB has the ink
-  const db = await new Promise((res, rej) => { const rq = indexedDB.open('ink-data'); rq.onsuccess = () => res(rq.result); rq.onerror = rej; });
-  const prefix = 'ink-v2:' + location.pathname + ':';
-  const out = await new Promise((res) => {
-    const st = db.transaction('ink').objectStore('ink'), rq = st.getAllKeys();
-    rq.onsuccess = () => { const k = rq.result.find((k) => k.startsWith(prefix)); if (!k) return res(null); const g = st.get(k); g.onsuccess = () => res(g.result); };
+const savedInk = (page) =>
+  page.evaluate(async () => {
+    window.dispatchEvent(new Event('pagehide'));
+    const key = Object.keys(localStorage).find((k) => k.startsWith('ink-v2:'));
+    for (let i = 0; i < 100 && key && localStorage.getItem(key) !== null; i++)
+      await new Promise((r) => setTimeout(r, 20)); // the backup goes once IndexedDB has the ink
+    const db = await new Promise((res, rej) => {
+      const rq = indexedDB.open('ink-data');
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = rej;
+    });
+    const prefix = 'ink-v2:' + location.pathname + ':';
+    const out = await new Promise((res) => {
+      const st = db.transaction('ink').objectStore('ink'),
+        rq = st.getAllKeys();
+      rq.onsuccess = () => {
+        const k = rq.result.find((k) => k.startsWith(prefix));
+        if (!k) return res(null);
+        const g = st.get(k);
+        g.onsuccess = () => res(g.result);
+      };
+    });
+    db.close();
+    return out;
   });
-  db.close();
-  return out;
-});
 
 module.exports = { openOverlay, overlayReady, savedInk };

@@ -4,44 +4,77 @@
 // so zooming never moves ink. o: 1 marks a cover (an opaque highlighter stroke): it is drawn on the pen
 // layer, above the page and its text, instead of multiplied underneath.
 
-import { makeLaser, textAt, selectTo, clearTextSel, copyTextSel, seeThrough, isNote, notesGone, pointerKind, paintStroke, liveStart, liveAdd, livePieces, liveEndPieces, paintPieces, liveLift } from '../shared/ink-core.js';
+import {
+  makeLaser,
+  textAt,
+  selectTo,
+  clearTextSel,
+  copyTextSel,
+  seeThrough,
+  isNote,
+  notesGone,
+  pointerKind,
+  paintStroke,
+  liveStart,
+  liveAdd,
+  livePieces,
+  liveEndPieces,
+  paintPieces,
+  liveLift,
+} from '../shared/ink-core.js';
 import { GUTTER } from './viewer.js';
 
-export const PT_PER_UNIT = 0.75;   // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
-const MAX_INK_PX = 8e6;            // per ink canvas
+export const PT_PER_UNIT = 0.75; // toolbar sizes are in 1/96 in (CSS px at 100%), like the overlay; ink is stored in points
+const MAX_INK_PX = 8e6; // per ink canvas
 
 export class Ink {
   constructor(viewer, tools, onChange) {
     this.v = viewer;
-    this.T = tools;                // live tool settings from the toolbar (color, width, hiliting, ...)
-    this.onChange = onChange;      // called after every change to the ink (for autosave)
+    this.T = tools; // live tool settings from the toolbar (color, width, hiliting, ...)
+    this.onChange = onChange; // called after every change to the ink (for autosave)
     this.D = null;
-    this.byPage = new Map();       // page -> strokes of the active period, in order
-    this.cur = null; this.curP = null; this.live = null;
-    this.active = null; this.drag = null; this.downAt = 0;
-    this.lastCleared = null;       // { page, before } or { all } so Undo can bring back what Clear took
-    this.redos = [];               // what Undo took back, newest last: a stroke, or { cleared: page }
-    this.sel = null;               // the Select tool (makeSelect in shared/ink-core.js), set by main.js
-    this.typing = null;            // the Type tool (makeTyping), set by main.js
-    this.selP = null;              // the page a Select gesture started on
-    this.pv = null;                // { page, hide, add }: a selection being dragged, drawn in its new spot
-    this.laser = makeLaser();      // laser pointer marks: they fade away and are never ink
-    this.pointing = false;         // a laser mark is being drawn
+    this.byPage = new Map(); // page -> strokes of the active period, in order
+    this.cur = null;
+    this.curP = null;
+    this.live = null;
+    this.active = null;
+    this.drag = null;
+    this.downAt = 0;
+    this.lastCleared = null; // { page, before } or { all } so Undo can bring back what Clear took
+    this.redos = []; // what Undo took back, newest last: a stroke, or { cleared: page }
+    this.sel = null; // the Select tool (makeSelect in shared/ink-core.js), set by main.js
+    this.typing = null; // the Type tool (makeTyping), set by main.js
+    this.selP = null; // the page a Select gesture started on
+    this.pv = null; // { page, hide, add }: a selection being dragged, drawn in its new spot
+    this.laser = makeLaser(); // laser pointer marks: they fade away and are never ink
+    this.pointing = false; // a laser mark is being drawn
   }
 
   /* for a moment, let the PDF's text be found under the pen (Type: drag on text to select it) */
-  get unblock() { return () => { this.box.classList.add('probe'); return () => this.box.classList.remove('probe'); }; }
+  get unblock() {
+    return () => {
+      this.box.classList.add('probe');
+      return () => this.box.classList.remove('probe');
+    };
+  }
 
-  dropSel() { if (this.sel) this.sel.drop(); }
-  endTyping() { if (this.typing) this.typing.close(); }   // keep a note being typed, before the ink changes under it
+  dropSel() {
+    if (this.sel) this.sel.drop();
+  }
+  endTyping() {
+    if (this.typing) this.typing.close();
+  } // keep a note being typed, before the ink changes under it
 
-  get strokes() { return this.D.periods[this.D.active]; }
+  get strokes() {
+    return this.D.periods[this.D.active];
+  }
 
   setData(D) {
     this.endTyping();
     this.D = D;
     this.dropSel();
-    this.lastCleared = null; this.redos = [];
+    this.lastCleared = null;
+    this.redos = [];
     this.reindex();
   }
 
@@ -57,50 +90,77 @@ export class Ink {
 
   /* ---------- canvases ---------- */
 
-  pageList(n) { return this.byPage.get(n) || []; }
-  P(n) { return this.v.pages[n - 1]; }
+  pageList(n) {
+    return this.byPage.get(n) || [];
+  }
+  P(n) {
+    return this.v.pages[n - 1];
+  }
 
   ensure(P, needHl) {
     if (!P.ink) P.ink = this.makeCanvas(P, 'ink');
-    if (needHl && !P.hl) { P.hl = this.makeCanvas(P, 'hl'); this.redraw(P); }
+    if (needHl && !P.hl) {
+      P.hl = this.makeCanvas(P, 'hl');
+      this.redraw(P);
+    }
   }
 
   makeCanvas(P, cls) {
     const c = document.createElement('canvas');
     c.className = cls;
-    if (cls === 'hl') P.el.insertBefore(c, P.ink || null); else P.el.appendChild(c);
+    if (cls === 'hl') P.el.insertBefore(c, P.ink || null);
+    else P.el.appendChild(c);
     this.sizeCanvas(P, c);
     return c;
   }
 
   sizeCanvas(P, c) {
-    const z = this.v.zoom, cw = (P.w + 2 * GUTTER) * z, ch = P.h * z;
+    const z = this.v.zoom,
+      cw = (P.w + 2 * GUTTER) * z,
+      ch = P.h * z;
     const bs = Math.min(window.devicePixelRatio || 1, Math.sqrt(MAX_INK_PX / (cw * ch)));
-    const w = Math.round(cw * bs), h = Math.round(ch * bs);
-    c._sc = z * bs; c._ox = GUTTER * z * bs;
+    const w = Math.round(cw * bs),
+      h = Math.round(ch * bs);
+    c._sc = z * bs;
+    c._ox = GUTTER * z * bs;
     if (c.width === w && c.height === h) return false;
-    c.width = w; c.height = h;
+    c.width = w;
+    c.height = h;
     return true;
   }
 
   free(P) {
-    for (const k of ['ink', 'hl']) if (P[k]) { P[k].width = 0; P[k].remove(); P[k] = null; }
+    for (const k of ['ink', 'hl'])
+      if (P[k]) {
+        P[k].width = 0;
+        P[k].remove();
+        P[k] = null;
+      }
   }
 
-  layersFor(P, s) { return (s.e ? [P.ink, P.hl] : seeThrough(s) ? [P.hl] : [P.ink]).filter(Boolean); }
+  layersFor(P, s) {
+    return (s.e ? [P.ink, P.hl] : seeThrough(s) ? [P.hl] : [P.ink]).filter(Boolean);
+  }
 
   redraw(P) {
     for (const c of [P.ink, P.hl]) if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
-    const pv = this.pv && this.pv.page === P.n ? this.pv : null, gone = notesGone(this.pageList(P.n));   // notes an eraser touched
-    for (const s of this.pageList(P.n)) if ((!pv || !pv.hide.includes(s)) && !gone.includes(s)) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
-    if (pv) for (const s of pv.add) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+    const pv = this.pv && this.pv.page === P.n ? this.pv : null,
+      gone = notesGone(this.pageList(P.n)); // notes an eraser touched
+    for (const s of this.pageList(P.n))
+      if ((!pv || !pv.hide.includes(s)) && !gone.includes(s))
+        for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
+    if (pv)
+      for (const s of pv.add) for (const c of this.layersFor(P, s)) paintStroke(c.getContext('2d'), s, c._sc, c._ox, 0);
   }
 
   /* Select: draw page n with a selection being dragged (null: as it is) */
   preview(n, hide, add) {
     const was = this.pv;
     this.pv = n ? { page: n, hide, add } : null;
-    if (!n) { if (was) this.refreshPage(was.page); return; }
+    if (!n) {
+      if (was) this.refreshPage(was.page);
+      return;
+    }
     const P = this.P(n);
     if (!P) return;
     this.ensure(P, add.some(seeThrough) || this.pageList(n).some(seeThrough));
@@ -108,7 +168,8 @@ export class Ink {
   }
   /* where the selection box goes on page n: [element, css px per point, x offset, y offset] */
   host(n) {
-    const P = this.P(n), z = this.v.zoom;
+    const P = this.P(n),
+      z = this.v.zoom;
     return P ? [P.el, z, GUTTER * z, 0] : null;
   }
 
@@ -117,19 +178,33 @@ export class Ink {
     const P = this.P(n);
     if (!P || P === this.curP) return;
     const list = this.pageList(n);
-    if (!list.length) { this.free(P); return; }
-    if (!this.v.want.has(P) && !P.ink) return;        // off screen: drawn when it comes back
-    if (P.hl && !list.some(seeThrough)) { P.hl.width = 0; P.hl.remove(); P.hl = null; }
+    if (!list.length) {
+      this.free(P);
+      return;
+    }
+    if (!this.v.want.has(P) && !P.ink) return; // off screen: drawn when it comes back
+    if (P.hl && !list.some(seeThrough)) {
+      P.hl.width = 0;
+      P.hl.remove();
+      P.hl = null;
+    }
     this.ensure(P, list.some(seeThrough));
     this.redraw(P);
   }
 
   // viewer hooks
-  show(P) { if (this.pageList(P.n).length && !P.ink) { this.ensure(P, this.pageList(P.n).some(seeThrough)); this.redraw(P); } }
-  hide(P) { if (P !== this.curP) this.free(P); }
+  show(P) {
+    if (this.pageList(P.n).length && !P.ink) {
+      this.ensure(P, this.pageList(P.n).some(seeThrough));
+      this.redraw(P);
+    }
+  }
+  hide(P) {
+    if (P !== this.curP) this.free(P);
+  }
   resize(P) {
     for (const c of [P.ink, P.hl]) if (c) this.sizeCanvas(P, c);
-    this.redraw(P);   // always: zoom changes the transform even when the pixel size stays the same
+    this.redraw(P); // always: zoom changes the transform even when the pixel size stays the same
     if (this.sel) this.sel.layout();
     if (this.typing) this.typing.layout();
   }
@@ -142,54 +217,89 @@ export class Ink {
     box.addEventListener('pointermove', (e) => this.move(e));
     box.addEventListener('pointerup', (e) => this.end(e));
     box.addEventListener('pointercancel', (e) => this.end(e));
-    box.addEventListener('contextmenu', (e) => {   // a right-click on a selection opens its menu
+    box.addEventListener('contextmenu', (e) => {
+      // a right-click on a selection opens its menu
       e.preventDefault();
       const el = this.T.selecting && this.sel && e.target.closest && e.target.closest('.pg');
-      if (el) { const q = this.pt(e, el._P); this.sel.contextMenu(el._P.n, q[0], q[1], e.clientX, e.clientY); }
+      if (el) {
+        const q = this.pt(e, el._P);
+        this.sel.contextMenu(el._P.n, q[0], q[1], e.clientX, e.clientY);
+      }
     });
   }
 
   pt(e, P) {
-    const r = P.el.getBoundingClientRect(), z = this.v.zoom;
-    return [Math.round(((e.clientX - r.left) / z - GUTTER) * 100) / 100, Math.round(((e.clientY - r.top) / z) * 100) / 100];
+    const r = P.el.getBoundingClientRect(),
+      z = this.v.zoom;
+    return [
+      Math.round(((e.clientX - r.left) / z - GUTTER) * 100) / 100,
+      Math.round(((e.clientY - r.top) / z) * 100) / 100,
+    ];
   }
 
   down(e) {
     if (this.active !== null || !this.D) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const T = this.T, kind = pointerKind(e);
+    const T = this.T,
+      kind = pointerKind(e);
     // Type: a drag scrolls and a tap types a note (any pointer but the palm). A finger that scrolls: a tap presses a link.
     const typing = T.typing && kind !== 'palm' && this.typing;
     const scrolling = typing || (kind === 'finger' && T.fingerScrolls);
     this.active = e.pointerId;
-    try { this.box.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    try {
+      this.box.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* ignore */
+    }
     if (scrolling) {
       const pg = e.target.closest && e.target.closest('.pg');
       this.drag = { x: e.screenX, y: e.screenY, x0: e.screenX, y0: e.screenY, type: typing, P: pg && pg._P };
-      if (typing) { clearTextSel(); this.drag.text = textAt(e.clientX, e.clientY, this.unblock); }   // starting on the PDF's text: select it
-      e.preventDefault(); return;
+      if (typing) {
+        clearTextSel();
+        this.drag.text = textAt(e.clientX, e.clientY, this.unblock);
+      } // starting on the PDF's text: select it
+      e.preventDefault();
+      return;
     }
-    if (T.laser && kind !== 'palm') {   // the palm still erases
+    if (T.laser && kind !== 'palm') {
+      // the palm still erases
       this.pointing = true;
-      this.laser.down(e.clientX, e.clientY, T.hiliting ? T.hlInk() : T.color, (T.hiliting ? T.hlWidth : T.width) * PT_PER_UNIT * this.v.zoom, T.hiliting);
-      e.preventDefault(); return;
+      this.laser.down(
+        e.clientX,
+        e.clientY,
+        T.hiliting ? T.hlInk() : T.color,
+        (T.hiliting ? T.hlWidth : T.width) * PT_PER_UNIT * this.v.zoom,
+        T.hiliting
+      );
+      e.preventDefault();
+      return;
     }
     const el = e.target.closest('.pg');
-    if (!el) { this.active = null; return; }
-    const P = el._P, q = this.pt(e, P), z = this.v.zoom;
-    if (T.selecting && kind !== 'palm' && this.sel) {   // Select: circle ink, tap it, or drag the selection
+    if (!el) {
+      this.active = null;
+      return;
+    }
+    const P = el._P,
+      q = this.pt(e, P),
+      z = this.v.zoom;
+    if (T.selecting && kind !== 'palm' && this.sel) {
+      // Select: circle ink, tap it, or drag the selection
       this.selP = P;
       this.sel.down(P.n, q[0], q[1], e.clientX, e.clientY);
-      e.preventDefault(); return;
+      e.preventDefault();
+      return;
     }
     let s;
     // the palm / eraser width is about the hand, so it stays the same size on screen at any zoom
-    if (kind === 'palm' || T.erasing) s = { page: P.n, c: T.color, w: (kind === 'palm' ? T.PALM_ERASER_W : T.ERASER_W) / z, e: 1, p: q };
-    else if (T.hiliting && T.covering) s = { page: P.n, c: T.color, w: T.hlWidth * PT_PER_UNIT, e: 0, h: 1, o: 1, p: q };
+    if (kind === 'palm' || T.erasing)
+      s = { page: P.n, c: T.color, w: (kind === 'palm' ? T.PALM_ERASER_W : T.ERASER_W) / z, e: 1, p: q };
+    else if (T.hiliting && T.covering)
+      s = { page: P.n, c: T.color, w: T.hlWidth * PT_PER_UNIT, e: 0, h: 1, o: 1, p: q };
     else if (T.hiliting) s = { page: P.n, c: T.hlInk(), w: T.hlWidth * PT_PER_UNIT, e: 0, h: 1, p: q };
     else s = { page: P.n, c: T.color, w: T.width * PT_PER_UNIT, e: 0, p: q };
     s.w = Math.round(s.w * 100) / 100;
-    this.cur = s; this.curP = P;
+    this.cur = s;
+    this.curP = P;
     this.ensure(P, seeThrough(s));
     this.downAt = performance.now();
     this.live = liveStart(q[0], q[1]);
@@ -199,32 +309,46 @@ export class Ink {
 
   move(e) {
     if (e.pointerId !== this.active) return;
-    if (this.drag && this.drag.text) {   // a tap wobbles a little: select only once it's a drag
-      if (Math.abs(e.screenX - this.drag.x0) + Math.abs(e.screenY - this.drag.y0) >= 8) selectTo(this.drag.text, e.clientX, e.clientY, this.unblock);
-      e.preventDefault(); return;
+    if (this.drag && this.drag.text) {
+      // a tap wobbles a little: select only once it's a drag
+      if (Math.abs(e.screenX - this.drag.x0) + Math.abs(e.screenY - this.drag.y0) >= 8)
+        selectTo(this.drag.text, e.clientX, e.clientY, this.unblock);
+      e.preventDefault();
+      return;
     }
     if (this.drag) {
       window.scrollBy(this.drag.x - e.screenX, this.drag.y - e.screenY);
-      this.drag.x = e.screenX; this.drag.y = e.screenY;
-      e.preventDefault(); return;
+      this.drag.x = e.screenX;
+      this.drag.y = e.screenY;
+      e.preventDefault();
+      return;
     }
     if (this.pointing) {
       let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
       if (!evs || !evs.length) evs = [e];
       for (const ev of evs) this.laser.move(ev.clientX, ev.clientY);
-      e.preventDefault(); return;
+      e.preventDefault();
+      return;
     }
     if (this.selP) {
       let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
       if (!evs || !evs.length) evs = [e];
-      for (const ev of evs) { const q = this.pt(ev, this.selP); this.sel.move(q[0], q[1], ev.clientX, ev.clientY); }
-      e.preventDefault(); return;
+      for (const ev of evs) {
+        const q = this.pt(ev, this.selP);
+        this.sel.move(q[0], q[1], ev.clientX, ev.clientY);
+      }
+      e.preventDefault();
+      return;
     }
-    const s = this.cur, P = this.curP;
+    const s = this.cur,
+      P = this.curP;
     if (!s) return;
     let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
     if (!evs || !evs.length) evs = [e];
-    for (const ev of evs) { const q = this.pt(ev, P); liveAdd(s, this.live, q[0], q[1], this.T.smooth); }
+    for (const ev of evs) {
+      const q = this.pt(ev, P);
+      liveAdd(s, this.live, q[0], q[1], this.T.smooth);
+    }
     this.paintLive(P, s, livePieces(s, this.live));
     e.preventDefault();
   }
@@ -236,11 +360,21 @@ export class Ink {
   end(e) {
     if (e.pointerId !== this.active) return;
     const drag = this.drag;
-    this.active = null; this.drag = null;
-    if (drag) {   // a tap (not a drag): type a note there, or press the link under the finger
-      if (drag.text && e.type === 'pointerup' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) { if (copyTextSel() && this.onTextCopied) this.onTextCopied(); return; }
-      if (e.type !== 'pointerup' || Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8 || !drag.P) return;
-      if (drag.type) { const q = this.pt(e, drag.P); this.typing.tap(drag.P.n, q[0], q[1]); return; }
+    this.active = null;
+    this.drag = null;
+    if (drag) {
+      // a tap (not a drag): type a note there, or press the link under the finger
+      if (drag.text && e.type === 'pointerup' && Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8) {
+        if (copyTextSel() && this.onTextCopied) this.onTextCopied();
+        return;
+      }
+      if (e.type !== 'pointerup' || Math.abs(e.screenX - drag.x0) + Math.abs(e.screenY - drag.y0) >= 8 || !drag.P)
+        return;
+      if (drag.type) {
+        const q = this.pt(e, drag.P);
+        this.typing.tap(drag.P.n, q[0], q[1]);
+        return;
+      }
       const a = [...drag.P.el.querySelectorAll('a.ob-link')].find((l) => {
         const r = l.getBoundingClientRect();
         return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
@@ -248,27 +382,50 @@ export class Ink {
       if (a) a.click();
       return;
     }
-    if (this.pointing) { this.pointing = false; this.laser.up(); return; }
-    if (this.selP) {
-      const P = this.selP; this.selP = null;
-      if (e.type === 'pointerup') { const q = this.pt(e, P); this.sel.up(q[0], q[1], e.clientX, e.clientY); } else this.sel.cancel();
+    if (this.pointing) {
+      this.pointing = false;
+      this.laser.up();
       return;
     }
-    const s = this.cur, P = this.curP;
+    if (this.selP) {
+      const P = this.selP;
+      this.selP = null;
+      if (e.type === 'pointerup') {
+        const q = this.pt(e, P);
+        this.sel.up(q[0], q[1], e.clientX, e.clientY);
+      } else this.sel.cancel();
+      return;
+    }
+    const s = this.cur,
+      P = this.curP;
     if (!s) return;
-    this.cur = null; this.curP = null;
-    if (e.type === 'pointerup') { const q = this.pt(e, P); liveLift(s, q[0], q[1]); }
+    this.cur = null;
+    this.curP = null;
+    if (e.type === 'pointerup') {
+      const q = this.pt(e, P);
+      liveLift(s, q[0], q[1]);
+    }
     this.paintLive(P, s, liveEndPieces(s, this.live));
     // the board sends a few-millisecond blip when you switch between hand and pen; drop it
-    if (performance.now() - this.downAt < 15 && s.p.length <= 4) { this.refreshPage(P.n); return; }
-    if (s.e && !this.pageList(P.n).length) { this.refreshPage(P.n); return; }   // erasing a blank page: nothing to keep
+    if (performance.now() - this.downAt < 15 && s.p.length <= 4) {
+      this.refreshPage(P.n);
+      return;
+    }
+    if (s.e && !this.pageList(P.n).length) {
+      this.refreshPage(P.n);
+      return;
+    } // erasing a blank page: nothing to keep
     this.strokes.push(s);
-    if (s.e && this.pageList(P.n).some(isNote)) this.redrawSoon = P.n;   // a note it touched goes away whole
+    if (s.e && this.pageList(P.n).some(isNote)) this.redrawSoon = P.n; // a note it touched goes away whole
     if (!this.byPage.has(P.n)) this.byPage.set(P.n, []);
     this.byPage.get(P.n).push(s);
-    this.lastCleared = null; this.redos = [];   // new ink starts a new history
+    this.lastCleared = null;
+    this.redos = []; // new ink starts a new history
     this.dropSel();
-    if (this.redrawSoon) { this.redrawSoon = null; this.redraw(P); }
+    if (this.redrawSoon) {
+      this.redrawSoon = null;
+      this.redraw(P);
+    }
     if (!this.v.want.has(P)) this.free(P);
     this.onChange();
   }
@@ -277,20 +434,27 @@ export class Ink {
 
   undo() {
     this.dropSel();
-    if (this.lastCleared && this.lastCleared.all) {   // the last thing done was Clear all (or a Select change): bring every page back
+    if (this.lastCleared && this.lastCleared.all) {
+      // the last thing done was Clear all (or a Select change): bring every page back
       this.redos.push({ after: this.strokes });
       this.D.periods[this.D.active] = this.lastCleared.all;
       this.lastCleared = null;
-      this.reindex(); this.onChange();
+      this.reindex();
+      this.onChange();
       return this.strokes.length ? this.strokes[this.strokes.length - 1].page : null;
     }
-    if (this.lastCleared) {   // the last thing done was Clear: bring that page back, in its old place
+    if (this.lastCleared) {
+      // the last thing done was Clear: bring that page back, in its old place
       const { page, before } = this.lastCleared;
       this.lastCleared = null;
       this.D.periods[this.D.active] = before;
-      this.byPage.set(page, before.filter((s) => s.page === page));
+      this.byPage.set(
+        page,
+        before.filter((s) => s.page === page)
+      );
       this.redos.push({ cleared: page });
-      this.refreshPage(page); this.onChange();
+      this.refreshPage(page);
+      this.onChange();
       return page;
     }
     const s = this.strokes.pop();
@@ -299,24 +463,35 @@ export class Ink {
     list.pop();
     if (!list.length) this.byPage.delete(s.page);
     this.redos.push(s);
-    this.refreshPage(s.page); this.onChange();
+    this.refreshPage(s.page);
+    this.onChange();
     return s.page;
   }
 
-  redo() {   // puts back what Undo took, in order; returns the page it changed
+  redo() {
+    // puts back what Undo took, in order; returns the page it changed
     const r = this.redos.pop();
     if (!r) return null;
     this.dropSel();
-    if (r.after) { this.replaceAll(r.after, true); return null; }
-    if (r.cleared) { this.clearPage(r.cleared, true); return r.cleared; }
+    if (r.after) {
+      this.replaceAll(r.after, true);
+      return null;
+    }
+    if (r.cleared) {
+      this.clearPage(r.cleared, true);
+      return r.cleared;
+    }
     this.strokes.push(r);
     if (!this.byPage.has(r.page)) this.byPage.set(r.page, []);
     this.byPage.get(r.page).push(r);
     this.lastCleared = null;
-    this.refreshPage(r.page); this.onChange();
+    this.refreshPage(r.page);
+    this.onChange();
     return r.page;
   }
-  canRedo() { return this.redos.length > 0; }
+  canRedo() {
+    return this.redos.length > 0;
+  }
 
   clearPage(n, keepRedo) {
     const list = this.pageList(n);
@@ -327,11 +502,13 @@ export class Ink {
     this.D.periods[this.D.active] = this.strokes.filter((s) => !gone.has(s));
     this.byPage.delete(n);
     if (!keepRedo) this.redos = [];
-    this.refreshPage(n); this.onChange();
+    this.refreshPage(n);
+    this.onChange();
     return true;
   }
 
-  clearAll() {   // every page of the active period; Undo brings them all back
+  clearAll() {
+    // every page of the active period; Undo brings them all back
     if (!this.strokes.length) return false;
     this.replaceAll([]);
     return true;
@@ -342,7 +519,8 @@ export class Ink {
     this.lastCleared = { all: this.strokes };
     this.D.periods[this.D.active] = next;
     if (!keepRedo) this.redos = [];
-    this.reindex(); this.onChange();
+    this.reindex();
+    this.onChange();
   }
 
   /* Select ▸ Send a copy to: add strokes to another period (it saves with the rest) */
@@ -357,17 +535,23 @@ export class Ink {
     this.endTyping();
     this.dropSel();
     this.D.active = name;
-    this.lastCleared = null; this.redos = [];
-    this.reindex(); this.onChange();
+    this.lastCleared = null;
+    this.redos = [];
+    this.reindex();
+    this.onChange();
     return true;
   }
 
-  setPeriods(periods, active) {   // File ▸ Settings… changed the class periods (renamed ones keep their ink)
+  setPeriods(periods, active) {
+    // File ▸ Settings… changed the class periods (renamed ones keep their ink)
     this.endTyping();
     this.dropSel();
-    this.D.periods = periods; this.D.active = active;
-    this.lastCleared = null; this.redos = [];
-    this.reindex(); this.onChange();
+    this.D.periods = periods;
+    this.D.active = active;
+    this.lastCleared = null;
+    this.redos = [];
+    this.reindex();
+    this.onChange();
   }
 
   /* Turn page: page n is now shown q quarter turns further clockwise, so its ink in every period turns
@@ -381,18 +565,32 @@ export class Ink {
         if (s.page !== n) continue;
         const p = s.p;
         for (let i = 0; i < p.length; i += 2) {
-          let x = p[i], y = p[i + 1], W = w, H = h;
-          for (let k = 0; k < q; k++) { [x, y] = [H - y, x]; [W, H] = [H, W]; }   // a quarter turn clockwise
-          p[i] = r(x); p[i + 1] = r(y);
+          let x = p[i],
+            y = p[i + 1],
+            W = w,
+            H = h;
+          for (let k = 0; k < q; k++) {
+            [x, y] = [H - y, x];
+            [W, H] = [H, W];
+          } // a quarter turn clockwise
+          p[i] = r(x);
+          p[i + 1] = r(y);
         }
-        if (isNote(s)) {   // text stays upright: the same box, now at the turned corners' top-left
-          const dx = Math.abs(p[2] - p[0]), dy = Math.abs(p[3] - p[1]), x0 = Math.min(p[0], p[2]), y0 = Math.min(p[1], p[3]);
+        if (isNote(s)) {
+          // text stays upright: the same box, now at the turned corners' top-left
+          const dx = Math.abs(p[2] - p[0]),
+            dy = Math.abs(p[3] - p[1]),
+            x0 = Math.min(p[0], p[2]),
+            y0 = Math.min(p[1], p[3]);
           s.p = q % 2 ? [x0, y0, r(x0 + dy), r(y0 + dx)] : [x0, y0, r(x0 + dx), r(y0 + dy)];
         }
       }
     }
-    this.lastCleared = null; this.redos = [];   // Undo's steps were for the old way up
+    this.lastCleared = null;
+    this.redos = []; // Undo's steps were for the old way up
   }
 
-  count() { return this.strokes.length; }
+  count() {
+    return this.strokes.length;
+  }
 }

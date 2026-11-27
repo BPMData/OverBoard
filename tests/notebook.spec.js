@@ -5,9 +5,18 @@ const { expect, openApp, strokes, fileMenu, download } = require('./support/app'
 const { pdfPixels } = require('./support/render');
 
 const draw = (page, n, pts) => page.evaluate(([n, pts]) => __t.stroke(n, pts), [n, pts]);
-const line = (x0, y0, x1, y1) => Array.from({ length: 31 }, (_, i) => [x0 + (x1 - x0) * i / 30, y0 + (y1 - y0) * i / 30]);
+const line = (x0, y0, x1, y1) =>
+  Array.from({ length: 31 }, (_, i) => [x0 + ((x1 - x0) * i) / 30, y0 + ((y1 - y0) * i) / 30]);
 const pages = (page) => page.evaluate(() => __overboard.doc.pages);
-const ready = (page, n) => page.waitForFunction((n) => __overboard.doc && __overboard.doc.pages === n && __overboard.viewer.pages.length === n && __overboard.viewer.stats().images >= 1, n);
+const ready = (page, n) =>
+  page.waitForFunction(
+    (n) =>
+      __overboard.doc &&
+      __overboard.doc.pages === n &&
+      __overboard.viewer.pages.length === n &&
+      __overboard.viewer.stats().images >= 1,
+    n
+  );
 const inkPages = async (page, p = 'P1') => (await strokes(page, p)).map((s) => s.page);
 
 async function startBlank(page, paper) {
@@ -36,18 +45,28 @@ test('the start screen makes a one-page notebook of each paper', async ({ page }
 test('the paper is drawn into the PDF', async ({ page }, info) => {
   const out = {};
   for (const paper of ['lined', 'graph', 'blank', 'iso']) {
-    const at = paper === 'iso' ? Array.from({ length: 40 }, (_, i) => [280 + i / 2, 400]) : [[300, 72], [72, 400], [300, 80], [90, 300], [300, 306]];
+    const at =
+      paper === 'iso'
+        ? Array.from({ length: 40 }, (_, i) => [280 + i / 2, 400])
+        : [
+            [300, 72],
+            [72, 400],
+            [300, 80],
+            [90, 300],
+            [300, 306],
+          ];
     await startBlank(page, paper);
     const bytes = await page.evaluate(async () => Array.from(new Uint8Array(await __overboard.doc.file.arrayBuffer())));
     const f = info.outputPath(paper + '.pdf');
     fs.writeFileSync(f, Buffer.from(bytes));
     // lined: a line 72 pt from the top and the red margin 72 pt in; graph: a line every 18 pt
-    out[paper] = (await pdfPixels(page, f, 1, at)).px;   // iso: a short row that crosses its lines
+    out[paper] = (await pdfPixels(page, f, 1, at)).px; // iso: a short row that crosses its lines
     await fileMenu(page, 'close');
   }
-  const white = (p) => p.every((v) => v > 245), ink = (p) => !white(p);
+  const white = (p) => p.every((v) => v > 245),
+    ink = (p) => !white(p);
   expect(ink(out.lined[0])).toBe(true);
-  expect(out.lined[1][0]).toBeGreaterThan(out.lined[1][2]);   // the margin is red
+  expect(out.lined[1][0]).toBeGreaterThan(out.lined[1][2]); // the margin is red
   expect(white(out.lined[2])).toBe(true);
   expect(ink(out.graph[3]) && ink(out.graph[4])).toBe(true);
   expect(out.blank.every(white)).toBe(true);
@@ -57,25 +76,25 @@ test('the paper is drawn into the PDF', async ({ page }, info) => {
 test('adding and removing pages keeps the ink on its page, in every class period', async ({ page }) => {
   await startBlank(page, 'lined');
   await draw(page, 1, line(100, 200, 300, 200));
-  await page.click('#ob-addpage [data-paper="graph"]');                        // under the last page: adds page 2
+  await page.click('#ob-addpage [data-paper="graph"]'); // under the last page: adds page 2
   await ready(page, 2);
   await expect(page.locator('#ink-status')).toHaveText('Page 2 added');
   await expect(page.locator('#ob-pages-total')).toHaveText('of 2');
-  await expect(page.locator('#ink-bar [data-act="clear"]')).toBeVisible();   // Pages ▸ | Clear ▸ now
+  await expect(page.locator('#ink-bar [data-act="clear"]')).toBeVisible(); // Pages ▸ | Clear ▸ now
   await draw(page, 2, line(100, 300, 300, 300));
   await page.click('[data-period="P2"]');
   await draw(page, 2, line(100, 400, 300, 400));
   await page.click('[data-period="P1"]');
   await page.evaluate(() => __overboard.viewer.goTo(1));
   await page.waitForTimeout(250);
-  await page.click('#ink-bar [data-act="pages"]');                              // Pages ▸ Dots: a new page 2
+  await page.click('#ink-bar [data-act="pages"]'); // Pages ▸ Dots: a new page 2
   await page.click('#ob-pagemenu [data-paper="dots"]');
   await ready(page, 3);
   expect(await inkPages(page)).toEqual([1, 3]);
   expect(await inkPages(page, 'P2')).toEqual([3]);
   await page.evaluate(() => __overboard.viewer.goTo(1));
   await page.waitForTimeout(250);
-  await page.click('#ink-bar [data-act="pages"]');                              // remove page 1 (tap twice)
+  await page.click('#ink-bar [data-act="pages"]'); // remove page 1 (tap twice)
   await page.click('#ob-pagemenu [data-act="remove-page"]');
   await expect(page.locator('#ob-pagemenu [data-act="remove-page"]')).toHaveText('Sure?');
   await page.click('#ob-pagemenu [data-act="remove-page"]');
@@ -109,7 +128,7 @@ test('an empty notebook exports as printable paper', async ({ page }, info) => {
   await dl.saveAs(f);
   const r = await pdfPixels(page, f, 1, [[90, 300]]);
   expect(r.pages).toBe(1);
-  expect(r.px[0].every((v) => v > 245)).toBe(false);   // the grid is there
+  expect(r.px[0].every((v) => v > 245)).toBe(false); // the grid is there
 });
 
 test('the last page cannot be removed; Export PDF gives a plain PDF with the ink drawn in', async ({ page }, info) => {
@@ -128,9 +147,12 @@ test('the last page cannot be removed; Export PDF gives a plain PDF with the ink
     const pdf = await lib.getDocument({ data: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) }).promise;
     return (await pdf.getMetadata()).info.Keywords || '';
   }, fs.readFileSync(f).toString('base64'));
-  expect(kw).not.toMatch(/overboard-notebook/);   // opening the export won't show the ink twice
-  const r = await pdfPixels(page, f, 1, [[200, 200], [200, 260]]);
-  expect(r.px[0][0]).toBeGreaterThan(r.px[0][1] + 60);   // the pink pen line, drawn into the PDF
+  expect(kw).not.toMatch(/overboard-notebook/); // opening the export won't show the ink twice
+  const r = await pdfPixels(page, f, 1, [
+    [200, 200],
+    [200, 260],
+  ]);
+  expect(r.px[0][0]).toBeGreaterThan(r.px[0][1] + 60); // the pink pen line, drawn into the PDF
   expect(r.px[1].every((v) => v > 245)).toBe(true);
 });
 
@@ -139,17 +161,24 @@ test('Open again keeps 12 PDFs and 12 notebooks: notebooks never push PDFs off t
     const store = await import(new URL('/app/store.js', location.href).href);
     const blob = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
     for (let i = 0; i < 14; i++) await store.rememberFile('pdf' + i, { name: 'p' + i + '.pdf', pages: 1 }, blob);
-    for (let i = 0; i < 14; i++) await store.rememberFile('notebook-' + String(i).padStart(16, '0'), { name: 'n' + i + '.pdf', pages: 1 }, blob);
+    for (let i = 0; i < 14; i++)
+      await store.rememberFile('notebook-' + String(i).padStart(16, '0'), { name: 'n' + i + '.pdf', pages: 1 }, blob);
     const all = await store.listFiles();
-    return { pdfs: all.filter((r) => !r.hash.startsWith('notebook-')).map((r) => r.name), notebooks: all.filter((r) => r.hash.startsWith('notebook-')).length };
+    return {
+      pdfs: all.filter((r) => !r.hash.startsWith('notebook-')).map((r) => r.name),
+      notebooks: all.filter((r) => r.hash.startsWith('notebook-')).length,
+    };
   });
   expect(left.notebooks).toBe(12);
   expect(left.pdfs).toHaveLength(12);
-  expect(left.pdfs).not.toContain('p0.pdf');   // the oldest PDFs go first, only because of other PDFs
+  expect(left.pdfs).not.toContain('p0.pdf'); // the oldest PDFs go first, only because of other PDFs
   expect(left.pdfs).toContain('p13.pdf');
 });
 
-test('a notebook is saved with "Save notebook…", under its own name, and reopens as a notebook', async ({ page, browser }, info) => {
+test('a notebook is saved with "Save notebook…", under its own name, and reopens as a notebook', async ({
+  page,
+  browser,
+}, info) => {
   test.setTimeout(90_000);
   await openApp(page, { fakeFs: true });
   await startBlank(page, 'lined');
@@ -159,8 +188,8 @@ test('a notebook is saved with "Save notebook…", under its own name, and reope
   await fileMenu(page, 'pdf-link');
   await expect(page.locator('#ob-embed h2 span:visible')).toHaveText('Save this notebook as a PDF file?');
   await expect(page.locator('#ob-embed [data-th="nb_embed_5"] .name')).toHaveText(name);
-  await expect(page.locator('#ob-embed [data-th="embed_2"]')).toBeHidden();    // "your pages are not changed": not for a notebook
-  await expect(page.locator('#ob-embed [data-th="embed_5"]')).toBeHidden();    // there is no original PDF
+  await expect(page.locator('#ob-embed [data-th="embed_2"]')).toBeHidden(); // "your pages are not changed": not for a notebook
+  await expect(page.locator('#ob-embed [data-th="embed_5"]')).toBeHidden(); // there is no original PDF
   await page.click('#ob-embed [value="ok"]');
   await page.waitForFunction(() => window.__writes >= 1);
   expect(await page.evaluate(() => window.__pickOpts.suggestedName)).toBe(name);
