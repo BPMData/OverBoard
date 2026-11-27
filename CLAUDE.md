@@ -8,6 +8,7 @@
 - **All words the teacher sees go in `shared/strings.js`**, in all 8 languages (English, Spanish, Mandarin, Tagalog, Vietnamese, French, Brazilian Portuguese, Arabic). Mark HTML with `data-t` (text), `data-tt` (tooltip), `data-ta` (aria-label); in JS use `tr('key', { vars })`. Every toolbar control needs a tooltip. Check that each language still fits a 1080p board (`tests/i18n.spec.js`).
 - **Fixing a board report** (a GitHub issue labeled `board-report`): put `Fixes #N` in the PR body, and leave a one-line plain-language comment on the issue saying what changed. Merging closes the issue, and the reports script then emails the teacher (Claude Haiku turns the owner's comments and PR titles into the "what changed" paragraph). Close reports that won't be fixed as "not planned" so no email goes out. See `docs/REPORTS.md`.
 - After editing `app/`, `shared/` or the overlay, run `python3 tools/build.py` (CI runs `--check`).
+- Run `npx prettier --write` on the files you changed (CI runs `npx prettier --check .`). Some files are listed in `.prettierignore` because `tools/build.py` generates or edits them, or strips lines from them by pattern (`shared/ink-core.js`); leave those as they are.
 - The toolbar must fit a 1080p board (`tests/site.spec.js`); there is about 10 px to spare, so split an existing cell rather than adding a row.
 - Tests: `npm install && npx playwright install chromium && npm test`.
 - Plain-language commit messages and docs; the owner is a teacher, not a full-time developer.

@@ -39,6 +39,8 @@ jobs:
         run: python3 tools/vendor_libs.py --check
 
       - run: npm ci
+      - name: Code is formatted (fix with npx prettier --write .)
+        run: npx prettier --check .
       - run: npx playwright install --with-deps chromium
       - name: Browser tests
         run: npx playwright test
