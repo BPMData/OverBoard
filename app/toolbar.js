@@ -19,7 +19,7 @@ import {
   typeOff,
   typeOn,
 } from './tools.js';
-import { exportPdf, saveInkFile } from './main.js';
+import { exportPdf, saveInkFile } from './exporting.js';
 
 export function initToolbar() {
   bar.addEventListener('click', onToolbarClick);

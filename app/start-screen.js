@@ -3,7 +3,7 @@
 import * as store from './store.js';
 import { openFile, showError } from './open.js';
 import { $, doc, tr } from './state.js';
-import { importInk } from './main.js';
+import { importInk } from './exporting.js';
 
 export function initStartScreen() {
   $('#ob-file').addEventListener('change', (e) => {

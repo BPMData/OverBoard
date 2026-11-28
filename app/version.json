@@ -1,9 +1,10 @@
 {
-  "v": "df7b21fbce22",
+  "v": "2d5963a60698",
   "js": [
     "core.js",
     "embed.js",
     "export.js",
+    "exporting.js",
     "find.js",
     "html.js",
     "image.js",
@@ -11,6 +12,7 @@
     "libs.js",
     "main.js",
     "menus.js",
+    "notebook-ui.js",
     "notebook.js",
     "offline.js",
     "open.js",
