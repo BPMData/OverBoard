@@ -42,8 +42,8 @@ export class Ink {
     this.downAt = 0;
     this.lastCleared = null; // { page, before } or { all } so Undo can bring back what Clear took
     this.redos = []; // what Undo took back, newest last: a stroke, or { cleared: page }
-    this.sel = null; // the Select tool (makeSelect in shared/ink-core.js), set by main.js
-    this.typing = null; // the Type tool (makeTyping), set by main.js
+    this.sel = null; // the Select tool (makeSelect in shared/ink-core.js), set by core.js
+    this.typing = null; // the Type tool (makeTyping), set by core.js
     this.selP = null; // the page a Select gesture started on
     this.pv = null; // { page, hide, add }: a selection being dragged, drawn in its new spot
     this.laser = makeLaser(); // laser pointer marks: they fade away and are never ink

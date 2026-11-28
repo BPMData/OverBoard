@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Tidier PDF app code, continued** (v62, PDF app). The split into smaller files continues. Nothing changes for teachers.
+
 - **Tidier PDF app code** (v61, PDF app). app/main.js is split into smaller files. Nothing changes for teachers.
 
 - **Plan for tidying the PDF app's code** (v60, docs only). `docs/plans/APP_MAIN_SPLIT.md` describes, step by step, how to split `app/main.js` into smaller files without changing anything the app does. Nothing changes for teachers yet.

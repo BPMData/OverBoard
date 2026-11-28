@@ -43,6 +43,24 @@ Key facts for contributors:
 - **Export.** Each page's ink is mapped back with the inverse of the PDF.js viewport transform. PDFs have no eraser, so erasers are applied geometrically on export: sample points of earlier strokes under the eraser path are dropped and the strokes split there. Only the active period is exported.
 - **Memory** (measured headless at 1920×1080, devicePixelRatio 2, 320-page book): page process peaks around 640 MB while fast-scrolling, about 450 MB above the empty app, and settles near 520 MB. Each page image is capped at 12 MP.
 
+**Where the PDF app's code is**
+
+- `app/state.js`: Settings constants, `tr`, `$`, toolbar/page DOM lookups, `getLS` / `setLS` / `isHex`, tool state `T` (and reading it from `localStorage`), `doc`, `D`, `findPanel`, `PDF_OPTS`, and the setters `setTr` / `setDoc` / `setInkData`.
+- `app/core.js`: The viewer, finder, ink layer, Select and Type objects, `window.__overboard`, `setStatus`, `isOnScreen`, `initCore()`.
+- `app/saving.js`: `fresh` / `validData`, IndexedDB autosave, the `localStorage` reload backup, `rememberOpen`, `pagehide` / `visibilitychange` / `beforeunload`, Save ink into PDF, `setDirty`, `initSaving()`.
+- `app/open.js`: Back/Forward steps (`pdfStep`, `toStart`, `popstate`, `reopen`), `showError` / `showMsg`, HTML board copies, `openFile`, `closeDoc`, `initOpen()`.
+- `app/start-screen.js`: File picker, drop zone, drag-and-drop anywhere, the Open again list (`renderRecent`), `initStartScreen()`.
+- `app/page-view.js`: Chapters panel, page number box, ▲/▼ Page (`jump`), zoom, Turn page, `clearChapters`, `initPageView()`.
+- `app/menus.js`: Clear buttons layout (`layoutClear`), `fitToolbar`, the popout menus (File, Clear, Pages, Highlighter ▾), `closeMenus`, `initMenus()`.
+- `app/tools.js`: Class period buttons, toolbar `refresh`, Type / Select / Eraser / color / size / smoothing state, the hold-to-repeat steppers, the color picker, `initPeriods()`, `initTools()`.
+- `app/settings.js`: Timer, Settings dialog, language (`translateAll`, `setLang`), `initSettings()`.
+- `app/toolbar.js`: `onToolbarClick` (every `data-act`), Hide / Show, Chapters / Find close buttons, `openFind`, the keyboard shortcuts, Undo / Redo (`historyStep`, `refreshRedo`), `initToolbar()`.
+- `app/notebook-ui.js`: Blank notebooks: start-screen paper buttons, add-page buttons, Pages ▸ menu, `changePages`, `initNotebook()`.
+- `app/exporting.js`: Export PDF (with the covers warning), Save ink / Load ink (`.overboard.json`), `initExporting()`.
+- `app/main.js`: Imports, the `initX()` calls, and the "start" block.
+
+Start-up: main.js calls each file's initX() in a fixed order, so menus, shortcuts and listeners are set up in the same order every time. A new feature's start-up code goes in its file's initX(), not at the top level.
+
 Added after v2:
 
 - **Save windows start next to the original** (Chrome/Edge). A dropped file (`getAsFileSystemHandle`, asked for during the drop), a tap on the drop box (`showOpenFilePicker`, id `overboard-open`; other browsers use the plain `<input type=file>`) and a Finder launch (`launchQueue`) all give a file handle. `saveBoardCopy()` and Save ink into PDF pass it as `startIn` and leave out their picker `id`, since a remembered id folder can win over `startIn`; with no handle (Open again, plain input) they use the id. The PDF's handle is kept as `doc.origin`. The overlay can't do this for itself: a page opened from disk has no handle to its own file.
