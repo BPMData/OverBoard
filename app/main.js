@@ -1,29 +1,27 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
+import { obLangs, obT, obTranslate } from '../shared/strings.js';
 import {
-  showLaser,
-  makeTimer,
-  paletteColors,
-  setPalette,
-  fitTools,
-  makePopMenu,
-  historyKey,
-  hlInk,
-  makeHlMenu,
-  holdRepeat,
   confirmTap,
+  fitTools,
   flashBtn,
-  makePeriodPicker,
-  makeSettings,
+  historyKey,
+  holdRepeat,
   loadPeriods,
-  startPen,
-  remapPeriods,
+  makeHlMenu,
+  makePeriodPicker,
+  makePopMenu,
   makeSelect,
+  makeSettings,
+  makeTimer,
   makeTyping,
+  paletteColors,
+  remapPeriods,
+  setPalette,
+  showLaser,
 } from '../shared/ink-core.js';
-import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
+import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink, PT_PER_UNIT } from './ink.js';
 import { Finder } from './find.js';
@@ -33,122 +31,53 @@ import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from '
 import { setupOffline } from './offline.js';
 import { isImage, imageToPdf, IMG_RE, stripExt } from './image.js';
 import { NB_RE, newNotebook, addPage, removePage, shiftInk, shiftTurns } from './notebook.js';
+import {
+  $,
+  addPageEl,
+  bar,
+  COVER_COLOR,
+  customFill,
+  D,
+  doc,
+  findPanel,
+  FINGER_SCROLLS,
+  fitBtn,
+  HIGHLIGHT_COLOR,
+  HIGHLIGHT_STRENGTH,
+  HIGHLIGHT_W,
+  pageInput,
+  pagesBtn,
+  pagesEl,
+  pagesTotal,
+  PDF_OPTS,
+  PDF_SAVE_DELAY_MS,
+  PEN_COLOR,
+  PERIODS,
+  periodsEl,
+  picker,
+  SAVE_DELAY_MS,
+  setDoc,
+  setInkData,
+  setLS,
+  setTr,
+  showBtn,
+  sizeDot,
+  sizeNum,
+  SMOOTHING,
+  smoothNum,
+  statusEl,
+  T,
+  toc,
+  tocBtn,
+  tr,
+} from './state.js';
 
-/* ===== SETTINGS (same meaning as in the overlay) ===== */
-const PERIODS = ['P1', 'P2', 'P3', 'P4']; // until a list is set in File ▸ Settings… (shared with the overlay)
-const SAVE_DELAY_MS = 3000; // after you stop writing, wait this long, then save. Also saves when the tab is hidden or closed.
-const PDF_SAVE_DELAY_MS = 8000; // "Save ink into PDF" (when on) writes the file this long after you stop writing
-const FINGER_SCROLLS = true; // true = finger scrolls, pen writes. The toolbar button flips this (remembered per browser).
-const PALM_ERASER_W = 92; // eraser size (screen px) when you wipe with your palm, fist or side of hand
-const ERASER_W = 44; // eraser size (screen px) with the Eraser button
-const SMOOTHING = 3; // starting level 0-8
-const HIGHLIGHT_COLOR = '#fdd835'; // highlighter starts yellow; after that it remembers the last highlighter color you picked
-const HIGHLIGHT_W = 22; // starting highlighter width; the - / + buttons change it while the highlighter is on
-const HIGHLIGHT_STRENGTH = 50; // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
-let tr = obT(obLang()); // OverBoard's words in the language picked in Settings (shared/strings.js); setLang() swaps it
-function setTr(t) {
-  tr = t;
-}
-const PEN_COLOR = '#e0218a'; // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
-const COVER_COLOR = '#111111'; // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
-/* ===================== */
-
-const $ = (s, el = document) => el.querySelector(s);
-const bar = $('#ink-bar'),
-  showBtn = $('#ink-show'),
-  statusEl = $('#ink-status'),
-  periodsEl = $('#ink-periods');
-const pagesEl = $('#ob-pages'),
-  pageInput = $('#ob-page'),
-  pagesTotal = $('#ob-pages-total');
-const picker = $('#ink-picker'),
-  customFill = $('[data-act="custom"] .fill', bar);
-const sizeNum = $('#ink-size .num'),
-  sizeDot = $('#ink-size .dot'),
-  smoothNum = $('#ink-smooth .num');
-const pagesBtn = $('[data-act="pages"]', bar),
-  addPageEl = $('#ob-addpage');
-const toc = $('#ob-toc'),
-  tocBtn = $('[data-act="toc"]', bar),
-  fitBtn = $('[data-act="zoom-fit"]', bar);
-
-function getLS(k) {
-  try {
-    return localStorage.getItem(k);
-  } catch (e) {
-    return null;
-  }
-}
-function setLS(k, v) {
-  try {
-    localStorage.setItem(k, v);
-  } catch (e) {
-    /* private mode */
-  }
-}
-const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
-
-/* ---------- tool state (read by the ink layer) ---------- */
-const T = {
-  typing: false,
-  erasing: false,
-  hiliting: false,
-  covering: false, // covering: the highlighter is in Cover mode
-  laser: false, // laser pointer: tap the selected color again, and marks fade away by themselves
-  selecting: false, // the Select tool: the pen circles ink instead of writing
-  penColor: PEN_COLOR,
-  hlColor: HIGHLIGHT_COLOR,
-  coverColor: COVER_COLOR, // pen, highlighter and cover each remember their own color
-  color: PEN_COLOR,
-  width: 2.5,
-  hlWidth: HIGHLIGHT_W,
-  smooth: SMOOTHING,
-  fingerScrolls: FINGER_SCROLLS,
-  customColor: '',
-  PALM_ERASER_W,
-  ERASER_W,
-  hlStrength: HIGHLIGHT_STRENGTH,
-  hlInk() {
-    return hlInk(this.color, this.hlStrength);
-  }, // mixed toward white; it multiplies, so text stays black
-};
-{
-  const sw = parseFloat(getLS('ink-width'));
-  if (sw >= 1 && sw <= 14) T.width = sw;
-  const hw = parseFloat(getLS('ink-hl-width'));
-  if (hw >= 8 && hw <= 40) T.hlWidth = hw;
-  const hc = getLS('ink-hl-color');
-  if (isHex(hc)) T.hlColor = hc;
-  const cc = getLS('ink-custom');
-  if (isHex(cc)) T.customColor = cc;
-  T.covering = getLS('ink-hl-mode') === 'cover';
-  const hs = parseInt(getLS('ink-hl-strength'), 10);
-  if (hs >= 10 && hs <= 100) T.hlStrength = hs;
-  const kc = getLS('ink-cover-color');
-  if (isHex(kc)) T.coverColor = kc;
-  const sl = getLS('ink-smooth');
-  if (sl !== null && +sl >= 0 && +sl <= 8) T.smooth = +sl;
-  const fm = getLS('ink-finger');
-  if (fm) T.fingerScrolls = fm === 'scroll';
-  T.penColor = T.color = startPen(PEN_COLOR);
-}
-
-/* ---------- the open document ---------- */
-let doc = null; // { hash, name, pages, file, pdf, notebook }
-let D = null; // ink data: { v: 3, t, active, at, periods: { P1: [strokes] }, rot: { page: 90 | 180 | 270 } (Turn page) }
-function setDoc(v) {
-  doc = v;
-}
-function setInkData(v) {
-  D = v;
-}
 let saveTimer = null,
   dirty = false;
 function setDirty(v) {
   dirty = v;
 }
 
-const findPanel = $('#ob-find');
 let viewer, finder, ink, typing;
 function initCore() {
   viewer = new Viewer(pagesEl, {
@@ -527,12 +456,6 @@ async function reconnectLink() {
 }
 
 /* ---------- opening a PDF ---------- */
-const PDF_OPTS = {
-  cMapUrl: PDFJS_CMAPS_URL,
-  cMapPacked: true,
-  standardFontDataUrl: PDFJS_FONTS_URL,
-  isEvalSupported: false,
-};
 const errorEl = $('#ob-error');
 function showError(msg) {
   errorEl.textContent = msg;
