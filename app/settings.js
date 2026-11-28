@@ -28,7 +28,7 @@ import {
   tr,
 } from './state.js';
 import { refresh, renderPeriods, toolColor } from './tools.js';
-import { refreshRedo } from './main.js';
+import { refreshRedo } from './toolbar.js';
 
 /* ---------- ⏱ Timer (shared with the overlay). Its own sound (Settings ▸ Timer sound) is kept beside the ink. ---------- */
 const SOUND_KEY = 'ob-timer-sound';

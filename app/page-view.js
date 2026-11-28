@@ -4,7 +4,7 @@ import { finder, ink, setStatus, viewer } from './core.js';
 import { fitToolbar, layoutClear } from './menus.js';
 import { markDirty } from './saving.js';
 import { $, bar, D, doc, findPanel, fitBtn, pageInput, toc, tr } from './state.js';
-import { refreshRedo } from './main.js';
+import { refreshRedo } from './toolbar.js';
 
 export let hasChapters = false;
 /* ---------- chapters (PDF outline) ---------- */

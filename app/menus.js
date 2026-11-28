@@ -5,7 +5,7 @@ import { ink } from './core.js';
 import { hasChapters } from './page-view.js';
 import { $, bar, doc, pagesBtn, setLS, T, tocBtn, tr } from './state.js';
 import { periodPicker, refresh, selectOff, toolColor, typeOff } from './tools.js';
-import { onToolbarClick } from './main.js';
+import { onToolbarClick } from './toolbar.js';
 
 /* ---------- the Clear buttons ----------
    A PDF with chapters: Chapters | Clear ▸ (a menu: this page or all pages), with Clear on the side the menu

@@ -1,5 +1,5 @@
 {
-  "v": "fd308614e8d9",
+  "v": "df7b21fbce22",
   "js": [
     "core.js",
     "embed.js",
@@ -21,6 +21,7 @@
     "state.js",
     "store.js",
     "textlayer.js",
+    "toolbar.js",
     "tools.js",
     "viewer.js",
     "../shared/ink-core.js",

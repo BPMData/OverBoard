@@ -7,7 +7,7 @@ import { Viewer } from './viewer.js';
 import { closeMenus, fitToolbar } from './menus.js';
 import { markDirty, writeNow } from './saving.js';
 import { D, doc, findPanel, pagesEl, statusEl, T, tr } from './state.js';
-import { refreshRedo } from './main.js';
+import { refreshRedo } from './toolbar.js';
 
 export let viewer, finder, ink, typing;
 export function initCore() {
