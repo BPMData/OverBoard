@@ -4,9 +4,10 @@ import { makeSelect, makeTyping } from '../shared/ink-core.js';
 import { Finder } from './find.js';
 import { Ink, PT_PER_UNIT } from './ink.js';
 import { Viewer } from './viewer.js';
+import { closeMenus, fitToolbar } from './menus.js';
 import { markDirty, writeNow } from './saving.js';
 import { D, doc, findPanel, pagesEl, statusEl, T, tr } from './state.js';
-import { closeMenus, fitToolbar, refreshRedo } from './main.js';
+import { refreshRedo } from './main.js';
 
 export let viewer, finder, ink, typing;
 export function initCore() {

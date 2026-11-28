@@ -7,6 +7,8 @@ import { dropPdfWorker, loadPdfjs, pdfWorker } from './libs.js';
 import { NB_RE } from './notebook.js';
 import * as store from './store.js';
 import { finder, ink, setStatus, viewer } from './core.js';
+import { fitToolbar, layoutClear, pageMenu } from './menus.js';
+import { clearChapters, fitSpace, loadOutline } from './page-view.js';
 import {
   dropBackup,
   fresh,
@@ -21,17 +23,7 @@ import {
 } from './saving.js';
 import { renderRecent } from './start-screen.js';
 import { $, addPageEl, bar, D, doc, pagesTotal, PDF_OPTS, setDoc, setInkData, showBtn, toc, tr } from './state.js';
-import {
-  clearChapters,
-  fitSpace,
-  fitToolbar,
-  layoutClear,
-  loadOutline,
-  pageMenu,
-  refresh,
-  refreshRedo,
-  renderPeriods,
-} from './main.js';
+import { refresh, refreshRedo, renderPeriods } from './main.js';
 
 /* The browser's Back button: opening a PDF adds one step to this tab's history (the address doesn't change), so Back
    returns to the start screen and Forward opens the PDF again. Opening another PDF from inside one replaces the step. */

@@ -4,13 +4,10 @@
 import { obLangs, obT, obTranslate } from '../shared/strings.js';
 import {
   confirmTap,
-  fitTools,
   flashBtn,
   historyKey,
   holdRepeat,
-  makeHlMenu,
   makePeriodPicker,
-  makePopMenu,
   makeSettings,
   makeTimer,
   paletteColors,
@@ -24,7 +21,19 @@ import { addPage, newNotebook, removePage, shiftInk, shiftTurns } from './notebo
 import { setupOffline } from './offline.js';
 import * as store from './store.js';
 import { finder, initCore, ink, isOnScreen, setStatus, typing, viewer } from './core.js';
+import {
+  clearMenu,
+  closeMenus,
+  fileMenu,
+  fitToolbar,
+  hlMenu,
+  initMenus,
+  layoutClear,
+  pageMenu,
+  showFileMenu,
+} from './menus.js';
 import { initOpen, inPdfStep, openFile, reopen, showError, toStart } from './open.js';
+import { fitSpace, initPageView, jump, refreshZoom, toggleToc, turnPages, zoomBy } from './page-view.js';
 import { baseBlob, initSaving, markDirty, onLinkButton, OPEN_KEY, refreshLink, writeNow } from './saving.js';
 import { initStartScreen, renderRecent } from './start-screen.js';
 import {
@@ -37,7 +46,6 @@ import {
   doc,
   findPanel,
   FINGER_SCROLLS,
-  fitBtn,
   HIGHLIGHT_COLOR,
   HIGHLIGHT_STRENGTH,
   HIGHLIGHT_W,
@@ -60,195 +68,12 @@ import {
   smoothNum,
   T,
   toc,
-  tocBtn,
   tr,
 } from './state.js';
 
-/* ---------- the Clear buttons ----------
-   A PDF with chapters: Chapters | Clear ▸ (a menu: this page or all pages), with Clear on the side the menu
-   opens. A blank notebook: Pages ▸ | Clear ▸ the same way. Without chapters: Clear page | Clear all, like the
-   HTML overlay. One page: just Clear (beside Pages ▸ in a notebook). */
-let hasChapters = false;
-export function layoutClear() {
-  const nb = !!doc && doc.notebook,
-    many = !!doc && doc.pages > 1,
-    menu = (hasChapters || nb) && many;
-  const menuBtn = $('[data-act="clear"]', bar),
-    pageBtn = $('[data-act="clear-page"]', bar),
-    allBtn = $('[data-act="clear-all"]', bar);
-  const partner = nb ? pagesBtn : tocBtn;
-  tocBtn.hidden = !hasChapters;
-  pagesBtn.hidden = !nb;
-  menuBtn.hidden = !menu;
-  pageBtn.hidden = menu || !many;
-  allBtn.hidden = menu;
-  allBtn.classList.toggle('wide', !hasChapters && !nb && !many);
-  if (!allBtn.classList.contains('warn')) allBtn.textContent = tr(many ? 'clear_all' : 'clear');
-  const right = bar.classList.contains('right');
-  if (right) partner.before(menuBtn);
-  else partner.after(menuBtn);
-  (right ? partner : menuBtn).after(pageBtn, allBtn);
-  if (!menu) clearMenu.show(false);
-  if (!nb) pageMenu.show(false);
-}
-/* the toolbar and its popouts shrink to fit a short window, such as a laptop screen */
-export const fitToolbar = () =>
-  fitTools(bar, [fileMenu, clearMenu.el, pageMenu.el, hlMenu.el, periodPicker.el, ink.sel.els[0]], 1);
-
-/* ---------- chapters (PDF outline) ---------- */
-let outline = []; // flat [{ button, page }] for marking the current chapter
-export function clearChapters() {
-  outline = [];
-  hasChapters = false;
-}
-export async function loadOutline(pdf) {
-  const ul = $('ul', toc);
-  ul.textContent = '';
-  outline = [];
-  let items = null;
-  try {
-    items = await pdf.getOutline();
-  } catch (e) {
-    /* no outline */
-  }
-  if (doc.pdf !== pdf) return;
-  hasChapters = !!(items && items.length);
-  layoutClear();
-  fitToolbar();
-  if (!hasChapters) return;
-  const build = (list, parent) => {
-    for (const it of list) {
-      const li = document.createElement('li'),
-        b = document.createElement('button');
-      const t = document.createElement('span');
-      t.textContent = it.title || tr('untitled');
-      const n = document.createElement('small');
-      b.append(t, n);
-      const entry = { button: b, page: null, dest: it.dest, num: n };
-      outline.push(entry);
-      b.addEventListener('click', async () => {
-        const p = entry.page || (await viewer.resolveDest(it.dest));
-        if (p) {
-          viewer.goTo(p);
-          if (window.innerWidth < 900) toc.hidden = true;
-        }
-      });
-      li.appendChild(b);
-      if (it.items && it.items.length) {
-        const sub = document.createElement('ul');
-        build(it.items, sub);
-        li.appendChild(sub);
-      }
-      parent.appendChild(li);
-    }
-  };
-  build(items, ul);
-  for (const entry of outline) {
-    // page numbers fill in shortly after
-    if (doc?.pdf !== pdf) return;
-    entry.page = await viewer.resolveDest(entry.dest);
-    if (entry.page) entry.num.textContent = entry.page;
-  }
-  markChapter();
-}
-function markChapter() {
-  if (toc.hidden || !outline.length) return;
-  const n = viewer.currentPage();
-  let here = null;
-  for (const e of outline) if (e.page && e.page <= n && (!here || e.page >= here.page)) here = e;
-  for (const e of outline) e.button.classList.toggle('here', e === here);
-}
-function toggleToc() {
-  toc.hidden = !toc.hidden;
-  if (!toc.hidden && !findPanel.hidden) finder.close();
-  toc.classList.toggle('left', bar.classList.contains('right'));
-  if (!toc.hidden) {
-    markChapter();
-    const h = $('.here', toc);
-    if (h) h.scrollIntoView({ block: 'center' });
-  }
-}
-
-/* ---------- page number box ---------- */
-let scrollRaf = 0;
-function initPageView() {
-  window.addEventListener(
-    'scroll',
-    () => {
-      if (scrollRaf || !doc) return;
-      scrollRaf = requestAnimationFrame(() => {
-        scrollRaf = 0;
-        if (document.activeElement !== pageInput) pageInput.value = viewer.currentPage();
-        markChapter();
-      });
-    },
-    { passive: true }
-  );
-  pageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      goToTyped();
-      pageInput.blur();
-    }
-  });
-  pageInput.addEventListener('change', goToTyped);
-  pageInput.addEventListener('focus', () => pageInput.select());
-  window.addEventListener(
-    'wheel',
-    (e) => {
-      // trackpad pinch / ctrl+wheel zooms the pages, not the toolbar
-      if (!doc || !e.ctrlKey) return;
-      e.preventDefault();
-      zoomBy(Math.exp(-e.deltaY * 0.01));
-    },
-    { passive: false }
-  );
-  window.addEventListener('resize', () => {
-    if (resizeRaf) return;
-    resizeRaf = requestAnimationFrame(() => {
-      resizeRaf = 0;
-      if (doc) {
-        fitToolbar();
-        fitSpace();
-        viewer.layout();
-        refreshZoom();
-      }
-    });
-  });
-}
-
-function goToTyped() {
-  const n = parseInt(pageInput.value, 10);
-  if (n >= 1 && doc) viewer.goTo(Math.min(n, doc.pages));
-  pageInput.value = viewer.currentPage();
-}
-
-function jump(dir) {
-  if (!doc) return;
-  const n = viewer.currentPage(),
-    P = viewer.pages[n - 1];
-  const top = P.el.getBoundingClientRect().top;
-  if (dir < 0 && top < -60)
-    viewer.goTo(n, true); // well into this page: back to its top first
-  else viewer.goTo(n + dir, true);
-}
-
-/* ---------- zoom ---------- */
-const ZOOM_100 = 96 / 72; // CSS px per point at 100%
-export function fitSpace() {
-  viewer.sideSpace = bar.style.display === 'none' || bar.hidden ? 16 : bar.getBoundingClientRect().width + 20;
-}
-function zoomBy(f) {
-  viewer.setZoom(viewer.zoom * f);
-  refreshZoom();
-}
-function refreshZoom() {
-  fitBtn.textContent = viewer.fit ? tr('fit') : Math.round((viewer.zoom / ZOOM_100) * 100) + '%';
-}
-let resizeRaf = 0;
-
 /* ---------- class periods ---------- */
 // one button per period, or a "P5 ▾" list when they don't fit (shared with the overlay)
-let periodPicker;
+export let periodPicker;
 function initPeriods() {
   periodPicker = makePeriodPicker(
     bar,
@@ -406,7 +231,7 @@ export function refresh() {
   refreshZoom();
 }
 /* Type: tap the page to type a note (makeTyping in shared/ink-core.js). Eraser, Highlighter and Select turn it off. */
-function typeOff() {
+export function typeOff() {
   if (T.typing) {
     T.typing = false;
     typing.close();
@@ -422,13 +247,13 @@ function typeOn() {
   } // notes use the pen color
   setStatus(tr('st_type_how'));
 }
-function selectOff() {
+export function selectOff() {
   if (T.selecting) {
     T.selecting = false;
     ink.dropSel();
   }
 }
-function toolColor() {
+export function toolColor() {
   return T.hiliting ? (T.covering ? T.coverColor : T.hlColor) : T.penColor;
 }
 function laserReady() {
@@ -513,56 +338,6 @@ function initTools() {
     pickColor(T.customColor);
   });
 }
-/* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
-   anywhere else, or Escape. Lifting the pen or finger never closes them. */
-const fileMenu = $('#ob-filemenu');
-export let clearMenu, pageMenu, hlMenu, showFileMenu;
-let file, placeFileMenu;
-function initMenus() {
-  clearMenu = makePopMenu($('#ob-clearmenu'), $('[data-act="clear"]', bar), bar, () => closeMenus('clear'));
-  pageMenu = makePopMenu($('#ob-pagemenu'), pagesBtn, bar, () => closeMenus('pages'));
-  file = makePopMenu(fileMenu, $('[data-act="file"]', bar), bar, () => closeMenus('file'));
-  placeFileMenu = file.place;
-  showFileMenu = file.show;
-  // Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
-  // A choice, or moving the slider, turns the highlighter on in that mode.
-  hlMenu = makeHlMenu(
-    bar,
-    T,
-    () => {
-      setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
-      setLS('ink-hl-strength', T.hlStrength);
-      if (T.covering) setLS('ink-cover-color', T.coverColor);
-      typeOff();
-      T.hiliting = true;
-      T.erasing = false;
-      T.laser = false;
-      selectOff();
-      T.color = toolColor();
-      refresh();
-    },
-    () => closeMenus('hl')
-  );
-  for (const m of [fileMenu, clearMenu.el])
-    m.addEventListener('click', (e) => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      onToolbarClick(e);
-      // keep it open while a two-tap confirm ("Sure?") is waiting, after moving the toolbar, or after a turn (tap again to turn more)
-      if (/^turn-/.test(b.dataset.act)) return;
-      if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
-      else if (b.dataset.act === 'side') placeFileMenu();
-    });
-}
-export function closeMenus(except) {
-  // only one popout at a time
-  if (except !== 'file') file.show(false);
-  if (except !== 'clear') clearMenu.show(false);
-  if (except !== 'pages') pageMenu.show(false);
-  if (except !== 'hl') hlMenu.show(false);
-  if (except !== 'periods') periodPicker.show(false);
-}
-
 function initToolbar() {
   bar.addEventListener('click', onToolbarClick);
   showBtn.addEventListener('click', () => {
@@ -596,7 +371,7 @@ function initToolbar() {
     if (e.key === 'Escape' && !findPanel.hidden) finder.close();
   });
 }
-function onToolbarClick(e) {
+export function onToolbarClick(e) {
   const b = e.target.closest('button');
   if (!b) return;
   if (/^(type|erase|hilite|select)$/.test(b.dataset.act)) T.laser = false; // another tool puts the laser pointer away
@@ -887,42 +662,6 @@ function removeThisPage() {
   }
   const n = viewer.currentPage();
   changePages((bytes) => removePage(bytes, n), n, -1, Math.min(n, doc.pages - 1), tr('st_page_removed', { n }));
-}
-
-/* ---------- Turn page (for PDFs scanned or saved upside down or sideways) ----------
-   Each tap turns the page a quarter turn clockwise; tap twice for upside down. The turn is kept with
-   the ink (D.rot), ink already on the page turns with it, and Export PDF comes out turned the same way.
-   The PDF file itself isn't changed, so its ink stays matched to it. */
-let turning = false;
-async function turnPages(all) {
-  if (!doc || turning) return;
-  turning = true;
-  try {
-    const n = viewer.currentPage();
-    const list = all ? viewer.pages.map((P) => P.n) : [n];
-    const inked = new Set();
-    for (const l of Object.values(D.periods)) for (const s of l) inked.add(s.page);
-    D.rot = D.rot || {};
-    for (const k of list) {
-      if (inked.has(k)) {
-        const { w, h } = await viewer.shownSize(k);
-        ink.turnInk(k, 1, w, h);
-      }
-      const t = ((D.rot[k] || 0) + 90) % 360;
-      if (t) D.rot[k] = t;
-      else delete D.rot[k];
-    }
-    viewer.applyTurns();
-    if (!all) viewer.goTo(n);
-    refreshRedo();
-    markDirty();
-    setStatus(tr(all ? 'st_turned_all' : 'st_turned', { n }));
-  } catch (e) {
-    console.error(e);
-    setStatus(String((e && e.message) || e));
-  } finally {
-    turning = false;
-  }
 }
 
 /* ---------- export annotated PDF ---------- */
