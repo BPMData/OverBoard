@@ -1,5 +1,5 @@
 {
-  "v": "3d8f2dd12b22",
+  "v": "fd308614e8d9",
   "js": [
     "core.js",
     "embed.js",
@@ -16,10 +16,12 @@
     "open.js",
     "page-view.js",
     "saving.js",
+    "settings.js",
     "start-screen.js",
     "state.js",
     "store.js",
     "textlayer.js",
+    "tools.js",
     "viewer.js",
     "../shared/ink-core.js",
     "../shared/strings.js"

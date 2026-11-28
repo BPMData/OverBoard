@@ -23,7 +23,8 @@ import {
 } from './saving.js';
 import { renderRecent } from './start-screen.js';
 import { $, addPageEl, bar, D, doc, pagesTotal, PDF_OPTS, setDoc, setInkData, showBtn, toc, tr } from './state.js';
-import { refresh, refreshRedo, renderPeriods } from './main.js';
+import { refresh, renderPeriods } from './tools.js';
+import { refreshRedo } from './main.js';
 
 /* The browser's Back button: opening a PDF adds one step to this tab's history (the address doesn't change), so Back
    returns to the start screen and Forward opens the PDF again. Opening another PDF from inside one replaces the step. */

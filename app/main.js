@@ -1,20 +1,7 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { obLangs, obT, obTranslate } from '../shared/strings.js';
-import {
-  confirmTap,
-  flashBtn,
-  historyKey,
-  holdRepeat,
-  makePeriodPicker,
-  makeSettings,
-  makeTimer,
-  paletteColors,
-  remapPeriods,
-  setPalette,
-  showLaser,
-} from '../shared/ink-core.js';
+import { confirmTap, flashBtn, historyKey } from '../shared/ink-core.js';
 import { stripExt } from './image.js';
 import { loadPdfjs, pdfWorker, warmPdfjs } from './libs.js';
 import { addPage, newNotebook, removePage, shiftInk, shiftTurns } from './notebook.js';
@@ -26,318 +13,48 @@ import {
   closeMenus,
   fileMenu,
   fitToolbar,
-  hlMenu,
   initMenus,
   layoutClear,
   pageMenu,
   showFileMenu,
 } from './menus.js';
 import { initOpen, inPdfStep, openFile, reopen, showError, toStart } from './open.js';
-import { fitSpace, initPageView, jump, refreshZoom, toggleToc, turnPages, zoomBy } from './page-view.js';
-import { baseBlob, initSaving, markDirty, onLinkButton, OPEN_KEY, refreshLink, writeNow } from './saving.js';
+import { fitSpace, initPageView, jump, toggleToc, turnPages, zoomBy } from './page-view.js';
+import { baseBlob, initSaving, markDirty, onLinkButton, OPEN_KEY, writeNow } from './saving.js';
+import { initSettings, settings, timer, translateAll } from './settings.js';
 import { initStartScreen, renderRecent } from './start-screen.js';
 import {
   $,
   addPageEl,
   bar,
-  COVER_COLOR,
-  customFill,
   D,
   doc,
   findPanel,
-  FINGER_SCROLLS,
-  HIGHLIGHT_COLOR,
-  HIGHLIGHT_STRENGTH,
-  HIGHLIGHT_W,
   pageInput,
-  pagesBtn,
-  pagesEl,
   pagesTotal,
   PDF_OPTS,
-  PEN_COLOR,
-  PERIODS,
-  periodsEl,
   picker,
   setInkData,
   setLS,
-  setTr,
   showBtn,
-  sizeDot,
-  sizeNum,
-  SMOOTHING,
-  smoothNum,
   T,
   toc,
   tr,
 } from './state.js';
+import {
+  initPeriods,
+  initTools,
+  pickColor,
+  refresh,
+  renderPeriods,
+  selectOff,
+  STEPPERS,
+  tapColor,
+  toolColor,
+  typeOff,
+  typeOn,
+} from './tools.js';
 
-/* ---------- class periods ---------- */
-// one button per period, or a "P5 ▾" list when they don't fit (shared with the overlay)
-export let periodPicker;
-function initPeriods() {
-  periodPicker = makePeriodPicker(
-    bar,
-    periodsEl,
-    (name) => {
-      if (ink.switchTo(name)) renderPeriods();
-      refresh();
-    },
-    () => closeMenus('periods'),
-    (k, v) => tr(k, v)
-  );
-}
-export function renderPeriods() {
-  periodPicker.render(Object.keys(D.periods), D.active);
-}
-
-/* ---------- ⏱ Timer (shared with the overlay). Its own sound (Settings ▸ Timer sound) is kept beside the ink. ---------- */
-const SOUND_KEY = 'ob-timer-sound';
-let timer, settings;
-function initSettings() {
-  timer = makeTimer({
-    t: () => tr,
-    bar,
-    btn: $('[data-act="timer"]', bar),
-    loadSound: () => store.loadExtra(SOUND_KEY).catch(() => null),
-    saveSound: (rec) =>
-      (rec ? store.saveExtra(SOUND_KEY, rec) : store.dropExtra(SOUND_KEY)).then(
-        () => true,
-        () => false
-      ),
-  });
-  settings = makeSettings({
-    defaults: PERIODS,
-    pen: PEN_COLOR,
-    extra: timer.soundEl,
-    colors: paletteColors('pen').map((c) => [c[0], c[2], c[1]]),
-    langs: obLangs(),
-    setLang,
-    t: () => tr,
-    periods: () => (D ? Object.keys(D.periods) : null),
-    applyPeriods(names) {
-      if (!D) return true;
-      const r = remapPeriods(D.periods, D.active, names);
-      if (r.same) return true;
-      if (r.lost.length && !confirm(tr('confirm_remove_pdf', { list: r.lost.join(', ') }))) return false;
-      ink.setPeriods(r.periods, r.active);
-      renderPeriods();
-      refreshRedo();
-      setStatus(tr('st_periods_changed', { p: D.active }));
-      return true;
-    },
-    tools: () => ({
-      finger: T.fingerScrolls,
-      width: T.width,
-      smooth: T.smooth,
-      hlColor: T.hlColor,
-      hlStrength: T.hlStrength,
-    }),
-    setPen(c) {
-      T.penColor = c;
-      if (!T.hiliting) T.color = c;
-      T.erasing = false;
-      T.laser = false;
-      if (T.typing) typing.restyle();
-      refresh();
-    },
-    resetTools() {
-      Object.assign(T, {
-        width: 2.5,
-        hlWidth: HIGHLIGHT_W,
-        hlColor: HIGHLIGHT_COLOR,
-        customColor: '',
-        covering: false,
-        hlStrength: HIGHLIGHT_STRENGTH,
-        coverColor: COVER_COLOR,
-        smooth: SMOOTHING,
-        fingerScrolls: FINGER_SCROLLS,
-        penColor: PEN_COLOR,
-        erasing: false,
-        laser: false,
-      });
-      T.color = toolColor();
-      refresh();
-    },
-    onOpen: () => {
-      closeMenus();
-      timer.syncSound();
-    },
-  });
-  for (const [code, name] of obLangs()) langPick.append(new Option(name, code));
-  langPick.addEventListener('change', () => setLang(langPick.value));
-}
-
-/* ---------- File ▸ Settings… (shared with the overlay) ---------- */
-
-/* ---------- language (Settings ▸ Language, or the 🌐 list on the start screen; shared/strings.js) ---------- */
-const langPick = $('#ob-lang');
-function translateAll() {
-  obTranslate(document.body, tr); // everything marked data-t / data-th / data-tt / data-ta / data-tp
-  $('[data-act="clear"]', bar).textContent = tr('clear') + ' ▸';
-  pagesBtn.textContent = tr('pages') + ' ▸';
-  langPick.value = tr.lang;
-  $('#ob-start a[href^="report/"]').href = 'report/?from=start&lang=' + tr.lang;
-}
-function setLang(code) {
-  // remember the choice and put the new words everywhere at once (no reload)
-  try {
-    localStorage.setItem('ob-lang', code);
-  } catch (e) {
-    /* blocked */
-  }
-  setTr(obT(code));
-  translateAll();
-  renderRecent();
-  timer.refresh();
-  if (!doc) return;
-  refresh();
-  refreshLink();
-  layoutClear();
-  renderPeriods();
-  refreshZoom();
-  pagesTotal.textContent = tr('of_n', { n: doc.pages });
-  fitToolbar();
-  setStatus(tr('st_ready', { p: D.active }));
-}
-
-/* ---------- toolbar ---------- */
-const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
-export function refresh() {
-  setPalette(bar, T.hiliting ? (T.covering ? 'cover' : 'hl') : 'pen', tr); // the swatches change with the tool
-  for (const b of bar.querySelectorAll('[data-color]'))
-    b.classList.toggle('on', !T.erasing && b.dataset.color === T.color);
-  showLaser(bar, T.laser, laserReady(), tr);
-  $('[data-act="custom"]', bar).classList.toggle(
-    'on',
-    !T.erasing && !!T.customColor && T.color === T.customColor && !isPreset(T.color)
-  );
-  customFill.style.background = T.customColor || 'transparent';
-  const w = T.hiliting ? T.hlWidth : T.width,
-    shown = T.hiliting && !T.covering ? T.hlInk() : T.color;
-  sizeNum.textContent = w;
-  sizeDot.style.width = sizeDot.style.height = Math.min(w, 26) + 'px';
-  sizeDot.style.background = shown;
-  smoothNum.textContent = T.smooth ? T.smooth : tr('off');
-  $('[data-act="erase"]', bar).classList.toggle('on', T.erasing);
-  $('[data-act="select"]', bar).classList.toggle('on', T.selecting);
-  $('[data-act="type"]', bar).classList.toggle('on', T.typing);
-  pagesEl.classList.toggle('type-mode', T.typing);
-  const hb = $('[data-act="hilite"]', bar);
-  hb.classList.toggle('on', T.hiliting && !T.erasing && !T.selecting);
-  hb.classList.toggle('cover', T.covering);
-  hb.textContent = tr(T.covering ? 'cover' : 'highlighter'); // the ▾ choice shows on the button
-  hlMenu.sync();
-  $('[data-act="finger"]', bar).textContent = tr(T.fingerScrolls ? 'finger_scrolls' : 'finger_draws');
-  refreshZoom();
-}
-/* Type: tap the page to type a note (makeTyping in shared/ink-core.js). Eraser, Highlighter and Select turn it off. */
-export function typeOff() {
-  if (T.typing) {
-    T.typing = false;
-    typing.close();
-  }
-}
-function typeOn() {
-  T.typing = true;
-  T.erasing = false;
-  selectOff();
-  if (T.hiliting) {
-    T.hiliting = false;
-    T.color = toolColor();
-  } // notes use the pen color
-  setStatus(tr('st_type_how'));
-}
-export function selectOff() {
-  if (T.selecting) {
-    T.selecting = false;
-    ink.dropSel();
-  }
-}
-export function toolColor() {
-  return T.hiliting ? (T.covering ? T.coverColor : T.hlColor) : T.penColor;
-}
-function laserReady() {
-  return !T.erasing && !T.selecting && !T.typing && !(T.hiliting && T.covering);
-} // pen and highlighter colors only
-/* a tap on a color swatch: the color you already have selected turns the laser pointer on or off; any other color just picks it */
-function tapColor(c) {
-  const again = c === T.color && laserReady(),
-    was = T.laser;
-  pickColor(c);
-  if (again) {
-    T.laser = !was;
-    if (T.laser) ink.laser.sound();
-    setStatus(tr(T.laser ? 'st_laser_on' : 'st_laser_off'));
-  }
-}
-function pickColor(c) {
-  T.color = c;
-  T.laser = false;
-  if (T.hiliting && T.covering) {
-    T.coverColor = c;
-    setLS('ink-cover-color', c);
-  } else if (T.hiliting) {
-    T.hlColor = c;
-    setLS('ink-hl-color', c);
-  } else T.penColor = c;
-  T.erasing = false;
-  selectOff();
-  if (T.typing) typing.restyle();
-  refresh();
-}
-/* - / + : size controls the highlighter width while it's on */
-function stepSize(dir) {
-  if (T.hiliting) {
-    const hv = Math.min(40, Math.max(8, T.hlWidth + dir * 2));
-    if (hv === T.hlWidth && !T.erasing) return false;
-    T.hlWidth = hv;
-    setLS('ink-hl-width', hv);
-  } else {
-    const w = Math.min(14, Math.max(1, T.width + dir * 0.5));
-    if (w === T.width && !T.erasing) return false;
-    T.width = w;
-    setLS('ink-width', w);
-  }
-  T.erasing = false;
-  selectOff();
-  if (T.typing) typing.restyle();
-  refresh();
-  return true;
-}
-function stepSmooth(dir) {
-  const s = Math.min(8, Math.max(0, T.smooth + dir));
-  if (s === T.smooth) return false;
-  T.smooth = s;
-  refresh();
-  setLS('ink-smooth', s);
-  return true;
-}
-const STEPPERS = {
-  thinner: [stepSize, -1],
-  thicker: [stepSize, 1],
-  rougher: [stepSmooth, -1],
-  smoother: [stepSmooth, 1],
-};
-function initTools() {
-  for (const [act, [step, dir]] of Object.entries(STEPPERS))
-    holdRepeat($('[data-act="' + act + '"]', bar), () => step(dir));
-  holdRepeat($('[data-act="zoom-in"]', bar), () => {
-    if (viewer.zoom >= 6) return false;
-    zoomBy(1.1);
-    return true;
-  });
-  holdRepeat($('[data-act="zoom-out"]', bar), () => {
-    if (viewer.zoom <= 0.2) return false;
-    zoomBy(1 / 1.1);
-    return true;
-  });
-
-  picker.addEventListener('input', () => {
-    T.customColor = picker.value;
-    setLS('ink-custom', T.customColor);
-    pickColor(T.customColor);
-  });
-}
 function initToolbar() {
   bar.addEventListener('click', onToolbarClick);
   showBtn.addEventListener('click', () => {
