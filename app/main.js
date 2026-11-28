@@ -46,6 +46,9 @@ const HIGHLIGHT_COLOR = '#fdd835'; // highlighter starts yellow; after that it r
 const HIGHLIGHT_W = 22; // starting highlighter width; the - / + buttons change it while the highlighter is on
 const HIGHLIGHT_STRENGTH = 50; // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
 let tr = obT(obLang()); // OverBoard's words in the language picked in Settings (shared/strings.js); setLang() swaps it
+function setTr(t) {
+  tr = t;
+}
 const PEN_COLOR = '#e0218a'; // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
 const COVER_COLOR = '#111111'; // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
 /* ===================== */
@@ -133,8 +136,17 @@ const T = {
 /* ---------- the open document ---------- */
 let doc = null; // { hash, name, pages, file, pdf, notebook }
 let D = null; // ink data: { v: 3, t, active, at, periods: { P1: [strokes] }, rot: { page: 90 | 180 | 270 } (Turn page) }
+function setDoc(v) {
+  doc = v;
+}
+function setInkData(v) {
+  D = v;
+}
 let saveTimer = null,
   dirty = false;
+function setDirty(v) {
+  dirty = v;
+}
 
 const viewer = new Viewer(pagesEl, {
   show: (P) => ink.show(P),
@@ -634,8 +646,8 @@ async function openFile(file, handlePromise) {
       /* not ours */
     }
     const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
-    D = fromPdf ? inPdf : saved || fresh();
-    doc = {
+    setInkData(fromPdf ? inPdf : saved || fresh());
+    setDoc({
       hash,
       base,
       name: file.name,
@@ -646,7 +658,7 @@ async function openFile(file, handlePromise) {
       linkOn: false,
       info: null,
       notebook: !!nb,
-    };
+    });
     document.body.classList.toggle('notebook', doc.notebook);
     addPageEl.hidden = !doc.notebook;
     store
@@ -688,8 +700,8 @@ async function openFile(file, handlePromise) {
     loadOutline(pdf);
   } catch (e) {
     console.error(e);
-    doc = null;
-    D = null;
+    setDoc(null);
+    setInkData(null);
     if (!e || e.name !== 'PasswordException') dropPdfWorker();
     document.body.classList.add('start');
     bar.hidden = true;
@@ -709,7 +721,7 @@ async function openFile(file, handlePromise) {
 async function closeDoc(showStart = true) {
   if (!doc) return;
   rememberOpen(null); // first, so a reload while this finishes doesn't reopen it
-  dirty = true;
+  setDirty(true);
   await writeNow();
   await writePdf();
   viewer.close();
@@ -718,11 +730,10 @@ async function closeDoc(showStart = true) {
   } catch (e) {
     /* already gone */
   }
-  doc = null;
-  D = null;
+  setDoc(null);
+  setInkData(null);
   toc.hidden = true;
-  outline = [];
-  hasChapters = false;
+  clearChapters();
   addPageEl.hidden = true;
   pageMenu.show(false);
   document.body.classList.remove('notebook');
@@ -895,6 +906,10 @@ const fitToolbar = () =>
 
 /* ---------- chapters (PDF outline) ---------- */
 let outline = []; // flat [{ button, page }] for marking the current chapter
+function clearChapters() {
+  outline = [];
+  hasChapters = false;
+}
 async function loadOutline(pdf) {
   const ul = $('ul', toc);
   ul.textContent = '';
@@ -1145,7 +1160,7 @@ function setLang(code) {
   } catch (e) {
     /* blocked */
   }
-  tr = obT(code);
+  setTr(obT(code));
   translateAll();
   renderRecent();
   timer.refresh();
@@ -1787,7 +1802,7 @@ async function importInk(file) {
       return;
     const has = Object.values(D.periods).some((l) => l.length);
     if (has && !confirm(tr('confirm_replace_ink', { f: file.name }))) return;
-    D = data;
+    setInkData(data);
     ink.setData(D);
     viewer.applyTurns();
     refreshRedo();
