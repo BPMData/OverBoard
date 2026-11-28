@@ -8,29 +8,41 @@ import {
   flashBtn,
   historyKey,
   holdRepeat,
-  loadPeriods,
   makeHlMenu,
   makePeriodPicker,
   makePopMenu,
-  makeSelect,
   makeSettings,
   makeTimer,
-  makeTyping,
   paletteColors,
   remapPeriods,
   setPalette,
   showLaser,
 } from '../shared/ink-core.js';
-import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs } from './libs.js';
-import { Viewer } from './viewer.js';
-import { Ink, PT_PER_UNIT } from './ink.js';
-import { Finder } from './find.js';
-import * as store from './store.js';
-import { isHtml, boardName, addOverlay, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
-import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from './embed.js';
+import { findBase, readEmbeddedInk } from './embed.js';
+import { addOverlay, boardName, isHtml, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
+import { imageToPdf, IMG_RE, isImage, stripExt } from './image.js';
+import { dropPdfWorker, loadPdfjs, pdfWorker, warmPdfjs } from './libs.js';
+import { addPage, NB_RE, newNotebook, removePage, shiftInk, shiftTurns } from './notebook.js';
 import { setupOffline } from './offline.js';
-import { isImage, imageToPdf, IMG_RE, stripExt } from './image.js';
-import { NB_RE, newNotebook, addPage, removePage, shiftInk, shiftTurns } from './notebook.js';
+import * as store from './store.js';
+import { finder, initCore, ink, isOnScreen, setStatus, typing, viewer } from './core.js';
+import {
+  baseBlob,
+  dropBackup,
+  fresh,
+  initSaving,
+  markDirty,
+  onLinkButton,
+  OPEN_KEY,
+  readBackup,
+  reconnectLink,
+  refreshLink,
+  rememberOpen,
+  setDirty,
+  validData,
+  writeNow,
+  writePdf,
+} from './saving.js';
 import {
   $,
   addPageEl,
@@ -50,12 +62,10 @@ import {
   pagesEl,
   pagesTotal,
   PDF_OPTS,
-  PDF_SAVE_DELAY_MS,
   PEN_COLOR,
   PERIODS,
   periodsEl,
   picker,
-  SAVE_DELAY_MS,
   setDoc,
   setInkData,
   setLS,
@@ -65,160 +75,12 @@ import {
   sizeNum,
   SMOOTHING,
   smoothNum,
-  statusEl,
   T,
   toc,
   tocBtn,
   tr,
 } from './state.js';
 
-let saveTimer = null,
-  dirty = false;
-function setDirty(v) {
-  dirty = v;
-}
-
-let viewer, finder, ink, typing;
-function initCore() {
-  viewer = new Viewer(pagesEl, {
-    show: (P) => ink.show(P),
-    hide: (P) => ink.hide(P),
-    resize: (P) => ink.resize(P),
-    textReady: (P) => finder.showHit(P),
-    turn: (n) => (D && D.rot && D.rot[n]) || 0,
-  });
-  finder = new Finder(viewer, findPanel, setStatus, () => tr);
-  ink = new Ink(viewer, T, () => {
-    refreshRedo();
-    markDirty();
-  });
-  ink.onTextCopied = () => setStatus(tr('st_text_copied'));
-  ink.attach(pagesEl);
-  /* Select (shared with the overlay): circle ink to send a copy to another period, copy and paste it, move it or delete it */
-  ink.sel = makeSelect({
-    t: () => tr,
-    status: setStatus,
-    pageList: (n) => ink.pageList(n),
-    all: () => ink.strokes,
-    replace: (next) => ink.replaceAll(next),
-    addTo: (name, list) => ink.addTo(name, list),
-    periods: () => Object.keys(D.periods),
-    active: () => D.active,
-    preview: (n, hide, add) => ink.preview(n, hide, add),
-    host: (n) => ink.host(n),
-    pastePage: (n) => (n && viewer.pages[n - 1] && isOnScreen(n) ? n : viewer.currentPage()),
-    onOpen: () => closeMenus('sel'),
-  });
-  typing = ink.typing = makeTyping({
-    t: () => tr,
-    status: setStatus,
-    pageList: (n) => ink.pageList(n),
-    all: () => ink.strokes,
-    replace: (next) => ink.replaceAll(next),
-    preview: (n, hide, add) => ink.preview(n, hide, add),
-    host: (n) => ink.host(n),
-    style: () => ({ c: T.penColor, f: Math.round((10 + T.width * 4) * PT_PER_UNIT * 100) / 100 }),
-    page: (n) => n,
-  });
-  window.__overboard = {
-    viewer,
-    ink,
-    get doc() {
-      return doc;
-    },
-    get data() {
-      return D;
-    },
-    flush: () => writeNow(),
-  }; // for tests and the curious
-}
-
-function setStatus(msg) {
-  // a message that takes more (or fewer) lines changes the toolbar's height, so fit it again
-  const h = statusEl.offsetHeight;
-  statusEl.textContent = msg;
-  if (statusEl.offsetHeight !== h && doc) queueMicrotask(() => fitToolbar());
-}
-function fresh() {
-  const names = loadPeriods(PERIODS),
-    p = {};
-  names.forEach((n) => {
-    p[n] = [];
-  });
-  return { v: 3, t: 0, active: names[0], at: 1, periods: p };
-}
-function validData(o) {
-  if (!o || !o.periods || typeof o.periods !== 'object' || !Object.keys(o.periods).length) return null;
-  if (!o.periods[o.active]) o.active = Object.keys(o.periods)[0];
-  return o;
-}
-
-/* ---------- saving (IndexedDB, keyed by the PDF's SHA-256) ---------- */
-function markDirty() {
-  if (!doc) return;
-  D.t = Date.now();
-  dirty = true;
-  setStatus(tr('st_saving', { p: D.active }));
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(writeNow, SAVE_DELAY_MS);
-  if (doc.link && doc.linkOn) {
-    pdfDirty = true;
-    clearTimeout(pdfTimer);
-    pdfTimer = setTimeout(writePdf, PDF_SAVE_DELAY_MS);
-  }
-}
-async function writeNow() {
-  clearTimeout(saveTimer);
-  saveTimer = null;
-  if (!doc || !dirty) return;
-  dirty = false;
-  D.at = viewer.currentPage();
-  const hash = doc.hash;
-  try {
-    await store.saveInk(hash, D);
-    dropBackup(hash);
-    setStatus(tr('st_saved_this_browser', { p: D.active }));
-  } catch (e) {
-    dirty = true;
-    setStatus(tr('st_could_not_save_browser', { e: (e && e.name) || e }));
-  }
-}
-/* A reload or a closed tab can cut off the IndexedDB write above, losing the last few seconds of ink.
-   So on the way out, also keep a copy in localStorage (written at once); opening the PDF again uses
-   whichever copy is newer. sessionStorage remembers the open PDF, so a reload reopens it. */
-const BACKUP = 'ob-unsaved:',
-  OPEN_KEY = 'ob-open';
-function backupNow() {
-  if (doc) {
-    try {
-      localStorage.setItem(BACKUP + doc.hash, JSON.stringify(D));
-    } catch (e) {
-      /* full or blocked */
-    }
-  }
-}
-function dropBackup(hash) {
-  try {
-    localStorage.removeItem(BACKUP + hash);
-  } catch (e) {
-    /* blocked */
-  }
-}
-function readBackup(hash) {
-  try {
-    return validData(JSON.parse(localStorage.getItem(BACKUP + hash)));
-  } catch (e) {
-    return null;
-  }
-}
-function rememberOpen(hash) {
-  try {
-    if (hash) sessionStorage.setItem(OPEN_KEY, hash);
-    else sessionStorage.removeItem(OPEN_KEY);
-  } catch (e) {
-    /* blocked */
-  }
-}
 /* The browser's Back button: opening a PDF adds one step to this tab's history (the address doesn't change), so Back
    returns to the start screen and Forward opens the PDF again. Opening another PDF from inside one replaces the step. */
 const inPdfStep = () => !!(history.state && history.state.obPdf);
@@ -258,201 +120,6 @@ async function reopen(hash) {
   if (rec && rec.blob && (!doc || doc.hash !== hash))
     openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
   else if (!rec && inPdfStep()) history.replaceState(null, ''); // no longer stored: stay on the start screen
-}
-
-/* ---------- "Save ink into PDF" (opt-in): the ink lives inside a PDF file the teacher chose ---------- */
-// doc.link = file handle, doc.linkOn = permission granted and saving. See app/embed.js for what is written.
-let pdfTimer = null,
-  pdfDirty = false,
-  pdfBusy = null;
-const FSA = typeof window.showSaveFilePicker === 'function';
-const linkBtn = $('[data-act="pdf-link"]'),
-  dlg = $('#ob-embed');
-
-function refreshLink() {
-  if (!doc) return;
-  linkBtn.classList.toggle('good', !!doc.linkOn);
-  // a blank notebook has no other PDF to put the ink "into", so until a file is chosen it says Save notebook…
-  linkBtn.textContent = tr(
-    doc.linkOn
-      ? 'saving_into_pdf'
-      : doc.link
-        ? 'resume_saving'
-        : doc.notebook
-          ? 'save_notebook'
-          : FSA
-            ? 'save_into_pdf'
-            : 'download_pdf_ink'
-  );
-  linkBtn.title = doc.linkOn
-    ? tr('saving_into_tip', { f: doc.link.name })
-    : doc.link
-      ? tr('resume_tip', { f: doc.link.name })
-      : tr(doc.notebook ? 'save_notebook_tip' : 'save_into_pdf_tip');
-  linkBtn._label = linkBtn.textContent;
-}
-const baseBlob = () => doc.file.slice(0, doc.base);
-async function linkInfo() {
-  if (!doc.info) doc.info = await inspectBase(new Uint8Array(await baseBlob().arrayBuffer()));
-  return doc.info;
-}
-async function writePdf() {
-  clearTimeout(pdfTimer);
-  pdfTimer = null;
-  if (!doc || !doc.link || !doc.linkOn || !pdfDirty) return pdfBusy;
-  if (pdfBusy) {
-    await pdfBusy;
-    return writePdf();
-  }
-  const d = doc;
-  pdfDirty = false;
-  pdfBusy = (async () => {
-    try {
-      const update = await buildUpdate(await linkInfo(), d.base, store.makeSidecar(D, d));
-      await writeInto(d.link, baseBlob(), update);
-      d.file = await d.link.getFile(); // same original bytes + the new ink; keeps working even if it was the file we opened
-      if (doc === d)
-        setStatus(
-          tr('st_saved_into', {
-            p: D.active,
-            f: d.link.name,
-            t: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-          })
-        );
-    } catch (e) {
-      pdfDirty = true;
-      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-        d.linkOn = false;
-        refreshLink();
-        setStatus(tr('st_tap_resume'));
-      } else setStatus(tr('st_could_not_save_pdf', { e: (e && e.message) || e }));
-    } finally {
-      pdfBusy = null;
-    }
-  })();
-  return pdfBusy;
-}
-async function startLink(handle) {
-  try {
-    doc.link = handle;
-    doc.linkOn = true;
-    pdfDirty = true;
-    refreshLink();
-    setStatus(tr('st_saving_into', { f: handle.name }));
-    await writePdf();
-    if (!doc.linkOn) return;
-    await store.setLink(doc.hash, handle).catch(() => {});
-    flashBtn(linkBtn, tr('saved_flash'), 'good');
-    setStatus(tr('st_saves_into_now', { f: handle.name }));
-  } catch (e) {
-    setStatus(tr('st_could_not_save_pdf', { e: (e && e.message) || e }));
-  }
-}
-async function stopLink() {
-  await writePdf();
-  const name = doc.link && doc.link.name;
-  doc.link = null;
-  doc.linkOn = false;
-  doc.info = null;
-  await store.forgetLink(doc.hash).catch(() => {});
-  refreshLink();
-  setStatus(tr('st_stopped_saving', { f: name }));
-}
-async function downloadWithInk() {
-  // browsers without file access: a one-time copy
-  try {
-    const update = await buildUpdate(await linkInfo(), doc.base, store.makeSidecar(D, doc));
-    store.download(new Blob([baseBlob(), update], { type: 'application/pdf' }), boardPdfName());
-    setStatus(tr('st_downloaded_with_ink', { f: boardPdfName() }));
-  } catch (e) {
-    setStatus(tr('st_could_not_make_pdf', { e: (e && e.message) || e }));
-  }
-}
-const boardPdfName = () => (doc.notebook ? doc.name : stripExt(doc.name).replace(/_board$/, '') + '_board.pdf'); // a notebook keeps its own name
-function onLinkButton(b) {
-  if (doc.linkOn) {
-    confirmTap(b, stopLink, tr('sure'));
-    return;
-  }
-  if (doc.link) {
-    // reconnect: the browser asks again after a restart
-    doc.link
-      .requestPermission({ mode: 'readwrite' })
-      .then((p) => {
-        if (p === 'granted') startLink(doc.link);
-        else setStatus(tr('st_not_allowed'));
-      })
-      .catch(() => setStatus(tr('st_could_not_reconnect', { f: doc.link.name })));
-    return;
-  }
-  for (const n of dlg.querySelectorAll('.name')) n.textContent = boardPdfName();
-  dlg.classList.toggle('nofsa', !FSA);
-  $('[value="ok"]', dlg).textContent = tr(FSA ? 'choose_file' : 'download_it');
-  dlg.showModal();
-}
-function initSaving() {
-  window.addEventListener('pagehide', () => {
-    if (doc) {
-      D.at = viewer.currentPage();
-      backupNow();
-      dirty = true;
-      writeNow();
-      writePdf();
-    }
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && doc) {
-      dirty = true;
-      writeNow();
-      writePdf();
-    }
-  });
-  window.addEventListener('beforeunload', (e) => {
-    if (doc && pdfDirty && doc.linkOn) {
-      writePdf();
-      e.preventDefault();
-    }
-  }); // the PDF write takes a moment
-  dlg.addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) {
-      if (e.target === dlg) dlg.close();
-      return;
-    }
-    dlg.close();
-    if (b.value !== 'ok' || !doc) return;
-    if (!FSA) {
-      downloadWithInk();
-      return;
-    }
-    // the save window must open straight from the tap
-    window
-      .showSaveFilePicker({
-        suggestedName: boardPdfName(),
-        ...(doc.origin ? { startIn: doc.origin } : { id: 'overboard-pdf' }),
-        types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
-      })
-      .then((h) => startLink(h))
-      .catch((err) => {
-        if (!err || err.name !== 'AbortError')
-          setStatus(tr('st_could_not_open_save', { e: (err && err.message) || err }));
-      });
-  });
-}
-async function reconnectLink() {
-  // a file chosen on an earlier visit
-  if (!FSA || !doc) return;
-  const d = doc,
-    h = await store.getLink(d.hash).catch(() => null);
-  if (!h || doc !== d) return;
-  d.link = h;
-  try {
-    d.linkOn = (await h.queryPermission({ mode: 'readwrite' })) === 'granted';
-  } catch (e) {
-    d.linkOn = false;
-  }
-  refreshLink();
-  if (!d.linkOn) setStatus(tr('st_tap_resume_keep', { p: D.active, f: h.name }));
 }
 
 /* ---------- opening a PDF ---------- */
@@ -834,7 +501,7 @@ function layoutClear() {
   if (!nb) pageMenu.show(false);
 }
 /* the toolbar and its popouts shrink to fit a short window, such as a laptop screen */
-const fitToolbar = () =>
+export const fitToolbar = () =>
   fitTools(bar, [fileMenu, clearMenu.el, pageMenu.el, hlMenu.el, periodPicker.el, ink.sel.els[0]], 1);
 
 /* ---------- chapters (PDF outline) ---------- */
@@ -1296,7 +963,7 @@ function initMenus() {
       else if (b.dataset.act === 'side') placeFileMenu();
     });
 }
-function closeMenus(except) {
+export function closeMenus(except) {
   // only one popout at a time
   if (except !== 'file') file.show(false);
   if (except !== 'clear') clearMenu.show(false);
@@ -1512,14 +1179,9 @@ function historyStep(act) {
   if (n && !isOnScreen(n)) viewer.goTo(n);
 }
 const redoBtn = $('[data-act="redo"]', bar);
-function refreshRedo() {
+export function refreshRedo() {
   redoBtn.disabled = !ink.canRedo();
 }
-function isOnScreen(n) {
-  const r = viewer.pages[n - 1].el.getBoundingClientRect();
-  return r.bottom > 0 && r.top < window.innerHeight;
-}
-
 /* ---------- blank notebooks (app/notebook.js) ---------- */
 // Start screen: a new one-page notebook. Under the last page: add a page at the end. Pages ▸: add one after
 // the page you are on, or remove that page. Every change makes a new PDF and keeps the ink on its own page.
