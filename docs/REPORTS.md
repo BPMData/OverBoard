@@ -57,18 +57,24 @@ To check it's live: open the Web app URL in a browser. It should show `{"ok":tru
 
 Edit the code, save, then **Deploy ▸ Manage deployments ▸ ✏️ (edit) ▸ Version: New version ▸ Deploy**. This keeps the same URL, so the page doesn't need to change. (A *New deployment* gets a new URL.)
 
-## AllAboard reports (optional)
+## App reports: AllAboard, AllHail and OverHeard (optional)
 
-The same script also files AllAboard's **Something not working?** reports, so both apps share one inbox, one GitHub key and one deployment. AllAboard's server sends each report with a shared secret; the script opens an issue in the AllAboard repository (label `user-report`) and emails the private part to the reports inbox with `[AllAboard]` in the subject. No thank-you or follow-up emails for these. Without the steps below, the script turns AllAboard reports away and AllAboard shows its copy / download / email fallback.
+The same script also files the **Something not working?** reports of AllAboard, AllHail and OverHeard, so all four apps share one inbox, one GitHub key and one deployment. Each app's server writes the issue and the email itself and sends them with that app's own secret; the script opens the issue in that app's repository and emails the private part to the reports inbox with `[AllAboard]`, `[AllHail]` or `[OverHeard]` at the start of the subject. No thank-you or follow-up emails for these. An app whose secret isn't set here is turned away, and that app shows its own copy / download / email fallback.
 
-1. **Let the key reach AllAboard.** On GitHub, open the `OverBoard reports` token ([fine-grained tokens](https://github.com/settings/personal-access-tokens)) ▸ **Edit** ▸ *Repository access* ▸ also tick **AllAboard** ▸ **Update**. Issues: *Read and write* already covers it. (Or make a separate AllAboard-only token and add it as the script property `ALLABOARD_GITHUB_TOKEN`.)
-2. In the AllAboard repository, **Issues ▸ Labels ▸ New label** `user-report` (optional: without it, issues are opened unlabeled).
-3. **Make a secret.** Any long random string, for example from `openssl rand -hex 32`. In the script's **Project Settings ▸ Script properties**, add `ALLABOARD_TOKEN` with that value.
-4. Paste in the new `tools/report-relay.gs`, save, and run **checkSetup**. The log should say "AllAboard reports are on".
-5. **Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy** (same URL as before).
-6. In the AllAboard repository, add two Actions secrets: `REPORT_RELAY_URL` (this script's Web app URL) and `REPORT_RELAY_TOKEN` (the same secret as `ALLABOARD_TOKEN`). The next AllAboard deploy picks them up.
+| App | Secret (script property) | Repository (default) | Optional properties |
+| --- | --- | --- | --- |
+| AllAboard | `ALLABOARD_TOKEN` | BPMData/AllAboard | `ALLABOARD_REPO`, `ALLABOARD_GITHUB_TOKEN` |
+| AllHail | `ALLHAIL_TOKEN` | BPMData/AllHail | `ALLHAIL_REPO`, `ALLHAIL_GITHUB_TOKEN` |
+| OverHeard | `OVERHEARD_TOKEN` | BPMData/OverHeard | `OVERHEARD_REPO`, `OVERHEARD_GITHUB_TOKEN` |
 
-AllAboard reports count toward the same 20-an-hour, 40-a-day limits.
+To turn an app on:
+
+1. **Let the key reach the app.** On GitHub, open the `OverBoard reports` token ([fine-grained tokens](https://github.com/settings/personal-access-tokens)) ▸ **Edit** ▸ *Repository access* ▸ also tick the app's repository ▸ **Update**. Issues: *Read and write* already covers it. (Or make a separate token for that app and add it as its `…_GITHUB_TOKEN` property.)
+2. **Add the app's secret** under **Project Settings ▸ Script properties**, with the name from the table. The value is the app's relay secret, which is kept in Google Cloud Secret Manager in project `loyal-rookery-403218` (`allaboard-report-relay-token`, `allhail-report-relay-secret`, `overheard-report-relay-secret`); each app's deploy gives it to the app's server, so the value never goes in GitHub or the Cloud Run console.
+3. Paste in the new `tools/report-relay.gs` if it changed, save, and run **checkSetup**. The log says, for each app, whether its reports are on and where its issues go.
+4. **Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy** (same URL as before). Adding or changing a script property alone doesn't need a new version.
+
+The apps' servers read this script's Web app URL from Secret Manager too (`…-report-relay-url`). App reports count toward the same 20-an-hour, 40-a-day limits as board reports.
 
 ## Good to know
 
