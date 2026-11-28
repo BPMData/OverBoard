@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **One email per report, for all four apps** (v59, report script and the report page's last screen). No more thank-you emails: the report page already says thank you once the report has gone through, so the email was a waste of Gmail's ~100 a day. People who leave an email now get just the one "here's what we changed" email when their issue is closed as completed, and that now works for AllAboard, AllHail and OverHeard reports too, not just OverBoard's. The report limits go up to 60 an hour and 70 a day (all four apps together).
+
 - **AllHail and OverHeard reports** (v58, report script only). The report script now files AllHail's and OverHeard's "Something not working?" reports the same way as AllAboard's: an issue in that app's repository and an email to the same reports inbox. Each app has its own secret (`ALLHAIL_TOKEN`, `OVERHEARD_TOKEN`), so one app can't send reports as another, and each is off until its secret is set (see docs/REPORTS.md). AllAboard reports work as before. Nothing changes for teachers using OverBoard.
 - **AllAboard reports** (v55, report script only). The report script can also file AllAboard's "Something not working?" reports: an issue in the AllAboard repository and an email to the same reports inbox. It is off until the `ALLABOARD_TOKEN` script property is set (see docs/REPORTS.md). Nothing changes for teachers using OverBoard.
 - **PDFs open a little faster** (v54, PDF app). The PDF reader now gets ready while the start screen is up, instead of when you pick a file, and one reader is kept for every PDF you open, so Open again and adding a notebook page no longer start a new one each time. Checking which PDF it is (to find its ink) now happens while the PDF opens, not before.
