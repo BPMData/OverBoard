@@ -15,4 +15,3 @@ What's planned next, most useful first. How things work today is in [ARCHITECTUR
 - **Word (.docx) import**, labeled experimental (e.g. docx-preview). Until then: "In Word, File → Save as PDF."
 - **"Remove covered text" export** (opt-in, clearly labeled, original file untouched): would need rewriting page content streams to drop text under covers. Until then: print on paper to hand out answer-free copies.
 - **Large-document HTML mode**: per-`.page` canvases in the overlay too, so very long HTML packets stay sharp.
-- **Split `app/main.js`** (about 820 lines): move the menus and the start screen into their own modules the next time a feature touches them.
