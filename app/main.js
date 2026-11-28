@@ -18,31 +18,15 @@ import {
   setPalette,
   showLaser,
 } from '../shared/ink-core.js';
-import { findBase, readEmbeddedInk } from './embed.js';
-import { addOverlay, boardName, isHtml, layoutWarnings, localFiles, saveBoardCopy } from './html.js';
-import { imageToPdf, IMG_RE, isImage, stripExt } from './image.js';
-import { dropPdfWorker, loadPdfjs, pdfWorker, warmPdfjs } from './libs.js';
-import { addPage, NB_RE, newNotebook, removePage, shiftInk, shiftTurns } from './notebook.js';
+import { stripExt } from './image.js';
+import { loadPdfjs, pdfWorker, warmPdfjs } from './libs.js';
+import { addPage, newNotebook, removePage, shiftInk, shiftTurns } from './notebook.js';
 import { setupOffline } from './offline.js';
 import * as store from './store.js';
 import { finder, initCore, ink, isOnScreen, setStatus, typing, viewer } from './core.js';
-import {
-  baseBlob,
-  dropBackup,
-  fresh,
-  initSaving,
-  markDirty,
-  onLinkButton,
-  OPEN_KEY,
-  readBackup,
-  reconnectLink,
-  refreshLink,
-  rememberOpen,
-  setDirty,
-  validData,
-  writeNow,
-  writePdf,
-} from './saving.js';
+import { initOpen, inPdfStep, openFile, reopen, showError, toStart } from './open.js';
+import { baseBlob, initSaving, markDirty, onLinkButton, OPEN_KEY, refreshLink, writeNow } from './saving.js';
+import { initStartScreen, renderRecent } from './start-screen.js';
 import {
   $,
   addPageEl,
@@ -66,7 +50,6 @@ import {
   PERIODS,
   periodsEl,
   picker,
-  setDoc,
   setInkData,
   setLS,
   setTr,
@@ -81,404 +64,12 @@ import {
   tr,
 } from './state.js';
 
-/* The browser's Back button: opening a PDF adds one step to this tab's history (the address doesn't change), so Back
-   returns to the start screen and Forward opens the PDF again. Opening another PDF from inside one replaces the step. */
-const inPdfStep = () => !!(history.state && history.state.obPdf);
-let stepBack = false,
-  leaving = null; // Open another PDF went back one step and the browser hasn't arrived yet; the PDF being closed
-function pdfStep(hash) {
-  if (stepBack) return; // added when the step back lands (popstate)
-  if (inPdfStep()) history.replaceState({ obPdf: hash }, '');
-  else history.pushState({ obPdf: hash }, '');
-}
-function toStart() {
-  // Open another PDF: close now, and take back the step we added, so Back isn't needed twice
-  if (inPdfStep()) {
-    stepBack = true;
-    leaving = doc;
-    history.back();
-  }
-  closeDoc(true);
-}
-function initOpen() {
-  window.addEventListener('popstate', (e) => {
-    if (stepBack) {
-      // a PDF picked in the meantime gets its step (not the one still saving on its way out)
-      stepBack = false;
-      if (doc && doc !== leaving) pdfStep(doc.hash);
-      leaving = null;
-      return;
-    }
-    const hash = e.state && e.state.obPdf;
-    if (doc && !hash) closeDoc(true);
-    else if (hash && (!doc || doc.hash !== hash)) reopen(hash);
-  });
-}
-async function reopen(hash) {
-  // a PDF kept in the Open again store
-  const rec = await store.getFile(hash).catch(() => null);
-  if (rec && rec.blob && (!doc || doc.hash !== hash))
-    openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
-  else if (!rec && inPdfStep()) history.replaceState(null, ''); // no longer stored: stay on the start screen
-}
-
-/* ---------- opening a PDF ---------- */
-const errorEl = $('#ob-error');
-function showError(msg) {
-  errorEl.textContent = msg;
-  errorEl.hidden = !msg;
-}
-
-const msgEl = $('#ob-msg');
-function showMsg(msg) {
-  msgEl.textContent = msg;
-  msgEl.hidden = !msg;
-}
-
-/* an .html worksheet: make a board copy with the overlay, like the installer */
-async function makeBoardCopy(file, handlePromise) {
-  showError('');
-  showMsg('');
-  try {
-    const { status, html, message } = await addOverlay(await file.text());
-    const name = boardName(file.name);
-    if (status === 'same' && name === file.name) {
-      showMsg(file.name + ' ' + message + '. Just open it in Chrome.');
-      return;
-    }
-    const handle = handlePromise ? await handlePromise.catch(() => null) : null;
-    const where = await saveBoardCopy(html, name, handle && handle.kind === 'file' ? handle : undefined);
-    if (!where) return;
-    const warns = layoutWarnings(html);
-    const files = localFiles(html);
-    showMsg(
-      file.name +
-        ': ' +
-        message +
-        '; ' +
-        where +
-        '. Double-click it to open it in Chrome and write on it.' +
-        (files.length
-          ? ' This worksheet uses files stored separately (like ' +
-            files.slice(0, 2).join(', ') +
-            '). Put ' +
-            name +
-            ' in the same folder as ' +
-            file.name +
-            ', or ' +
-            (files.length > 1 ? 'they' : 'it') +
-            " won't show."
-          : '') +
-        (warns.length ? ' Heads-up: ' + warns.join('; ') + ', so ink may not stay on the page.' : '')
-    );
-    if (doc) setStatus(name + ' saved');
-  } catch (e) {
-    showError('Could not add OverBoard to "' + file.name + '": ' + ((e && e.message) || e));
-  }
-}
-
-async function openFile(file, handlePromise) {
-  if (!file) return;
-  if (isHtml(file)) {
-    if (doc) await closeDoc(true);
-    return makeBoardCopy(file, handlePromise);
-  }
-  if (isImage(file)) {
-    // a picture: open it as a one-page PDF (app/image.js)
-    try {
-      file = await imageToPdf(file);
-    } catch (e) {
-      console.error(e);
-      showError(tr('err_could_not_open', { f: file.name, e: (e && e.message) || e }));
-      return;
-    }
-  }
-  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
-    showError(tr('err_not_pdf', { f: file.name }));
-    return;
-  }
-  showError('');
-  showMsg('');
-  const drop = $('#ob-drop strong'),
-    label = drop.textContent;
-  drop.textContent = tr('opening', { f: file.name });
-  try {
-    if (doc) await closeDoc(false);
-    const libP = loadPdfjs(); // usually ready already (warmPdfjs); if not, it loads while the file is read
-    const buf = await file.arrayBuffer();
-    const base = findBase(new Uint8Array(buf)); // a PDF OverBoard saved ink into: the original bytes come first
-    const hashP = store.hashBytes(new Uint8Array(buf, 0, base)); // copies the bytes now, so the PDF can open meanwhile
-    const lib = await libP;
-    const task = lib.getDocument({ data: new Uint8Array(buf), worker: pdfWorker(lib), ...PDF_OPTS }); // hands the bytes to the reader
-    task.onPassword = (give, reason) => {
-      const pw = prompt(reason === 2 ? 'Wrong password. Try again:' : 'This PDF has a password:');
-      if (pw === null) task.destroy();
-      else give(pw);
-    };
-    hashP.catch(() => {}); // (if the PDF fails first, that's the error to show)
-    const pdf = await task.promise;
-    let hash = await hashP;
-    // a blank notebook OverBoard made: its ink is kept under the notebook's ID, which stays the same as pages are added
-    // a picture OverBoard turned into a PDF: its ink is kept under the picture's ID (app/image.js)
-    let nb = null,
-      im = null;
-    try {
-      const kw = ((await pdf.getMetadata()).info || {}).Keywords || '';
-      nb = NB_RE.exec(kw);
-      im = IMG_RE.exec(kw);
-    } catch (e) {
-      /* no metadata */
-    }
-    if (nb) hash = 'notebook-' + nb[1];
-    else if (im) hash = 'image-' + im[1];
-    let saved = validData(await store.loadInk(hash).catch(() => null));
-    const backup = readBackup(hash); // ink from a reload that cut off the last save
-    const fromBackup = !!backup && (!saved || (backup.t || 0) > (saved.t || 0));
-    if (fromBackup) saved = backup;
-    let inPdf = null; // ink stored inside the PDF itself; the newest copy wins, a tie goes to the file
-    try {
-      const txt = await readEmbeddedInk(pdf);
-      if (txt) inPdf = store.parseSidecar(txt).data;
-    } catch (e) {
-      /* not ours */
-    }
-    const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
-    setInkData(fromPdf ? inPdf : saved || fresh());
-    setDoc({
-      hash,
-      base,
-      name: file.name,
-      pages: pdf.numPages,
-      file,
-      pdf,
-      link: null,
-      linkOn: false,
-      info: null,
-      notebook: !!nb,
-    });
-    document.body.classList.toggle('notebook', doc.notebook);
-    addPageEl.hidden = !doc.notebook;
-    store
-      .rememberFile(hash, { name: file.name, pages: pdf.numPages }, file)
-      .catch(() => setStatus(tr('st_too_big_keep')));
-    store.askPersistent();
-    document.body.classList.remove('start');
-    bar.hidden = false;
-    layoutClear();
-    fitToolbar();
-    document.title = stripExt(file.name) + ' · OverBoard';
-    pagesTotal.textContent = tr('of_n', { n: pdf.numPages });
-    fitSpace();
-    await viewer.open(pdf);
-    ink.setData(D);
-    refreshRedo();
-    renderPeriods();
-    refresh();
-    fitToolbar();
-    if (D.at > 1) viewer.goTo(D.at);
-    else window.scrollTo(0, 0);
-    setStatus(tr(fromPdf ? 'st_loaded_inside_pdf' : saved ? 'st_restored' : 'st_ready', { p: D.active }));
-    if (fromPdf || fromBackup)
-      store.saveInk(hash, D).then(
-        () => dropBackup(hash),
-        () => {}
-      ); // keep this browser's copy current too
-    rememberOpen(hash);
-    pdfStep(hash);
-    if (handlePromise)
-      handlePromise.then(
-        (h) => {
-          if (h && h.kind === 'file' && doc && doc.hash === hash) doc.origin = h;
-        },
-        () => {}
-      ); // its folder, for save windows
-    refreshLink();
-    reconnectLink();
-    loadOutline(pdf);
-  } catch (e) {
-    console.error(e);
-    setDoc(null);
-    setInkData(null);
-    if (!e || e.name !== 'PasswordException') dropPdfWorker();
-    document.body.classList.add('start');
-    bar.hidden = true;
-    addPageEl.hidden = true;
-    showError(
-      e && e.name === 'PasswordException'
-        ? tr('err_password')
-        : e && /fetch|import|module/i.test(String(e.message))
-          ? tr('err_pdf_reader')
-          : tr('err_could_not_open', { f: file.name, e: (e && e.message) || e })
-    );
-  } finally {
-    drop.textContent = label;
-  }
-}
-
-async function closeDoc(showStart = true) {
-  if (!doc) return;
-  rememberOpen(null); // first, so a reload while this finishes doesn't reopen it
-  setDirty(true);
-  await writeNow();
-  await writePdf();
-  viewer.close();
-  try {
-    await doc.pdf.destroy();
-  } catch (e) {
-    /* already gone */
-  }
-  setDoc(null);
-  setInkData(null);
-  toc.hidden = true;
-  clearChapters();
-  addPageEl.hidden = true;
-  pageMenu.show(false);
-  document.body.classList.remove('notebook');
-  finder.close();
-  finder.reset();
-  if (showStart) {
-    if (inPdfStep() && !stepBack) history.replaceState(null, '');
-    document.body.classList.add('start');
-    bar.hidden = true;
-    showBtn.classList.remove('show');
-    document.title = 'OverBoard PDF';
-    renderRecent();
-  }
-}
-
-function initStartScreen() {
-  $('#ob-file').addEventListener('change', (e) => {
-    openFile(e.target.files[0]);
-    e.target.value = '';
-  });
-  dropZone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      chooseFile();
-    }
-  });
-  dropZone.addEventListener('click', (e) => {
-    if (window.showOpenFilePicker && e.target !== $('#ob-file')) {
-      e.preventDefault();
-      chooseFile();
-    }
-  });
-  window.addEventListener('dragenter', (e) => {
-    if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
-      dragDepth++;
-      cover.hidden = false;
-      dropZone.classList.add('over');
-    }
-  });
-  window.addEventListener('dragleave', () => {
-    if (--dragDepth <= 0) {
-      dragDepth = 0;
-      cover.hidden = true;
-      dropZone.classList.remove('over');
-    }
-  });
-  window.addEventListener('dragover', (e) => e.preventDefault());
-  window.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dragDepth = 0;
-    cover.hidden = true;
-    dropZone.classList.remove('over');
-    const f = e.dataTransfer && e.dataTransfer.files[0];
-    if (!f) return;
-    // Chrome/Edge: a handle to the dropped file lets the board copy be saved next to it (must be asked for during the drop)
-    const item = e.dataTransfer.items && e.dataTransfer.items[0];
-    const handle = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
-    if (/\.json$/i.test(f.name)) {
-      if (doc) importInk(f);
-      else showError(tr('err_open_pdf_first'));
-    } else openFile(f, handle);
-  });
-}
-
-const dropZone = $('#ob-drop');
-/* Chrome/Edge: choose with showOpenFilePicker, which gives a handle to the file, so save windows can start in
-   its folder (Save ink into PDF, an HTML board copy). Other browsers use the plain file input. */
-function chooseFile() {
-  if (!window.showOpenFilePicker) {
-    $('#ob-file').click();
-    return;
-  }
-  window
-    .showOpenFilePicker({
-      id: 'overboard-open',
-      types: [
-        {
-          description: 'PDF, picture or HTML worksheet',
-          accept: {
-            'application/pdf': ['.pdf'],
-            'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif'],
-            'text/html': ['.html', '.htm'],
-          },
-        },
-      ],
-    })
-    .then(async ([h]) => openFile(await h.getFile(), Promise.resolve(h)))
-    .catch((err) => {
-      if (!err || err.name !== 'AbortError') $('#ob-file').click();
-    });
-}
-
-// drop a PDF (or an .overboard.json ink file) anywhere
-const cover = $('#ob-dropcover');
-let dragDepth = 0;
-
-/* ---------- recent files ---------- */
-async function renderRecent() {
-  const sec = $('#ob-recent'),
-    ul = $('ul', sec);
-  let list = [];
-  try {
-    list = await store.listFiles();
-  } catch (e) {
-    /* storage blocked */
-  }
-  ul.textContent = '';
-  sec.hidden = !list.length;
-  for (const r of list) {
-    const li = document.createElement('li');
-    const open = document.createElement('button');
-    open.className = 'open';
-    const b = document.createElement('b');
-    b.textContent = r.name;
-    const sm = document.createElement('small');
-    sm.textContent =
-      tr(r.pages === 1 ? 'n_page' : 'n_pages', { n: r.pages }) +
-      ' · ' +
-      tr('opened_on', { d: new Date(r.opened).toLocaleDateString(tr.lang, { month: 'short', day: 'numeric' }) });
-    open.append(b, sm);
-    open.addEventListener('click', async () => {
-      const rec = await store.getFile(r.hash).catch(() => null);
-      if (!rec || !rec.blob) {
-        showError(tr('err_no_longer_stored'));
-        renderRecent();
-        return;
-      }
-      openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
-    });
-    const forget = document.createElement('button');
-    forget.className = 'forget';
-    forget.textContent = '×';
-    forget.title = forget.ariaLabel = tr('forget_tip');
-    forget.addEventListener('click', async () => {
-      await store.forgetFile(r.hash).catch(() => {});
-      renderRecent();
-    });
-    li.append(open, forget);
-    ul.appendChild(li);
-  }
-}
-
 /* ---------- the Clear buttons ----------
    A PDF with chapters: Chapters | Clear ▸ (a menu: this page or all pages), with Clear on the side the menu
    opens. A blank notebook: Pages ▸ | Clear ▸ the same way. Without chapters: Clear page | Clear all, like the
    HTML overlay. One page: just Clear (beside Pages ▸ in a notebook). */
 let hasChapters = false;
-function layoutClear() {
+export function layoutClear() {
   const nb = !!doc && doc.notebook,
     many = !!doc && doc.pages > 1,
     menu = (hasChapters || nb) && many;
@@ -506,11 +97,11 @@ export const fitToolbar = () =>
 
 /* ---------- chapters (PDF outline) ---------- */
 let outline = []; // flat [{ button, page }] for marking the current chapter
-function clearChapters() {
+export function clearChapters() {
   outline = [];
   hasChapters = false;
 }
-async function loadOutline(pdf) {
+export async function loadOutline(pdf) {
   const ul = $('ul', toc);
   ul.textContent = '';
   outline = [];
@@ -643,7 +234,7 @@ function jump(dir) {
 
 /* ---------- zoom ---------- */
 const ZOOM_100 = 96 / 72; // CSS px per point at 100%
-function fitSpace() {
+export function fitSpace() {
   viewer.sideSpace = bar.style.display === 'none' || bar.hidden ? 16 : bar.getBoundingClientRect().width + 20;
 }
 function zoomBy(f) {
@@ -670,7 +261,7 @@ function initPeriods() {
     (k, v) => tr(k, v)
   );
 }
-function renderPeriods() {
+export function renderPeriods() {
   periodPicker.render(Object.keys(D.periods), D.active);
 }
 
@@ -786,7 +377,7 @@ function setLang(code) {
 
 /* ---------- toolbar ---------- */
 const isPreset = (c) => !!bar.querySelector('[data-color="' + c + '"]');
-function refresh() {
+export function refresh() {
   setPalette(bar, T.hiliting ? (T.covering ? 'cover' : 'hl') : 'pen', tr); // the swatches change with the tool
   for (const b of bar.querySelectorAll('[data-color]'))
     b.classList.toggle('on', !T.erasing && b.dataset.color === T.color);
@@ -925,7 +516,7 @@ function initTools() {
 /* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
    anywhere else, or Escape. Lifting the pen or finger never closes them. */
 const fileMenu = $('#ob-filemenu');
-let clearMenu, pageMenu, hlMenu, showFileMenu;
+export let clearMenu, pageMenu, hlMenu, showFileMenu;
 let file, placeFileMenu;
 function initMenus() {
   clearMenu = makePopMenu($('#ob-clearmenu'), $('[data-act="clear"]', bar), bar, () => closeMenus('clear'));
@@ -1406,7 +997,7 @@ async function saveInkFile(btn) {
   flashBtn(btn, tr('saved_flash'), 'good');
   setStatus(tr('st_ink_file_downloaded'));
 }
-async function importInk(file) {
+export async function importInk(file) {
   try {
     const { data, pdf } = store.parseSidecar(await file.text());
     if (

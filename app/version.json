@@ -1,5 +1,5 @@
 {
-  "v": "e007fc43c4f9",
+  "v": "6e394fb80380",
   "js": [
     "core.js",
     "embed.js",
@@ -12,7 +12,9 @@
     "main.js",
     "notebook.js",
     "offline.js",
+    "open.js",
     "saving.js",
+    "start-screen.js",
     "state.js",
     "store.js",
     "textlayer.js",
