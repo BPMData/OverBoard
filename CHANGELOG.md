@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Tidier PDF app code** (v61, PDF app). app/main.js is split into smaller files. Nothing changes for teachers.
+
 - **Plan for tidying the PDF app's code** (v60, docs only). `docs/plans/APP_MAIN_SPLIT.md` describes, step by step, how to split `app/main.js` into smaller files without changing anything the app does. Nothing changes for teachers yet.
 
 - **One email per report, for all four apps** (v59, report script and the report page's last screen). No more thank-you emails: the report page already says thank you once the report has gone through, so the email was a waste of Gmail's ~100 a day. People who leave an email now get just the one "here's what we changed" email when their issue is closed as completed, and that now works for AllAboard, AllHail and OverHeard reports too, not just OverBoard's. The report limits go up to 60 an hour and 70 a day (all four apps together).

@@ -1,5 +1,5 @@
 {
-  "v": "b6934d09ddff",
+  "v": "3157eb5b05a0",
   "js": [
     "embed.js",
     "export.js",
@@ -11,6 +11,7 @@
     "main.js",
     "notebook.js",
     "offline.js",
+    "state.js",
     "store.js",
     "textlayer.js",
     "viewer.js",

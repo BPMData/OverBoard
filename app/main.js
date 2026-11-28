@@ -1,29 +1,27 @@
 // OverBoard PDF: open a PDF, write on it with the overlay's toolbar, keep the ink, export an annotated PDF.
 // Everything runs in this browser tab. Nothing is uploaded.
 
-import { obLangs, obLang, obT, obTranslate } from '../shared/strings.js';
+import { obLangs, obT, obTranslate } from '../shared/strings.js';
 import {
-  showLaser,
-  makeTimer,
-  paletteColors,
-  setPalette,
-  fitTools,
-  makePopMenu,
-  historyKey,
-  hlInk,
-  makeHlMenu,
-  holdRepeat,
   confirmTap,
+  fitTools,
   flashBtn,
-  makePeriodPicker,
-  makeSettings,
+  historyKey,
+  holdRepeat,
   loadPeriods,
-  startPen,
-  remapPeriods,
+  makeHlMenu,
+  makePeriodPicker,
+  makePopMenu,
   makeSelect,
+  makeSettings,
+  makeTimer,
   makeTyping,
+  paletteColors,
+  remapPeriods,
+  setPalette,
+  showLaser,
 } from '../shared/ink-core.js';
-import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs, PDFJS_CMAPS_URL, PDFJS_FONTS_URL } from './libs.js';
+import { loadPdfjs, pdfWorker, dropPdfWorker, warmPdfjs } from './libs.js';
 import { Viewer } from './viewer.js';
 import { Ink, PT_PER_UNIT } from './ink.js';
 import { Finder } from './find.js';
@@ -33,161 +31,107 @@ import { findBase, readEmbeddedInk, inspectBase, buildUpdate, writeInto } from '
 import { setupOffline } from './offline.js';
 import { isImage, imageToPdf, IMG_RE, stripExt } from './image.js';
 import { NB_RE, newNotebook, addPage, removePage, shiftInk, shiftTurns } from './notebook.js';
+import {
+  $,
+  addPageEl,
+  bar,
+  COVER_COLOR,
+  customFill,
+  D,
+  doc,
+  findPanel,
+  FINGER_SCROLLS,
+  fitBtn,
+  HIGHLIGHT_COLOR,
+  HIGHLIGHT_STRENGTH,
+  HIGHLIGHT_W,
+  pageInput,
+  pagesBtn,
+  pagesEl,
+  pagesTotal,
+  PDF_OPTS,
+  PDF_SAVE_DELAY_MS,
+  PEN_COLOR,
+  PERIODS,
+  periodsEl,
+  picker,
+  SAVE_DELAY_MS,
+  setDoc,
+  setInkData,
+  setLS,
+  setTr,
+  showBtn,
+  sizeDot,
+  sizeNum,
+  SMOOTHING,
+  smoothNum,
+  statusEl,
+  T,
+  toc,
+  tocBtn,
+  tr,
+} from './state.js';
 
-/* ===== SETTINGS (same meaning as in the overlay) ===== */
-const PERIODS = ['P1', 'P2', 'P3', 'P4']; // until a list is set in File ▸ Settings… (shared with the overlay)
-const SAVE_DELAY_MS = 3000; // after you stop writing, wait this long, then save. Also saves when the tab is hidden or closed.
-const PDF_SAVE_DELAY_MS = 8000; // "Save ink into PDF" (when on) writes the file this long after you stop writing
-const FINGER_SCROLLS = true; // true = finger scrolls, pen writes. The toolbar button flips this (remembered per browser).
-const PALM_ERASER_W = 92; // eraser size (screen px) when you wipe with your palm, fist or side of hand
-const ERASER_W = 44; // eraser size (screen px) with the Eraser button
-const SMOOTHING = 3; // starting level 0-8
-const HIGHLIGHT_COLOR = '#fdd835'; // highlighter starts yellow; after that it remembers the last highlighter color you picked
-const HIGHLIGHT_W = 22; // starting highlighter width; the - / + buttons change it while the highlighter is on
-const HIGHLIGHT_STRENGTH = 50; // highlight strength in % (Highlighter ▾ slider, 10-100): 100 = the full color, 50 = halfway to white
-let tr = obT(obLang()); // OverBoard's words in the language picked in Settings (shared/strings.js); setLang() swaps it
-const PEN_COLOR = '#e0218a'; // the pen starts Barbie pink (high visibility on the board) unless File ▸ Settings… picks another; the palette changes it
-const COVER_COLOR = '#111111'; // Highlighter ▾ Cover: an opaque stroke that hides answers (erase it to reveal them)
-/* ===================== */
-
-const $ = (s, el = document) => el.querySelector(s);
-const bar = $('#ink-bar'),
-  showBtn = $('#ink-show'),
-  statusEl = $('#ink-status'),
-  periodsEl = $('#ink-periods');
-const pagesEl = $('#ob-pages'),
-  pageInput = $('#ob-page'),
-  pagesTotal = $('#ob-pages-total');
-const picker = $('#ink-picker'),
-  customFill = $('[data-act="custom"] .fill', bar);
-const sizeNum = $('#ink-size .num'),
-  sizeDot = $('#ink-size .dot'),
-  smoothNum = $('#ink-smooth .num');
-const pagesBtn = $('[data-act="pages"]', bar),
-  addPageEl = $('#ob-addpage');
-const toc = $('#ob-toc'),
-  tocBtn = $('[data-act="toc"]', bar),
-  fitBtn = $('[data-act="zoom-fit"]', bar);
-
-function getLS(k) {
-  try {
-    return localStorage.getItem(k);
-  } catch (e) {
-    return null;
-  }
-}
-function setLS(k, v) {
-  try {
-    localStorage.setItem(k, v);
-  } catch (e) {
-    /* private mode */
-  }
-}
-const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
-
-/* ---------- tool state (read by the ink layer) ---------- */
-const T = {
-  typing: false,
-  erasing: false,
-  hiliting: false,
-  covering: false, // covering: the highlighter is in Cover mode
-  laser: false, // laser pointer: tap the selected color again, and marks fade away by themselves
-  selecting: false, // the Select tool: the pen circles ink instead of writing
-  penColor: PEN_COLOR,
-  hlColor: HIGHLIGHT_COLOR,
-  coverColor: COVER_COLOR, // pen, highlighter and cover each remember their own color
-  color: PEN_COLOR,
-  width: 2.5,
-  hlWidth: HIGHLIGHT_W,
-  smooth: SMOOTHING,
-  fingerScrolls: FINGER_SCROLLS,
-  customColor: '',
-  PALM_ERASER_W,
-  ERASER_W,
-  hlStrength: HIGHLIGHT_STRENGTH,
-  hlInk() {
-    return hlInk(this.color, this.hlStrength);
-  }, // mixed toward white; it multiplies, so text stays black
-};
-{
-  const sw = parseFloat(getLS('ink-width'));
-  if (sw >= 1 && sw <= 14) T.width = sw;
-  const hw = parseFloat(getLS('ink-hl-width'));
-  if (hw >= 8 && hw <= 40) T.hlWidth = hw;
-  const hc = getLS('ink-hl-color');
-  if (isHex(hc)) T.hlColor = hc;
-  const cc = getLS('ink-custom');
-  if (isHex(cc)) T.customColor = cc;
-  T.covering = getLS('ink-hl-mode') === 'cover';
-  const hs = parseInt(getLS('ink-hl-strength'), 10);
-  if (hs >= 10 && hs <= 100) T.hlStrength = hs;
-  const kc = getLS('ink-cover-color');
-  if (isHex(kc)) T.coverColor = kc;
-  const sl = getLS('ink-smooth');
-  if (sl !== null && +sl >= 0 && +sl <= 8) T.smooth = +sl;
-  const fm = getLS('ink-finger');
-  if (fm) T.fingerScrolls = fm === 'scroll';
-  T.penColor = T.color = startPen(PEN_COLOR);
-}
-
-/* ---------- the open document ---------- */
-let doc = null; // { hash, name, pages, file, pdf, notebook }
-let D = null; // ink data: { v: 3, t, active, at, periods: { P1: [strokes] }, rot: { page: 90 | 180 | 270 } (Turn page) }
 let saveTimer = null,
   dirty = false;
+function setDirty(v) {
+  dirty = v;
+}
 
-const viewer = new Viewer(pagesEl, {
-  show: (P) => ink.show(P),
-  hide: (P) => ink.hide(P),
-  resize: (P) => ink.resize(P),
-  textReady: (P) => finder.showHit(P),
-  turn: (n) => (D && D.rot && D.rot[n]) || 0,
-});
-const findPanel = $('#ob-find'),
+let viewer, finder, ink, typing;
+function initCore() {
+  viewer = new Viewer(pagesEl, {
+    show: (P) => ink.show(P),
+    hide: (P) => ink.hide(P),
+    resize: (P) => ink.resize(P),
+    textReady: (P) => finder.showHit(P),
+    turn: (n) => (D && D.rot && D.rot[n]) || 0,
+  });
   finder = new Finder(viewer, findPanel, setStatus, () => tr);
-const ink = new Ink(viewer, T, () => {
-  refreshRedo();
-  markDirty();
-});
-ink.onTextCopied = () => setStatus(tr('st_text_copied'));
-ink.attach(pagesEl);
-/* Select (shared with the overlay): circle ink to send a copy to another period, copy and paste it, move it or delete it */
-ink.sel = makeSelect({
-  t: () => tr,
-  status: setStatus,
-  pageList: (n) => ink.pageList(n),
-  all: () => ink.strokes,
-  replace: (next) => ink.replaceAll(next),
-  addTo: (name, list) => ink.addTo(name, list),
-  periods: () => Object.keys(D.periods),
-  active: () => D.active,
-  preview: (n, hide, add) => ink.preview(n, hide, add),
-  host: (n) => ink.host(n),
-  pastePage: (n) => (n && viewer.pages[n - 1] && isOnScreen(n) ? n : viewer.currentPage()),
-  onOpen: () => closeMenus('sel'),
-});
-const typing = (ink.typing = makeTyping({
-  t: () => tr,
-  status: setStatus,
-  pageList: (n) => ink.pageList(n),
-  all: () => ink.strokes,
-  replace: (next) => ink.replaceAll(next),
-  preview: (n, hide, add) => ink.preview(n, hide, add),
-  host: (n) => ink.host(n),
-  style: () => ({ c: T.penColor, f: Math.round((10 + T.width * 4) * PT_PER_UNIT * 100) / 100 }),
-  page: (n) => n,
-}));
-window.__overboard = {
-  viewer,
-  ink,
-  get doc() {
-    return doc;
-  },
-  get data() {
-    return D;
-  },
-  flush: () => writeNow(),
-}; // for tests and the curious
+  ink = new Ink(viewer, T, () => {
+    refreshRedo();
+    markDirty();
+  });
+  ink.onTextCopied = () => setStatus(tr('st_text_copied'));
+  ink.attach(pagesEl);
+  /* Select (shared with the overlay): circle ink to send a copy to another period, copy and paste it, move it or delete it */
+  ink.sel = makeSelect({
+    t: () => tr,
+    status: setStatus,
+    pageList: (n) => ink.pageList(n),
+    all: () => ink.strokes,
+    replace: (next) => ink.replaceAll(next),
+    addTo: (name, list) => ink.addTo(name, list),
+    periods: () => Object.keys(D.periods),
+    active: () => D.active,
+    preview: (n, hide, add) => ink.preview(n, hide, add),
+    host: (n) => ink.host(n),
+    pastePage: (n) => (n && viewer.pages[n - 1] && isOnScreen(n) ? n : viewer.currentPage()),
+    onOpen: () => closeMenus('sel'),
+  });
+  typing = ink.typing = makeTyping({
+    t: () => tr,
+    status: setStatus,
+    pageList: (n) => ink.pageList(n),
+    all: () => ink.strokes,
+    replace: (next) => ink.replaceAll(next),
+    preview: (n, hide, add) => ink.preview(n, hide, add),
+    host: (n) => ink.host(n),
+    style: () => ({ c: T.penColor, f: Math.round((10 + T.width * 4) * PT_PER_UNIT * 100) / 100 }),
+    page: (n) => n,
+  });
+  window.__overboard = {
+    viewer,
+    ink,
+    get doc() {
+      return doc;
+    },
+    get data() {
+      return D;
+    },
+    flush: () => writeNow(),
+  }; // for tests and the curious
+}
 
 function setStatus(msg) {
   // a message that takes more (or fewer) lines changes the toolbar's height, so fit it again
@@ -294,18 +238,20 @@ function toStart() {
   }
   closeDoc(true);
 }
-window.addEventListener('popstate', (e) => {
-  if (stepBack) {
-    // a PDF picked in the meantime gets its step (not the one still saving on its way out)
-    stepBack = false;
-    if (doc && doc !== leaving) pdfStep(doc.hash);
-    leaving = null;
-    return;
-  }
-  const hash = e.state && e.state.obPdf;
-  if (doc && !hash) closeDoc(true);
-  else if (hash && (!doc || doc.hash !== hash)) reopen(hash);
-});
+function initOpen() {
+  window.addEventListener('popstate', (e) => {
+    if (stepBack) {
+      // a PDF picked in the meantime gets its step (not the one still saving on its way out)
+      stepBack = false;
+      if (doc && doc !== leaving) pdfStep(doc.hash);
+      leaving = null;
+      return;
+    }
+    const hash = e.state && e.state.obPdf;
+    if (doc && !hash) closeDoc(true);
+    else if (hash && (!doc || doc.hash !== hash)) reopen(hash);
+  });
+}
 async function reopen(hash) {
   // a PDF kept in the Open again store
   const rec = await store.getFile(hash).catch(() => null);
@@ -313,28 +259,6 @@ async function reopen(hash) {
     openFile(new File([rec.blob], rec.name, { type: 'application/pdf' }));
   else if (!rec && inPdfStep()) history.replaceState(null, ''); // no longer stored: stay on the start screen
 }
-window.addEventListener('pagehide', () => {
-  if (doc) {
-    D.at = viewer.currentPage();
-    backupNow();
-    dirty = true;
-    writeNow();
-    writePdf();
-  }
-});
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && doc) {
-    dirty = true;
-    writeNow();
-    writePdf();
-  }
-});
-window.addEventListener('beforeunload', (e) => {
-  if (doc && pdfDirty && doc.linkOn) {
-    writePdf();
-    e.preventDefault();
-  }
-}); // the PDF write takes a moment
 
 /* ---------- "Save ink into PDF" (opt-in): the ink lives inside a PDF file the teacher chose ---------- */
 // doc.link = file handle, doc.linkOn = permission granted and saving. See app/embed.js for what is written.
@@ -466,31 +390,55 @@ function onLinkButton(b) {
   $('[value="ok"]', dlg).textContent = tr(FSA ? 'choose_file' : 'download_it');
   dlg.showModal();
 }
-dlg.addEventListener('click', (e) => {
-  const b = e.target.closest('button');
-  if (!b) {
-    if (e.target === dlg) dlg.close();
-    return;
-  }
-  dlg.close();
-  if (b.value !== 'ok' || !doc) return;
-  if (!FSA) {
-    downloadWithInk();
-    return;
-  }
-  // the save window must open straight from the tap
-  window
-    .showSaveFilePicker({
-      suggestedName: boardPdfName(),
-      ...(doc.origin ? { startIn: doc.origin } : { id: 'overboard-pdf' }),
-      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
-    })
-    .then((h) => startLink(h))
-    .catch((err) => {
-      if (!err || err.name !== 'AbortError')
-        setStatus(tr('st_could_not_open_save', { e: (err && err.message) || err }));
-    });
-});
+function initSaving() {
+  window.addEventListener('pagehide', () => {
+    if (doc) {
+      D.at = viewer.currentPage();
+      backupNow();
+      dirty = true;
+      writeNow();
+      writePdf();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && doc) {
+      dirty = true;
+      writeNow();
+      writePdf();
+    }
+  });
+  window.addEventListener('beforeunload', (e) => {
+    if (doc && pdfDirty && doc.linkOn) {
+      writePdf();
+      e.preventDefault();
+    }
+  }); // the PDF write takes a moment
+  dlg.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) {
+      if (e.target === dlg) dlg.close();
+      return;
+    }
+    dlg.close();
+    if (b.value !== 'ok' || !doc) return;
+    if (!FSA) {
+      downloadWithInk();
+      return;
+    }
+    // the save window must open straight from the tap
+    window
+      .showSaveFilePicker({
+        suggestedName: boardPdfName(),
+        ...(doc.origin ? { startIn: doc.origin } : { id: 'overboard-pdf' }),
+        types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+      })
+      .then((h) => startLink(h))
+      .catch((err) => {
+        if (!err || err.name !== 'AbortError')
+          setStatus(tr('st_could_not_open_save', { e: (err && err.message) || err }));
+      });
+  });
+}
 async function reconnectLink() {
   // a file chosen on an earlier visit
   if (!FSA || !doc) return;
@@ -508,12 +456,6 @@ async function reconnectLink() {
 }
 
 /* ---------- opening a PDF ---------- */
-const PDF_OPTS = {
-  cMapUrl: PDFJS_CMAPS_URL,
-  cMapPacked: true,
-  standardFontDataUrl: PDFJS_FONTS_URL,
-  isEvalSupported: false,
-};
 const errorEl = $('#ob-error');
 function showError(msg) {
   errorEl.textContent = msg;
@@ -634,8 +576,8 @@ async function openFile(file, handlePromise) {
       /* not ours */
     }
     const fromPdf = inPdf && (!saved || (inPdf.t || 0) >= (saved.t || 0));
-    D = fromPdf ? inPdf : saved || fresh();
-    doc = {
+    setInkData(fromPdf ? inPdf : saved || fresh());
+    setDoc({
       hash,
       base,
       name: file.name,
@@ -646,7 +588,7 @@ async function openFile(file, handlePromise) {
       linkOn: false,
       info: null,
       notebook: !!nb,
-    };
+    });
     document.body.classList.toggle('notebook', doc.notebook);
     addPageEl.hidden = !doc.notebook;
     store
@@ -688,8 +630,8 @@ async function openFile(file, handlePromise) {
     loadOutline(pdf);
   } catch (e) {
     console.error(e);
-    doc = null;
-    D = null;
+    setDoc(null);
+    setInkData(null);
     if (!e || e.name !== 'PasswordException') dropPdfWorker();
     document.body.classList.add('start');
     bar.hidden = true;
@@ -709,7 +651,7 @@ async function openFile(file, handlePromise) {
 async function closeDoc(showStart = true) {
   if (!doc) return;
   rememberOpen(null); // first, so a reload while this finishes doesn't reopen it
-  dirty = true;
+  setDirty(true);
   await writeNow();
   await writePdf();
   viewer.close();
@@ -718,11 +660,10 @@ async function closeDoc(showStart = true) {
   } catch (e) {
     /* already gone */
   }
-  doc = null;
-  D = null;
+  setDoc(null);
+  setInkData(null);
   toc.hidden = true;
-  outline = [];
-  hasChapters = false;
+  clearChapters();
   addPageEl.hidden = true;
   pageMenu.show(false);
   document.body.classList.remove('notebook');
@@ -738,17 +679,56 @@ async function closeDoc(showStart = true) {
   }
 }
 
-$('#ob-file').addEventListener('change', (e) => {
-  openFile(e.target.files[0]);
-  e.target.value = '';
-});
-const dropZone = $('#ob-drop');
-dropZone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') {
+function initStartScreen() {
+  $('#ob-file').addEventListener('change', (e) => {
+    openFile(e.target.files[0]);
+    e.target.value = '';
+  });
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      chooseFile();
+    }
+  });
+  dropZone.addEventListener('click', (e) => {
+    if (window.showOpenFilePicker && e.target !== $('#ob-file')) {
+      e.preventDefault();
+      chooseFile();
+    }
+  });
+  window.addEventListener('dragenter', (e) => {
+    if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
+      dragDepth++;
+      cover.hidden = false;
+      dropZone.classList.add('over');
+    }
+  });
+  window.addEventListener('dragleave', () => {
+    if (--dragDepth <= 0) {
+      dragDepth = 0;
+      cover.hidden = true;
+      dropZone.classList.remove('over');
+    }
+  });
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => {
     e.preventDefault();
-    chooseFile();
-  }
-});
+    dragDepth = 0;
+    cover.hidden = true;
+    dropZone.classList.remove('over');
+    const f = e.dataTransfer && e.dataTransfer.files[0];
+    if (!f) return;
+    // Chrome/Edge: a handle to the dropped file lets the board copy be saved next to it (must be asked for during the drop)
+    const item = e.dataTransfer.items && e.dataTransfer.items[0];
+    const handle = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
+    if (/\.json$/i.test(f.name)) {
+      if (doc) importInk(f);
+      else showError(tr('err_open_pdf_first'));
+    } else openFile(f, handle);
+  });
+}
+
+const dropZone = $('#ob-drop');
 /* Chrome/Edge: choose with showOpenFilePicker, which gives a handle to the file, so save windows can start in
    its folder (Save ink into PDF, an HTML board copy). Other browsers use the plain file input. */
 function chooseFile() {
@@ -775,46 +755,10 @@ function chooseFile() {
       if (!err || err.name !== 'AbortError') $('#ob-file').click();
     });
 }
-dropZone.addEventListener('click', (e) => {
-  if (window.showOpenFilePicker && e.target !== $('#ob-file')) {
-    e.preventDefault();
-    chooseFile();
-  }
-});
 
 // drop a PDF (or an .overboard.json ink file) anywhere
 const cover = $('#ob-dropcover');
 let dragDepth = 0;
-window.addEventListener('dragenter', (e) => {
-  if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) {
-    dragDepth++;
-    cover.hidden = false;
-    dropZone.classList.add('over');
-  }
-});
-window.addEventListener('dragleave', () => {
-  if (--dragDepth <= 0) {
-    dragDepth = 0;
-    cover.hidden = true;
-    dropZone.classList.remove('over');
-  }
-});
-window.addEventListener('dragover', (e) => e.preventDefault());
-window.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dragDepth = 0;
-  cover.hidden = true;
-  dropZone.classList.remove('over');
-  const f = e.dataTransfer && e.dataTransfer.files[0];
-  if (!f) return;
-  // Chrome/Edge: a handle to the dropped file lets the board copy be saved next to it (must be asked for during the drop)
-  const item = e.dataTransfer.items && e.dataTransfer.items[0];
-  const handle = item && item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
-  if (/\.json$/i.test(f.name)) {
-    if (doc) importInk(f);
-    else showError(tr('err_open_pdf_first'));
-  } else openFile(f, handle);
-});
 
 /* ---------- recent files ---------- */
 async function renderRecent() {
@@ -895,6 +839,10 @@ const fitToolbar = () =>
 
 /* ---------- chapters (PDF outline) ---------- */
 let outline = []; // flat [{ button, page }] for marking the current chapter
+function clearChapters() {
+  outline = [];
+  hasChapters = false;
+}
 async function loadOutline(pdf) {
   const ul = $('ul', toc);
   ul.textContent = '';
@@ -965,31 +913,56 @@ function toggleToc() {
 
 /* ---------- page number box ---------- */
 let scrollRaf = 0;
-window.addEventListener(
-  'scroll',
-  () => {
-    if (scrollRaf || !doc) return;
-    scrollRaf = requestAnimationFrame(() => {
-      scrollRaf = 0;
-      if (document.activeElement !== pageInput) pageInput.value = viewer.currentPage();
-      markChapter();
+function initPageView() {
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (scrollRaf || !doc) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        if (document.activeElement !== pageInput) pageInput.value = viewer.currentPage();
+        markChapter();
+      });
+    },
+    { passive: true }
+  );
+  pageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      goToTyped();
+      pageInput.blur();
+    }
+  });
+  pageInput.addEventListener('change', goToTyped);
+  pageInput.addEventListener('focus', () => pageInput.select());
+  window.addEventListener(
+    'wheel',
+    (e) => {
+      // trackpad pinch / ctrl+wheel zooms the pages, not the toolbar
+      if (!doc || !e.ctrlKey) return;
+      e.preventDefault();
+      zoomBy(Math.exp(-e.deltaY * 0.01));
+    },
+    { passive: false }
+  );
+  window.addEventListener('resize', () => {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      if (doc) {
+        fitToolbar();
+        fitSpace();
+        viewer.layout();
+        refreshZoom();
+      }
     });
-  },
-  { passive: true }
-);
+  });
+}
+
 function goToTyped() {
   const n = parseInt(pageInput.value, 10);
   if (n >= 1 && doc) viewer.goTo(Math.min(n, doc.pages));
   pageInput.value = viewer.currentPage();
 }
-pageInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    goToTyped();
-    pageInput.blur();
-  }
-});
-pageInput.addEventListener('change', goToTyped);
-pageInput.addEventListener('focus', () => pageInput.select());
 
 function jump(dir) {
   if (!doc) return;
@@ -1013,124 +986,108 @@ function zoomBy(f) {
 function refreshZoom() {
   fitBtn.textContent = viewer.fit ? tr('fit') : Math.round((viewer.zoom / ZOOM_100) * 100) + '%';
 }
-window.addEventListener(
-  'wheel',
-  (e) => {
-    // trackpad pinch / ctrl+wheel zooms the pages, not the toolbar
-    if (!doc || !e.ctrlKey) return;
-    e.preventDefault();
-    zoomBy(Math.exp(-e.deltaY * 0.01));
-  },
-  { passive: false }
-);
 let resizeRaf = 0;
-window.addEventListener('resize', () => {
-  if (resizeRaf) return;
-  resizeRaf = requestAnimationFrame(() => {
-    resizeRaf = 0;
-    if (doc) {
-      fitToolbar();
-      fitSpace();
-      viewer.layout();
-      refreshZoom();
-    }
-  });
-});
 
 /* ---------- class periods ---------- */
 // one button per period, or a "P5 ▾" list when they don't fit (shared with the overlay)
-const periodPicker = makePeriodPicker(
-  bar,
-  periodsEl,
-  (name) => {
-    if (ink.switchTo(name)) renderPeriods();
-    refresh();
-  },
-  () => closeMenus('periods'),
-  (k, v) => tr(k, v)
-);
+let periodPicker;
+function initPeriods() {
+  periodPicker = makePeriodPicker(
+    bar,
+    periodsEl,
+    (name) => {
+      if (ink.switchTo(name)) renderPeriods();
+      refresh();
+    },
+    () => closeMenus('periods'),
+    (k, v) => tr(k, v)
+  );
+}
 function renderPeriods() {
   periodPicker.render(Object.keys(D.periods), D.active);
 }
 
 /* ---------- ⏱ Timer (shared with the overlay). Its own sound (Settings ▸ Timer sound) is kept beside the ink. ---------- */
 const SOUND_KEY = 'ob-timer-sound';
-const timer = makeTimer({
-  t: () => tr,
-  bar,
-  btn: $('[data-act="timer"]', bar),
-  loadSound: () => store.loadExtra(SOUND_KEY).catch(() => null),
-  saveSound: (rec) =>
-    (rec ? store.saveExtra(SOUND_KEY, rec) : store.dropExtra(SOUND_KEY)).then(
-      () => true,
-      () => false
-    ),
-});
+let timer, settings;
+function initSettings() {
+  timer = makeTimer({
+    t: () => tr,
+    bar,
+    btn: $('[data-act="timer"]', bar),
+    loadSound: () => store.loadExtra(SOUND_KEY).catch(() => null),
+    saveSound: (rec) =>
+      (rec ? store.saveExtra(SOUND_KEY, rec) : store.dropExtra(SOUND_KEY)).then(
+        () => true,
+        () => false
+      ),
+  });
+  settings = makeSettings({
+    defaults: PERIODS,
+    pen: PEN_COLOR,
+    extra: timer.soundEl,
+    colors: paletteColors('pen').map((c) => [c[0], c[2], c[1]]),
+    langs: obLangs(),
+    setLang,
+    t: () => tr,
+    periods: () => (D ? Object.keys(D.periods) : null),
+    applyPeriods(names) {
+      if (!D) return true;
+      const r = remapPeriods(D.periods, D.active, names);
+      if (r.same) return true;
+      if (r.lost.length && !confirm(tr('confirm_remove_pdf', { list: r.lost.join(', ') }))) return false;
+      ink.setPeriods(r.periods, r.active);
+      renderPeriods();
+      refreshRedo();
+      setStatus(tr('st_periods_changed', { p: D.active }));
+      return true;
+    },
+    tools: () => ({
+      finger: T.fingerScrolls,
+      width: T.width,
+      smooth: T.smooth,
+      hlColor: T.hlColor,
+      hlStrength: T.hlStrength,
+    }),
+    setPen(c) {
+      T.penColor = c;
+      if (!T.hiliting) T.color = c;
+      T.erasing = false;
+      T.laser = false;
+      if (T.typing) typing.restyle();
+      refresh();
+    },
+    resetTools() {
+      Object.assign(T, {
+        width: 2.5,
+        hlWidth: HIGHLIGHT_W,
+        hlColor: HIGHLIGHT_COLOR,
+        customColor: '',
+        covering: false,
+        hlStrength: HIGHLIGHT_STRENGTH,
+        coverColor: COVER_COLOR,
+        smooth: SMOOTHING,
+        fingerScrolls: FINGER_SCROLLS,
+        penColor: PEN_COLOR,
+        erasing: false,
+        laser: false,
+      });
+      T.color = toolColor();
+      refresh();
+    },
+    onOpen: () => {
+      closeMenus();
+      timer.syncSound();
+    },
+  });
+  for (const [code, name] of obLangs()) langPick.append(new Option(name, code));
+  langPick.addEventListener('change', () => setLang(langPick.value));
+}
 
 /* ---------- File ▸ Settings… (shared with the overlay) ---------- */
-const settings = makeSettings({
-  defaults: PERIODS,
-  pen: PEN_COLOR,
-  extra: timer.soundEl,
-  colors: paletteColors('pen').map((c) => [c[0], c[2], c[1]]),
-  langs: obLangs(),
-  setLang,
-  t: () => tr,
-  periods: () => (D ? Object.keys(D.periods) : null),
-  applyPeriods(names) {
-    if (!D) return true;
-    const r = remapPeriods(D.periods, D.active, names);
-    if (r.same) return true;
-    if (r.lost.length && !confirm(tr('confirm_remove_pdf', { list: r.lost.join(', ') }))) return false;
-    ink.setPeriods(r.periods, r.active);
-    renderPeriods();
-    refreshRedo();
-    setStatus(tr('st_periods_changed', { p: D.active }));
-    return true;
-  },
-  tools: () => ({
-    finger: T.fingerScrolls,
-    width: T.width,
-    smooth: T.smooth,
-    hlColor: T.hlColor,
-    hlStrength: T.hlStrength,
-  }),
-  setPen(c) {
-    T.penColor = c;
-    if (!T.hiliting) T.color = c;
-    T.erasing = false;
-    T.laser = false;
-    if (T.typing) typing.restyle();
-    refresh();
-  },
-  resetTools() {
-    Object.assign(T, {
-      width: 2.5,
-      hlWidth: HIGHLIGHT_W,
-      hlColor: HIGHLIGHT_COLOR,
-      customColor: '',
-      covering: false,
-      hlStrength: HIGHLIGHT_STRENGTH,
-      coverColor: COVER_COLOR,
-      smooth: SMOOTHING,
-      fingerScrolls: FINGER_SCROLLS,
-      penColor: PEN_COLOR,
-      erasing: false,
-      laser: false,
-    });
-    T.color = toolColor();
-    refresh();
-  },
-  onOpen: () => {
-    closeMenus();
-    timer.syncSound();
-  },
-});
 
 /* ---------- language (Settings ▸ Language, or the 🌐 list on the start screen; shared/strings.js) ---------- */
 const langPick = $('#ob-lang');
-for (const [code, name] of obLangs()) langPick.append(new Option(name, code));
-langPick.addEventListener('change', () => setLang(langPick.value));
 function translateAll() {
   obTranslate(document.body, tr); // everything marked data-t / data-th / data-tt / data-ta / data-tp
   $('[data-act="clear"]', bar).textContent = tr('clear') + ' ▸';
@@ -1145,7 +1102,7 @@ function setLang(code) {
   } catch (e) {
     /* blocked */
   }
-  tr = obT(code);
+  setTr(obT(code));
   translateAll();
   renderRecent();
   timer.refresh();
@@ -1278,32 +1235,67 @@ const STEPPERS = {
   rougher: [stepSmooth, -1],
   smoother: [stepSmooth, 1],
 };
-for (const [act, [step, dir]] of Object.entries(STEPPERS))
-  holdRepeat($('[data-act="' + act + '"]', bar), () => step(dir));
-holdRepeat($('[data-act="zoom-in"]', bar), () => {
-  if (viewer.zoom >= 6) return false;
-  zoomBy(1.1);
-  return true;
-});
-holdRepeat($('[data-act="zoom-out"]', bar), () => {
-  if (viewer.zoom <= 0.2) return false;
-  zoomBy(1 / 1.1);
-  return true;
-});
+function initTools() {
+  for (const [act, [step, dir]] of Object.entries(STEPPERS))
+    holdRepeat($('[data-act="' + act + '"]', bar), () => step(dir));
+  holdRepeat($('[data-act="zoom-in"]', bar), () => {
+    if (viewer.zoom >= 6) return false;
+    zoomBy(1.1);
+    return true;
+  });
+  holdRepeat($('[data-act="zoom-out"]', bar), () => {
+    if (viewer.zoom <= 0.2) return false;
+    zoomBy(1 / 1.1);
+    return true;
+  });
 
-picker.addEventListener('input', () => {
-  T.customColor = picker.value;
-  setLS('ink-custom', T.customColor);
-  pickColor(T.customColor);
-});
+  picker.addEventListener('input', () => {
+    T.customColor = picker.value;
+    setLS('ink-custom', T.customColor);
+    pickColor(T.customColor);
+  });
+}
 /* Popout menus beside the toolbar. They open on a tap and stay open until a choice is tapped, a tap lands
    anywhere else, or Escape. Lifting the pen or finger never closes them. */
-const fileMenu = $('#ob-filemenu'),
+const fileMenu = $('#ob-filemenu');
+let clearMenu, pageMenu, hlMenu, showFileMenu;
+let file, placeFileMenu;
+function initMenus() {
   clearMenu = makePopMenu($('#ob-clearmenu'), $('[data-act="clear"]', bar), bar, () => closeMenus('clear'));
-const pageMenu = makePopMenu($('#ob-pagemenu'), pagesBtn, bar, () => closeMenus('pages'));
-const file = makePopMenu(fileMenu, $('[data-act="file"]', bar), bar, () => closeMenus('file'));
-const placeFileMenu = file.place,
+  pageMenu = makePopMenu($('#ob-pagemenu'), pagesBtn, bar, () => closeMenus('pages'));
+  file = makePopMenu(fileMenu, $('[data-act="file"]', bar), bar, () => closeMenus('file'));
+  placeFileMenu = file.place;
   showFileMenu = file.show;
+  // Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
+  // A choice, or moving the slider, turns the highlighter on in that mode.
+  hlMenu = makeHlMenu(
+    bar,
+    T,
+    () => {
+      setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
+      setLS('ink-hl-strength', T.hlStrength);
+      if (T.covering) setLS('ink-cover-color', T.coverColor);
+      typeOff();
+      T.hiliting = true;
+      T.erasing = false;
+      T.laser = false;
+      selectOff();
+      T.color = toolColor();
+      refresh();
+    },
+    () => closeMenus('hl')
+  );
+  for (const m of [fileMenu, clearMenu.el])
+    m.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      onToolbarClick(e);
+      // keep it open while a two-tap confirm ("Sure?") is waiting, after moving the toolbar, or after a turn (tap again to turn more)
+      if (/^turn-/.test(b.dataset.act)) return;
+      if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
+      else if (b.dataset.act === 'side') placeFileMenu();
+    });
+}
 function closeMenus(except) {
   // only one popout at a time
   if (except !== 'file') file.show(false);
@@ -1312,37 +1304,40 @@ function closeMenus(except) {
   if (except !== 'hl') hlMenu.show(false);
   if (except !== 'periods') periodPicker.show(false);
 }
-// Highlighter ▾: Highlight (with strength) or Cover. Shared with the overlay (shared/ink-core.js).
-// A choice, or moving the slider, turns the highlighter on in that mode.
-const hlMenu = makeHlMenu(
-  bar,
-  T,
-  () => {
-    setLS('ink-hl-mode', T.covering ? 'cover' : 'hl');
-    setLS('ink-hl-strength', T.hlStrength);
-    if (T.covering) setLS('ink-cover-color', T.coverColor);
-    typeOff();
-    T.hiliting = true;
-    T.erasing = false;
-    T.laser = false;
-    selectOff();
-    T.color = toolColor();
-    refresh();
-  },
-  () => closeMenus('hl')
-);
-for (const m of [fileMenu, clearMenu.el])
-  m.addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    onToolbarClick(e);
-    // keep it open while a two-tap confirm ("Sure?") is waiting, after moving the toolbar, or after a turn (tap again to turn more)
-    if (/^turn-/.test(b.dataset.act)) return;
-    if (!b.classList.contains('warn') && b.dataset.act !== 'side') closeMenus();
-    else if (b.dataset.act === 'side') placeFileMenu();
-  });
 
-bar.addEventListener('click', onToolbarClick);
+function initToolbar() {
+  bar.addEventListener('click', onToolbarClick);
+  showBtn.addEventListener('click', () => {
+    bar.style.display = '';
+    showBtn.classList.remove('show');
+    fitToolbar();
+    if (viewer.fit && doc) {
+      fitSpace();
+      viewer.layout();
+    }
+  });
+  $('[data-act="toc-close"]', toc).addEventListener('click', () => {
+    toc.hidden = true;
+  });
+  $('[data-act="find-close"]', findPanel).addEventListener('click', () => finder.close());
+  document.addEventListener('keydown', (e) => {
+    const t = document.activeElement,
+      inBox = t && /^(INPUT|TEXTAREA)$/.test(t.tagName);
+    const h = historyKey(e); // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
+    if (h && (h === 'block' || !inBox)) {
+      e.preventDefault();
+      if (h !== 'block' && doc) historyStep(h);
+    } // text boxes keep their own undo
+    // Select: Ctrl/⌘+C, Ctrl/⌘+V, Delete, Escape (text boxes keep their own)
+    else if (T.selecting && doc && !inBox && !e.defaultPrevented && ink.sel.key(e)) e.preventDefault();
+    // the browser's own find only sees pages near the screen; ours searches the whole PDF
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f' && doc) {
+      openFind();
+      e.preventDefault();
+    }
+    if (e.key === 'Escape' && !findPanel.hidden) finder.close();
+  });
+}
 function onToolbarClick(e) {
   const b = e.target.closest('button');
   if (!b) return;
@@ -1504,42 +1499,12 @@ function onToolbarClick(e) {
     }
   refresh();
 }
-showBtn.addEventListener('click', () => {
-  bar.style.display = '';
-  showBtn.classList.remove('show');
-  fitToolbar();
-  if (viewer.fit && doc) {
-    fitSpace();
-    viewer.layout();
-  }
-});
-$('[data-act="toc-close"]', toc).addEventListener('click', () => {
-  toc.hidden = true;
-});
-$('[data-act="find-close"]', findPanel).addEventListener('click', () => finder.close());
 function openFind() {
   if (!doc) return;
   toc.hidden = true;
   findPanel.classList.toggle('left', bar.classList.contains('right'));
   finder.open();
 }
-document.addEventListener('keydown', (e) => {
-  const t = document.activeElement,
-    inBox = t && /^(INPUT|TEXTAREA)$/.test(t.tagName);
-  const h = historyKey(e); // Ctrl/⌘+Z undo; Ctrl/⌘+Y, Ctrl/⌘+R or Ctrl/⌘+Shift+Z redo; keyboard reload is off
-  if (h && (h === 'block' || !inBox)) {
-    e.preventDefault();
-    if (h !== 'block' && doc) historyStep(h);
-  } // text boxes keep their own undo
-  // Select: Ctrl/⌘+C, Ctrl/⌘+V, Delete, Escape (text boxes keep their own)
-  else if (T.selecting && doc && !inBox && !e.defaultPrevented && ink.sel.key(e)) e.preventDefault();
-  // the browser's own find only sees pages near the screen; ours searches the whole PDF
-  if ((e.ctrlKey || e.metaKey) && e.key === 'f' && doc) {
-    openFind();
-    e.preventDefault();
-  }
-  if (e.key === 'Escape' && !findPanel.hidden) finder.close();
-});
 function historyStep(act) {
   // Undo or Redo, then show the page it changed
   typing.close();
@@ -1583,7 +1548,36 @@ async function startBlank(paper, btns) {
   }
 }
 const blankBtns = [...document.querySelectorAll('#ob-blank [data-paper]')];
-for (const b of blankBtns) b.addEventListener('click', () => startBlank(b.dataset.paper, blankBtns));
+
+function initNotebook() {
+  for (const b of blankBtns) b.addEventListener('click', () => startBlank(b.dataset.paper, blankBtns));
+  for (const b of addPageEl.querySelectorAll('[data-paper]'))
+    b.addEventListener('click', () => {
+      if (doc) addPageAfter(b.dataset.paper, doc.pages);
+    });
+  pageMenu.el.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !doc) return;
+    if (b.dataset.paper) {
+      pageMenu.show(false);
+      addPageAfter(b.dataset.paper, viewer.currentPage());
+    } else if (b.dataset.act === 'remove-page') {
+      if (doc.pages <= 1) {
+        setStatus(tr('st_last_page'));
+        flashBtn(b, tr('st_last_page'), 'warn');
+        return;
+      }
+      confirmTap(
+        b,
+        () => {
+          pageMenu.show(false);
+          removeThisPage();
+        },
+        tr('sure')
+      );
+    }
+  });
+}
 
 let paging = false; // one page change at a time
 /* change(bytes) -> new bytes; ink is moved with shiftInk(at, by); then show page `show` */
@@ -1641,32 +1635,6 @@ function removeThisPage() {
   const n = viewer.currentPage();
   changePages((bytes) => removePage(bytes, n), n, -1, Math.min(n, doc.pages - 1), tr('st_page_removed', { n }));
 }
-for (const b of addPageEl.querySelectorAll('[data-paper]'))
-  b.addEventListener('click', () => {
-    if (doc) addPageAfter(b.dataset.paper, doc.pages);
-  });
-pageMenu.el.addEventListener('click', (e) => {
-  const b = e.target.closest('button');
-  if (!b || !doc) return;
-  if (b.dataset.paper) {
-    pageMenu.show(false);
-    addPageAfter(b.dataset.paper, viewer.currentPage());
-  } else if (b.dataset.act === 'remove-page') {
-    if (doc.pages <= 1) {
-      setStatus(tr('st_last_page'));
-      flashBtn(b, tr('st_last_page'), 'warn');
-      return;
-    }
-    confirmTap(
-      b,
-      () => {
-        pageMenu.show(false);
-        removeThisPage();
-      },
-      tr('sure')
-    );
-  }
-});
 
 /* ---------- Turn page (for PDFs scanned or saved upside down or sideways) ----------
    Each tap turns the page a quarter turn clockwise; tap twice for upside down. The turn is kept with
@@ -1787,7 +1755,7 @@ async function importInk(file) {
       return;
     const has = Object.values(D.periods).some((l) => l.length);
     if (has && !confirm(tr('confirm_replace_ink', { f: file.name }))) return;
-    D = data;
+    setInkData(data);
     ink.setData(D);
     viewer.applyTurns();
     refreshRedo();
@@ -1800,11 +1768,26 @@ async function importInk(file) {
     setStatus(e.message || String(e));
   }
 }
-$('#ob-inkfile').addEventListener('change', (e) => {
-  const f = e.target.files[0];
-  e.target.value = '';
-  if (f && doc) importInk(f);
-});
+function initExporting() {
+  $('#ob-inkfile').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f && doc) importInk(f);
+  });
+}
+
+initCore();
+initOpen();
+initSaving();
+initStartScreen();
+initPageView();
+initPeriods();
+initSettings();
+initTools();
+initMenus();
+initToolbar();
+initNotebook();
+initExporting();
 
 /* ---------- start ---------- */
 translateAll();
