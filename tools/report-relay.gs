@@ -15,19 +15,23 @@
    and the titles of the pull requests that fixed it; fixed text adds how to make sure OverBoard has the new version.
    An issue closed as "not planned" (or a duplicate) sends nothing.
 
-   It also relays AllAboard's "Something not working?" reports (see allAboardReport below). Those come from the
-   AllAboard server, not a browser, carry a shared secret, and arrive with the issue and email already written. They
-   open an issue in the AllAboard repository and email the same inbox. No thank-you or follow-up emails for them.
+   It also relays the "Something not working?" reports of AllAboard, AllHail and OverHeard (see APPS and appReport
+   below). Those come from each app's server, not a browser, carry that app's own shared secret, and arrive with the
+   issue and email already written. Each opens an issue in that app's repository and emails the same inbox. No
+   thank-you or follow-up emails for them.
 
    Script properties (Project Settings ▸ Script properties):
-     GITHUB_TOKEN       a fine-grained GitHub token: Issues: read and write on OverBoard (and AllAboard, for its reports)
+     GITHUB_TOKEN       a fine-grained GitHub token: Issues: read and write on OverBoard (and on each app below whose
+                        reports are on)
      GITHUB_REPO        BPMData/OverBoard
      ANTHROPIC_API_KEY  (optional) for Claude Haiku's paragraph; without it the follow-up uses a plain fixed paragraph
      NOTIFY_EMAIL       (optional) where to email reports; leave it out to use this Google account's own inbox
-     ALLABOARD_TOKEN    (optional) turns on AllAboard reports: a long random secret, the same value as AllAboard's
-                        REPORT_RELAY_TOKEN GitHub secret. Without it, AllAboard reports are refused.
-     ALLABOARD_REPO     (optional) default BPMData/AllAboard
-     ALLABOARD_GITHUB_TOKEN (optional) a separate token for AllAboard issues; without it GITHUB_TOKEN is used
+   For each app (PREFIX is ALLABOARD, ALLHAIL or OVERHEARD; see APPS):
+     PREFIX_TOKEN        (optional) turns on that app's reports: a long random secret, the same value the app's server
+                         sends (its REPORT_RELAY_TOKEN or REPORT_RELAY_SECRET). Without it, that app's reports are refused.
+     PREFIX_REPO         (optional) default BPMData/AllAboard, BPMData/AllHail or BPMData/OverHeard
+     PREFIX_GITHUB_TOKEN (optional) a separate token for that app's issues; without it GITHUB_TOKEN is used.
+                         GITHUB_TOKEN (or this one) needs Issues: read and write on that app's repository.
 */
 
 var MAX_CHARS = 300000; // a report is usually 20-60 KB; refuse anything far bigger
@@ -46,7 +50,7 @@ function doPost(e) {
     var text = (e && e.postData && e.postData.contents) || '';
     if (text.length > MAX_CHARS) return reply({ ok: false, error: 'too big' });
     var r = JSON.parse(text);
-    if (r && r.app === 'AllAboard') return reply(allAboardReport(r));
+    if (r && APPS.hasOwnProperty(r.app)) return reply(appReport(APPS[r.app], r));
     if (!r || r.app !== 'OverBoard' || r.kind !== 'board-report') return reply({ ok: false, error: 'not a report' });
     if (r.website) return reply({ ok: true }); // the hidden "leave this empty" box was filled in: a robot. Pretend it worked.
     if (!underLimit()) return reply({ ok: false, error: 'busy' });
@@ -371,14 +375,23 @@ function emailReport(r, priv, issue, issueError, props) {
   MailApp.sendEmail(opts);
 }
 
-/* ---------- AllAboard reports ---------- */
-/* AllAboard's server (problemReportRoute.ts in BPMData/AllAboard) posts
-     { app: 'AllAboard', kind: 'problem-report', token, issue: { title, body, labels }, email: { subject, body, replyTo? } }
+/* ---------- app reports (AllAboard, AllHail, OverHeard) ---------- */
+/* Each app's server posts
+     { app: 'AllAboard' | 'AllHail' | 'OverHeard', kind: 'problem-report', token,
+       issue: { title, body, labels }, email: { subject, body, replyTo? } }
+   (AllAboard's is problemReportRoute.ts in BPMData/AllAboard; the others send the same shape).
    The server has already removed anything private from the issue; contact details and comments are only in the email.
-   Counts toward the same hourly and daily limits as OverBoard reports, since both send from this one Gmail account. */
-function allAboardReport(r) {
+   Each app has its own secret (PREFIX_TOKEN), so one app's secret can't send reports as another.
+   Counts toward the same hourly and daily limits as OverBoard reports, since all of them send from this one Gmail account. */
+var APPS = {
+  AllAboard: { name: 'AllAboard', prefix: 'ALLABOARD', repo: 'BPMData/AllAboard' },
+  AllHail: { name: 'AllHail', prefix: 'ALLHAIL', repo: 'BPMData/AllHail' },
+  OverHeard: { name: 'OverHeard', prefix: 'OVERHEARD', repo: 'BPMData/OverHeard' },
+};
+
+function appReport(appInfo, r) {
   var props = PropertiesService.getScriptProperties();
-  var secret = props.getProperty('ALLABOARD_TOKEN');
+  var secret = props.getProperty(appInfo.prefix + '_TOKEN');
   if (!secret || r.kind !== 'problem-report' || !sameText(String(r.token || ''), secret))
     return { ok: false, error: 'not allowed' };
   var issueIn = r.issue || {},
@@ -390,7 +403,7 @@ function allAboardReport(r) {
   var issue = null,
     issueError = '';
   try {
-    issue = openAllAboardIssue(issueIn, props);
+    issue = openAppIssue(appInfo, issueIn, props);
   } catch (err) {
     issueError = String(err).slice(0, 500);
   }
@@ -399,10 +412,13 @@ function allAboardReport(r) {
   try {
     var to = props.getProperty('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
     var replyTo = String(mail.replyTo || '').trim();
+    var tag = '[' + appInfo.name + ']';
+    var subject = String(mail.subject);
+    if (subject.indexOf(tag) !== 0) subject = tag + ' ' + subject; // every subject names its app
     var opts = {
       to: to,
-      name: 'AllAboard reports',
-      subject: String(mail.subject).slice(0, 180) + (issue ? ' (issue #' + issue.number + ')' : ''),
+      name: appInfo.name + ' reports',
+      subject: subject.slice(0, 180) + (issue ? ' (issue #' + issue.number + ')' : ''),
       body: [
         issue
           ? 'GitHub issue: ' + issue.html_url
@@ -416,16 +432,24 @@ function allAboardReport(r) {
     MailApp.sendEmail(opts);
     emailed = true;
   } catch (err) {
-    Logger.log('AllAboard email failed: ' + err);
+    Logger.log(appInfo.name + ' email failed: ' + err);
   }
 
   if (!issue && !emailed) return { ok: false, error: 'could not deliver' };
   return { ok: true, issue: issue ? issue.number : null, url: issue ? issue.html_url : null, emailed: emailed };
 }
 
-function openAllAboardIssue(issueIn, props) {
-  var token = props.getProperty('ALLABOARD_GITHUB_TOKEN') || props.getProperty('GITHUB_TOKEN');
-  var repo = props.getProperty('ALLABOARD_REPO') || 'BPMData/AllAboard';
+/* the repository and GitHub token an app's issues use */
+function appRepo(appInfo, props) {
+  return props.getProperty(appInfo.prefix + '_REPO') || appInfo.repo;
+}
+function appGithubToken(appInfo, props) {
+  return props.getProperty(appInfo.prefix + '_GITHUB_TOKEN') || props.getProperty('GITHUB_TOKEN');
+}
+
+function openAppIssue(appInfo, issueIn, props) {
+  var token = appGithubToken(appInfo, props);
+  var repo = appRepo(appInfo, props);
   if (!token) throw new Error('GITHUB_TOKEN is not set');
   var labels = (issueIn.labels || []).slice(0, 5).map(function (l) {
     return String(l).slice(0, 50);
@@ -823,25 +847,28 @@ function checkSetup() {
   Logger.log('Sent a test email to ' + to + '. All set.');
   if (!props.getProperty('ANTHROPIC_API_KEY'))
     Logger.log('No ANTHROPIC_API_KEY: follow-up emails will use the plain fixed paragraph.');
-  if (props.getProperty('ALLABOARD_TOKEN')) {
-    var aaRepo = props.getProperty('ALLABOARD_REPO') || 'BPMData/AllAboard';
-    var aaToken = props.getProperty('ALLABOARD_GITHUB_TOKEN') || token;
-    var aa = UrlFetchApp.fetch('https://api.github.com/repos/' + aaRepo, {
+  Object.keys(APPS).forEach(function (key) {
+    var appInfo = APPS[key];
+    if (!props.getProperty(appInfo.prefix + '_TOKEN')) {
+      Logger.log('No ' + appInfo.prefix + '_TOKEN: ' + appInfo.name + ' reports are off.');
+      return;
+    }
+    var appRepoName = appRepo(appInfo, props);
+    var check = UrlFetchApp.fetch('https://api.github.com/repos/' + appRepoName, {
       muteHttpExceptions: true,
-      headers: { Authorization: 'Bearer ' + aaToken, Accept: 'application/vnd.github+json' },
+      headers: { Authorization: 'Bearer ' + appGithubToken(appInfo, props), Accept: 'application/vnd.github+json' },
     });
-    if (aa.getResponseCode() !== 200)
+    if (check.getResponseCode() !== 200)
       throw new Error(
-        "AllAboard reports are on, but the token can't reach " +
-          aaRepo +
+        appInfo.name +
+          " reports are on, but the token can't reach " +
+          appRepoName +
           ' (' +
-          aa.getResponseCode() +
+          check.getResponseCode() +
           '). Add ' +
-          aaRepo +
+          appRepoName +
           " to the token's repositories."
       );
-    Logger.log('AllAboard reports are on: issues go to ' + aaRepo + '.');
-  } else {
-    Logger.log('No ALLABOARD_TOKEN: AllAboard reports are off.');
-  }
+    Logger.log(appInfo.name + ' reports are on: issues go to ' + appRepoName + '.');
+  });
 }
